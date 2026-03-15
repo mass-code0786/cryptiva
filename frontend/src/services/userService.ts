@@ -1,0 +1,21 @@
+import api from "./api";
+
+export type SalaryProgress = {
+  currentRank: string;
+  nextRank: string;
+  mainLegBusiness: number;
+  otherLegBusiness: number;
+  remainingMainLeg: number;
+  remainingOtherLeg: number;
+  weeklySalary: number;
+  progressPercentage: number;
+};
+
+export const fetchMyProfile = () => api.get("/users/me");
+export const updateMyProfile = (payload: { name?: string; walletAddress?: string }) =>
+  api.patch("/users/me", payload);
+export const fetchTeamReferrals = () => api.get("/referrals");
+export const bindWalletAddress = (payload: { walletAddress: string; network?: "BEP20" }) =>
+  api.post("/users/wallet-binding", payload);
+export const fetchWalletBinding = () => api.get("/users/wallet-binding");
+export const fetchSalaryProgress = () => api.get<SalaryProgress>("/salary-progress");

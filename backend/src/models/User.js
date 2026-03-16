@@ -20,6 +20,14 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+      trim: true,
+      uppercase: true,
+    },
     passwordHash: {
       type: String,
       required: true,
@@ -115,6 +123,10 @@ userSchema.pre("validate", function preValidate(next) {
     this.userId = generateCode("CTV-");
   }
 
+  if (!this.username && this.userId) {
+    this.username = this.userId;
+  }
+
   if (!this.referralCode) {
     this.referralCode = generateCode("CRY-");
   }
@@ -144,6 +156,7 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     userId: this.userId,
     name: this.name,
     email: this.email,
+    username: this.username,
     referralCode: this.referralCode,
     walletAddress: this.walletAddress,
     role: this.isAdmin ? "admin" : "user",

@@ -48,11 +48,19 @@ const hasMinimumInvestmentForLevelIncome = async (userId) => {
 
 const resolveSponsorFromTrader = async (traderUser) => {
   if (traderUser?.referredBy) {
-    const sponsorById = await User.findById(traderUser.referredBy);
+    let sponsorById = null;
+    try {
+      sponsorById = await User.findById(traderUser.referredBy);
+    } catch {
+      sponsorById = null;
+    }
     if (sponsorById) return sponsorById;
+
+    const sponsorByLegacyUserId = await User.findOne({ userId: String(traderUser.referredBy).toUpperCase() });
+    if (sponsorByLegacyUserId) return sponsorByLegacyUserId;
   }
   if (traderUser?.referredByUserId) {
-    const sponsorByUserId = await User.findOne({ userId: traderUser.referredByUserId });
+    const sponsorByUserId = await User.findOne({ userId: String(traderUser.referredByUserId).toUpperCase() });
     if (sponsorByUserId) return sponsorByUserId;
   }
   return null;
@@ -120,7 +128,13 @@ export const distributeUnilevelIncomeOnTradeStart = async ({ traderUser, tradeAm
     return;
   }
 
-  await distributeDirectReferralOnTradeStart({ traderUser, tradeAmount: amount, tradeId });
+  const trader =
+    (traderUser?._id && (await User.findById(traderUser._id).select("_id userId email referredBy referredByUserId"))) || traderUser;
+  if (!trader?._id) {
+    return;
+  }
+
+  await distributeDirectReferralOnTradeStart({ traderUser: trader, tradeAmount: amount, tradeId });
 };
 
 export const distributeLevelIncomeOnRoi = async ({ traderUser, roiAmount, tradeId, roiMetadata = {} }) => {

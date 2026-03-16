@@ -31,9 +31,12 @@ const AdminLayout = () => {
     <div className="min-h-screen bg-[radial-gradient(circle_at_12%_10%,rgba(8,145,178,0.28),transparent_36%),radial-gradient(circle_at_85%_0%,rgba(6,182,212,0.15),transparent_34%),linear-gradient(180deg,#020617_0%,#0f172a_100%)] text-slate-100">
       <div className="mx-auto max-w-7xl px-4 py-4 lg:py-6">
         <header className="mb-4 flex items-center justify-between rounded-2xl border border-cyan-700/30 bg-slate-950/70 px-4 py-3 shadow-[0_20px_45px_rgba(2,132,199,0.12)] lg:hidden">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.24em] text-cyan-300/80">Cryptiva</p>
-            <h1 className="text-sm font-semibold text-cyan-100">Admin Panel</h1>
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.svg" alt="Cryptiva Logo" className="h-6 w-auto shrink-0" />
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.24em] text-cyan-300/80">Cryptiva</p>
+              <h1 className="text-sm font-semibold text-cyan-100">Admin Panel</h1>
+            </div>
           </div>
           <button
             type="button"
@@ -60,47 +63,50 @@ const AdminLayout = () => {
               isSidebarOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
-          <div className="mb-3 flex items-start justify-between lg:mb-0 lg:block">
-            <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-cyan-300/80">Cryptiva</p>
-          <h1 className="mt-2 text-xl font-semibold text-cyan-100">Admin Panel</h1>
+            <div className="mb-3 flex items-start justify-between lg:mb-0 lg:block">
+              <div className="flex items-center gap-2.5 lg:block">
+                <img src="/logo.svg" alt="Cryptiva Logo" className="h-6 w-auto shrink-0 lg:h-8" />
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-cyan-300/80 lg:mt-2">Cryptiva</p>
+                  <h1 className="text-xl font-semibold text-cyan-100">Admin Panel</h1>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(false)}
+                className="rounded-lg border border-cyan-700/40 bg-slate-900/80 p-1.5 text-cyan-100 lg:hidden"
+                aria-label="Close sidebar"
+              >
+                <X size={16} />
+              </button>
             </div>
+            <nav className="mt-5 space-y-2">
+              {navItems.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setIsSidebarOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${
+                      isActive
+                        ? "bg-cyan-500/20 text-cyan-100 ring-1 ring-cyan-400/40"
+                        : "text-slate-300 hover:bg-slate-800/70 hover:text-slate-100"
+                    }`
+                  }
+                >
+                  <Icon size={16} />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </nav>
             <button
               type="button"
-              onClick={() => setIsSidebarOpen(false)}
-              className="rounded-lg border border-cyan-700/40 bg-slate-900/80 p-1.5 text-cyan-100 lg:hidden"
-              aria-label="Close sidebar"
+              onClick={onLogout}
+              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 hover:bg-rose-500/20"
             >
-              <X size={16} />
+              <LogOut size={15} />
+              Logout
             </button>
-          </div>
-          <nav className="mt-5 space-y-2">
-            {navItems.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={() => setIsSidebarOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${
-                    isActive
-                      ? "bg-cyan-500/20 text-cyan-100 ring-1 ring-cyan-400/40"
-                      : "text-slate-300 hover:bg-slate-800/70 hover:text-slate-100"
-                  }`
-                }
-              >
-                <Icon size={16} />
-                <span>{label}</span>
-              </NavLink>
-            ))}
-          </nav>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 hover:bg-rose-500/20"
-          >
-            <LogOut size={15} />
-            Logout
-          </button>
           </aside>
 
           <main className="min-w-0 flex-1 rounded-2xl border border-cyan-700/20 bg-slate-900/55 p-4 shadow-[0_24px_70px_rgba(6,182,212,0.1)] md:p-6">

@@ -19,18 +19,28 @@ const isAdminEmail = (email) => {
 };
 
 export const register = asyncHandler(async (req, res) => {
-  const { name, email, password, pin, referralCode } = req.body;
+  const { name, username, email, password, pin, referralCode } = req.body;
 
-  if (!name || !email || !password || !pin) {
-    throw new ApiError(400, "Name, email, password and pin are required");
+  if (!name || !username || !email || !password || !pin) {
+    throw new ApiError(400, "Name, username, email, password and pin are required");
   }
 
   if (String(password).length < 6) {
     throw new ApiError(400, "Password must be at least 6 characters");
   }
 
+  const normalizedUsername = String(username).trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,20}$/.test(normalizedUsername)) {
+    throw new ApiError(400, "Username must be 4-20 characters and contain only letters and numbers");
+  }
+
   if (!/^\d{4,6}$/.test(String(pin))) {
     throw new ApiError(400, "PIN must be 4 to 6 digits");
+  }
+
+  const existingUsername = await User.findOne({ username: normalizedUsername });
+  if (existingUsername) {
+    throw new ApiError(409, "Username already taken");
   }
 
   const existingUser = await User.findOne({ email: String(email).toLowerCase() });
@@ -54,6 +64,7 @@ export const register = asyncHandler(async (req, res) => {
 
   const user = new User({
     name: String(name).trim(),
+    username: normalizedUsername,
     email: String(email).toLowerCase().trim(),
     referredBy,
     referredByUserId,
@@ -77,19 +88,28 @@ export const register = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) {
-    throw new ApiError(400, "Email and password are required");
+  const { username, password } = req.body;
+  if (!username || !password) {
+    throw new ApiError(400, "Username and password are required");
   }
 
-  const user = await User.findOne({ email: String(email).toLowerCase().trim() });
+  const normalizedUsername = String(username).trim().toUpperCase();
+  let user = await User.findOne({ username: normalizedUsername });
   if (!user) {
-    throw new ApiError(401, "Invalid email or password");
+    user = await User.findOne({ userId: normalizedUsername });
+    if (user && !user.username) {
+      user.username = user.userId;
+      await user.save();
+    }
+  }
+
+  if (!user) {
+    throw new ApiError(401, "Invalid username or password");
   }
 
   const isMatch = await user.comparePassword(String(password));
   if (!isMatch) {
-    throw new ApiError(401, "Invalid email or password");
+    throw new ApiError(401, "Invalid username or password");
   }
 
   if (user.isBlocked) {

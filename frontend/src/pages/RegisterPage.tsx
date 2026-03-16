@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 
 type CreatedAccountDetails = {
   userId: string;
+  username: string;
   name: string;
   email: string;
   referralCode: string;
@@ -15,6 +16,7 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
+    username: "",
     email: "",
     password: "",
     pin: "",
@@ -45,6 +47,7 @@ const RegisterPage = () => {
       const storedUser = storedUserRaw ? JSON.parse(storedUserRaw) : null;
       setCreatedAccount({
         userId: storedUser?.userId || storedUser?.id || "N/A",
+        username: storedUser?.username || form.username,
         name: storedUser?.name || form.name,
         email: storedUser?.email || form.email,
         referralCode: storedUser?.referralCode || form.referralCode || "N/A",
@@ -66,6 +69,7 @@ const RegisterPage = () => {
       "Account Created Successfully",
       "",
       `User ID: ${createdAccount.userId}`,
+      `Username: ${createdAccount.username}`,
       `Name: ${createdAccount.name}`,
       `Email: ${createdAccount.email}`,
       `Referral Code: ${createdAccount.referralCode}`,
@@ -89,6 +93,12 @@ const RegisterPage = () => {
         <h1 className="mb-4 text-2xl font-semibold">Register</h1>
         <form className="space-y-3" onSubmit={submit}>
           <input className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input
+            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3"
+            placeholder="Username (4-20 letters/numbers)"
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value.toUpperCase() })}
+          />
           <input className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <input className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3" type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <input className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3" placeholder="PIN (4-6 digits)" value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} />
@@ -105,6 +115,7 @@ const RegisterPage = () => {
             <h2 className="text-xl font-semibold text-cyan-300">Account Created Successfully</h2>
             <div className="mt-4 space-y-2 rounded-xl border border-cyan-900/40 bg-slate-900/60 p-4 text-sm text-slate-200">
               <p><span className="text-slate-400">User ID:</span> {createdAccount.userId}</p>
+              <p><span className="text-slate-400">Username:</span> {createdAccount.username}</p>
               <p><span className="text-slate-400">Name:</span> {createdAccount.name}</p>
               <p><span className="text-slate-400">Email:</span> {createdAccount.email}</p>
               <p><span className="text-slate-400">Referral Code:</span> {createdAccount.referralCode}</p>

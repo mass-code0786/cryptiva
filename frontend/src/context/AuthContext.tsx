@@ -4,6 +4,7 @@ import { loginRequest, registerRequest } from "../services/authService";
 type AuthUser = {
   id: string;
   userId?: string;
+  username?: string;
   name: string;
   email: string;
   role?: "admin" | "user";
@@ -14,6 +15,7 @@ type AuthUser = {
 
 type RegisterPayload = {
   name: string;
+  username: string;
   email: string;
   password: string;
   pin: string;
@@ -23,7 +25,7 @@ type RegisterPayload = {
 type AuthContextValue = {
   user: AuthUser | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<AuthUser>;
+  login: (username: string, password: string) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
   refreshUser: (user: AuthUser) => void;
   logout: () => void;
@@ -35,8 +37,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
   const [user, setUser] = useState<AuthUser | null>(JSON.parse(localStorage.getItem("user") || "null"));
 
-  const login = async (email: string, password: string) => {
-    const { data } = await loginRequest({ email, password });
+  const login = async (username: string, password: string) => {
+    const { data } = await loginRequest({ username, password });
     setToken(data.token);
     setUser(data.user);
     localStorage.setItem("token", data.token);

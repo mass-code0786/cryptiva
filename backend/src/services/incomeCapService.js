@@ -13,7 +13,21 @@ const ensureWallet = async (userId) => {
 const toAmount = (value) => Number(Number(value || 0).toFixed(6));
 
 export const hasActiveReferral = async (userId) => {
-  const directReferrals = await User.find({ referredBy: userId }, "_id");
+  const baseUser = await User.findById(userId).select("_id userId");
+  if (!baseUser) {
+    return false;
+  }
+
+  const directReferrals = await User.find(
+    {
+      $or: [
+        { referredBy: baseUser._id },
+        { referredByUserId: baseUser.userId },
+        { referredBy: baseUser.userId },
+      ],
+    },
+    "_id"
+  );
   if (!directReferrals.length) {
     return false;
   }

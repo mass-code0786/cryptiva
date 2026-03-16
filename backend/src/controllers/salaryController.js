@@ -172,7 +172,18 @@ export const runWeeklySalaryDistribution = async (runDate = new Date()) => {
 
 export const getSalaryProgress = asyncHandler(async (req, res) => {
   const { mainLegBusiness, otherLegBusiness } = await computeTeamBusiness(req.user._id);
-  const savedRankNumber = Number(req.user.salaryRank || 0);
+  const highestQualifiedIndex = getHighestQualifiedRankIndex(mainLegBusiness, otherLegBusiness);
+  const highestQualifiedRankNumber = highestQualifiedIndex + 1;
+  const storedRank = Number(req.user.salaryRank || 0);
+  const savedRankNumber = Math.max(storedRank, highestQualifiedRankNumber);
+
+  if (savedRankNumber > storedRank) {
+    const upgradedRank = rankTable[savedRankNumber - 1];
+    req.user.salaryRank = savedRankNumber;
+    req.user.salaryRankName = upgradedRank?.name || "";
+    await req.user.save();
+  }
+
   const savedRank = savedRankNumber > 0 ? rankTable[savedRankNumber - 1] : null;
 
   const nextRank = rankTable[Math.min(savedRankNumber, rankTable.length - 1)] || rankTable[0];
@@ -184,7 +195,6 @@ export const getSalaryProgress = asyncHandler(async (req, res) => {
   const currentProgress = Math.min(mainLegBusiness, nextRank.main) + Math.min(otherLegBusiness, nextRank.other);
   const progressPercentage = savedRankNumber >= rankTable.length ? 100 : (currentProgress / progressTarget) * 100;
 
-  const highestQualifiedIndex = getHighestQualifiedRankIndex(mainLegBusiness, otherLegBusiness);
   const qualificationActive = savedRank ? highestQualifiedIndex >= savedRankNumber - 1 : false;
 
   res.json({

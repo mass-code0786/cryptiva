@@ -4,6 +4,27 @@ import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
+const salaryRankTable = [
+  { rank: 1, name: "Rank 1", main: 2000, other: 3000, weeklySalary: 50 },
+  { rank: 2, name: "Rank 2", main: 4000, other: 6000, weeklySalary: 100 },
+  { rank: 3, name: "Rank 3", main: 10000, other: 15000, weeklySalary: 250 },
+  { rank: 4, name: "Rank 4", main: 20000, other: 30000, weeklySalary: 500 },
+  { rank: 5, name: "Rank 5", main: 40000, other: 60000, weeklySalary: 1500 },
+  { rank: 6, name: "Rank 6", main: 80000, other: 120000, weeklySalary: 5000 },
+  { rank: 7, name: "Rank 7", main: 160000, other: 240000, weeklySalary: 15000 },
+  { rank: 8, name: "Rank 8", main: 320000, other: 480000, weeklySalary: 50000 },
+];
+
+const resolveQualifiedSalaryRank = (mainLegBusiness, otherLegBusiness) => {
+  let qualified = 0;
+  for (const row of salaryRankTable) {
+    if (mainLegBusiness >= row.main && otherLegBusiness >= row.other) {
+      qualified = row.rank;
+    }
+  }
+  return qualified;
+};
+
 const buildChildMatch = (parentUserId, parentUserRef) => ({
   $or: [{ referredBy: parentUserId }, { referredByUserId: parentUserRef }],
 });
@@ -282,10 +303,22 @@ const resolveParentUser = async (user) => {
 export const syncTeamBusinessForUser = async (userId) => {
   const result = await computeTeamBusiness(userId);
   const totalTeamBusiness = Number((result.mainLegBusiness + result.otherLegBusiness).toFixed(6));
+  const user = await User.findById(userId).select("_id salaryRank");
+  if (!user) {
+    return { ...result, totalTeamBusiness };
+  }
+
+  const qualifiedRank = resolveQualifiedSalaryRank(result.mainLegBusiness, result.otherLegBusiness);
+  const currentRank = Number(user.salaryRank || 0);
+  const nextRank = Math.max(currentRank, qualifiedRank);
+  const nextRankMeta = salaryRankTable.find((row) => row.rank === nextRank);
+
   await User.findByIdAndUpdate(userId, {
     mainLegBusiness: result.mainLegBusiness,
     otherLegBusiness: result.otherLegBusiness,
     totalTeamBusiness,
+    salaryRank: nextRank,
+    salaryRankName: nextRankMeta?.name || "",
   });
   return { ...result, totalTeamBusiness };
 };

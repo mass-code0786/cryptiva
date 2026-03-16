@@ -21,6 +21,7 @@ const RegisterPage = () => {
     password: "",
     pin: "",
     referralCode: "",
+    referrerCode: "",
   });
   const [error, setError] = useState("");
   const [createdAccount, setCreatedAccount] = useState<CreatedAccountDetails | null>(null);
@@ -32,7 +33,7 @@ const RegisterPage = () => {
     if (ref) {
       setForm((prev) => ({
         ...prev,
-        referralCode: ref.trim().toUpperCase(),
+        referrerCode: ref.trim().toLowerCase(),
       }));
     }
   }, []);
@@ -52,8 +53,8 @@ const RegisterPage = () => {
         email: storedUser?.email || form.email,
         referralCode: storedUser?.referralCode || form.referralCode || "N/A",
       });
-    } catch {
-      setError("Registration failed");
+    } catch (error: any) {
+      setError(error?.response?.data?.message || "Registration failed");
     }
   };
 
@@ -102,7 +103,18 @@ const RegisterPage = () => {
           <input className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <input className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3" type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           <input className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3" placeholder="PIN (4-6 digits)" value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value })} />
-          <input className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3" placeholder="Referral Code (optional)" value={form.referralCode} onChange={(e) => setForm({ ...form, referralCode: e.target.value })} />
+          <input
+            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3"
+            placeholder="Your Referral Code (4-20 letters/numbers)"
+            value={form.referralCode}
+            onChange={(e) => setForm({ ...form, referralCode: e.target.value.toLowerCase() })}
+          />
+          <input
+            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3"
+            placeholder="Referrer Code (optional)"
+            value={form.referrerCode}
+            onChange={(e) => setForm({ ...form, referrerCode: e.target.value.toLowerCase() })}
+          />
           {error && <p className="text-red-400">{error}</p>}
           <button className="w-full rounded-xl bg-cyan-500 p-3 font-semibold text-slate-950">Create Account</button>
         </form>

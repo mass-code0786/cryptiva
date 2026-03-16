@@ -19,6 +19,8 @@ export type SalaryProgress = {
 export const fetchMyProfile = () => api.get("/users/me");
 export const updateMyProfile = (payload: { name?: string; walletAddress?: string }) =>
   api.patch("/users/me", payload);
+export const updateMyReferralCode = (payload: { referralCode: string }) =>
+  api.patch("/users/referral-code", payload);
 export const fetchTeamReferrals = () => api.get("/referrals");
 export const bindWalletAddress = (payload: { walletAddress: string; network?: "BEP20" }) =>
   api.post("/users/wallet-binding", payload);

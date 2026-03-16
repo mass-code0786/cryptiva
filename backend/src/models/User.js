@@ -41,6 +41,14 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       index: true,
+      lowercase: true,
+      trim: true,
+    },
+    referralCodeChangeCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 1,
     },
     referredBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -127,8 +135,8 @@ userSchema.pre("validate", function preValidate(next) {
     this.username = this.userId;
   }
 
-  if (!this.referralCode) {
-    this.referralCode = generateCode("CRY-");
+  if (!this.referralCode && this.userId) {
+    this.referralCode = String(this.userId).toLowerCase();
   }
 
   next();
@@ -158,6 +166,8 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     email: this.email,
     username: this.username,
     referralCode: this.referralCode,
+    referralCodeChangeCount: this.referralCodeChangeCount || 0,
+    canChangeReferralCode: Number(this.referralCodeChangeCount || 0) < 1,
     walletAddress: this.walletAddress,
     role: this.isAdmin ? "admin" : "user",
     isAdmin: this.isAdmin,

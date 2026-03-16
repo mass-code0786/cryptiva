@@ -6,7 +6,8 @@ export const registerRequest = (payload: {
   email: string;
   password: string;
   pin: string;
-  referralCode?: string;
+  referralCode: string;
+  referrerCode?: string;
 }) => api.post("/auth/register", payload);
 
 export const loginRequest = (payload: { username: string; password: string }) =>

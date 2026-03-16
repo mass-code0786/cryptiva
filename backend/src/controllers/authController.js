@@ -19,10 +19,10 @@ const isAdminEmail = (email) => {
 };
 
 export const register = asyncHandler(async (req, res) => {
-  const { name, username, email, password, pin, referralCode } = req.body;
+  const { name, username, email, password, pin, referralCode, referrerCode, referredByCode } = req.body;
 
-  if (!name || !username || !email || !password || !pin) {
-    throw new ApiError(400, "Name, username, email, password and pin are required");
+  if (!name || !username || !email || !password || !pin || !referralCode) {
+    throw new ApiError(400, "Name, username, email, password, pin and referral code are required");
   }
 
   if (String(password).length < 6) {
@@ -34,6 +34,11 @@ export const register = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Username must be 4-20 characters and contain only letters and numbers");
   }
 
+  const normalizedReferralCode = String(referralCode).trim().toLowerCase();
+  if (!/^[a-zA-Z0-9]{4,20}$/.test(normalizedReferralCode)) {
+    throw new ApiError(400, "Referral code must be 4-20 characters and contain only letters and numbers");
+  }
+
   if (!/^\d{4,6}$/.test(String(pin))) {
     throw new ApiError(400, "PIN must be 4 to 6 digits");
   }
@@ -43,6 +48,11 @@ export const register = asyncHandler(async (req, res) => {
     throw new ApiError(409, "Username already taken");
   }
 
+  const existingReferralCode = await User.findOne({ referralCode: normalizedReferralCode });
+  if (existingReferralCode) {
+    throw new ApiError(409, "Referral code already taken");
+  }
+
   const existingUser = await User.findOne({ email: String(email).toLowerCase() });
   if (existingUser) {
     throw new ApiError(409, "Email already registered");
@@ -50,13 +60,19 @@ export const register = asyncHandler(async (req, res) => {
 
   let referredBy = null;
   let referredByUserId = null;
-  if (referralCode) {
-    const normalizedReferral = String(referralCode).trim().toUpperCase();
+  const sponsorCode = referrerCode || referredByCode;
+  if (sponsorCode) {
+    const normalizedSponsorCode = String(sponsorCode).trim().toLowerCase();
+    const normalizedSponsorUserId = String(sponsorCode).trim().toUpperCase();
     const referrer =
-      (await User.findOne({ userId: normalizedReferral })) ||
-      (await User.findOne({ referralCode: normalizedReferral }));
+      (await User.findOne({ referralCode: normalizedSponsorCode })) ||
+      (await User.findOne({ userId: normalizedSponsorUserId }));
     if (!referrer) {
       throw new ApiError(400, "Invalid referral code");
+    }
+    if (!referrer.referralCode && referrer.userId) {
+      referrer.referralCode = String(referrer.userId).toLowerCase();
+      await referrer.save();
     }
     referredBy = referrer._id;
     referredByUserId = referrer.userId;
@@ -66,6 +82,7 @@ export const register = asyncHandler(async (req, res) => {
     name: String(name).trim(),
     username: normalizedUsername,
     email: String(email).toLowerCase().trim(),
+    referralCode: normalizedReferralCode,
     referredBy,
     referredByUserId,
     isAdmin: isAdminEmail(email),
@@ -97,10 +114,6 @@ export const login = asyncHandler(async (req, res) => {
   let user = await User.findOne({ username: normalizedUsername });
   if (!user) {
     user = await User.findOne({ userId: normalizedUsername });
-    if (user && !user.username) {
-      user.username = user.userId;
-      await user.save();
-    }
   }
 
   if (!user) {
@@ -116,6 +129,12 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Your account is blocked. Please contact support.");
   }
 
+  if (!user.username && user.userId) {
+    user.username = user.userId;
+  }
+  if (!user.referralCode && user.userId) {
+    user.referralCode = String(user.userId).toLowerCase();
+  }
   user.lastLoginAt = new Date();
   await user.save();
 

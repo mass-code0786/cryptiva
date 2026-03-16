@@ -1,6 +1,13 @@
 import express from "express";
 
-import { bindWalletAddress, getMe, getWalletBinding, lookupUserByUserId, updateMe } from "../controllers/userController.js";
+import {
+  bindWalletAddress,
+  getMe,
+  getWalletBinding,
+  lookupUserByUserId,
+  updateMe,
+  updateMyReferralCode,
+} from "../controllers/userController.js";
 import { authenticate } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -8,6 +15,7 @@ const router = express.Router();
 router.use(authenticate);
 router.get("/me", getMe);
 router.patch("/me", updateMe);
+router.patch("/referral-code", updateMyReferralCode);
 router.post("/wallet-binding", bindWalletAddress);
 router.get("/wallet-binding", getWalletBinding);
 router.get("/lookup/:userId", lookupUserByUserId);

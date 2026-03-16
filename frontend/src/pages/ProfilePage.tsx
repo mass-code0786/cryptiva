@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { useAuth } from "../hooks/useAuth";
-import { bindWalletAddress, fetchMyProfile, fetchWalletBinding, updateMyProfile } from "../services/userService";
+import { bindWalletAddress, fetchMyProfile, fetchWalletBinding, updateMyProfile, updateMyReferralCode } from "../services/userService";
 
 const ProfilePage = () => {
   const { user, refreshUser } = useAuth();
@@ -9,9 +9,12 @@ const ProfilePage = () => {
   const [walletAddress, setWalletAddress] = useState(user?.walletAddress || "");
   const [network, setNetwork] = useState("BEP20");
   const [message, setMessage] = useState("");
+  const [referralMessage, setReferralMessage] = useState("");
   const [copyMessage, setCopyMessage] = useState("");
-  const referralLink = user?.userId
-    ? `https://cryptiva-frontend.onrender.com/register?ref=${encodeURIComponent(user.userId)}`
+  const [newReferralCode, setNewReferralCode] = useState((user?.referralCode || "").toLowerCase());
+  const referralIdentifier = user?.referralCode || user?.userId;
+  const referralLink = referralIdentifier
+    ? `https://cryptiva-frontend.onrender.com/register?ref=${encodeURIComponent(referralIdentifier)}`
     : "";
   const encodedLink = encodeURIComponent(referralLink);
 
@@ -21,12 +24,18 @@ const ProfilePage = () => {
         const me = res.data.user;
         setName(me?.name || "");
         setWalletAddress(me?.walletAddress || "");
+        setNewReferralCode((me?.referralCode || "").toLowerCase());
         refreshUser({
           id: me?._id || user?.id || "",
           userId: me?.userId,
+          username: me?.username || user?.username,
           name: me?.name || "",
           email: me?.email || "",
+          role: me?.role || user?.role,
+          isAdmin: me?.isAdmin ?? user?.isAdmin,
           referralCode: me?.referralCode,
+          referralCodeChangeCount: me?.referralCodeChangeCount,
+          canChangeReferralCode: me?.canChangeReferralCode,
           walletAddress: me?.walletAddress,
         });
       })
@@ -53,9 +62,14 @@ const ProfilePage = () => {
       refreshUser({
         id: me?._id || user?.id || "",
         userId: me?.userId,
+        username: me?.username || user?.username,
         name: me?.name || "",
         email: me?.email || "",
+        role: me?.role || user?.role,
+        isAdmin: me?.isAdmin ?? user?.isAdmin,
         referralCode: me?.referralCode,
+        referralCodeChangeCount: me?.referralCodeChangeCount,
+        canChangeReferralCode: me?.canChangeReferralCode,
         walletAddress: me?.walletAddress,
       });
       setMessage("Profile updated");
@@ -73,6 +87,32 @@ const ProfilePage = () => {
     } catch {
       setCopyMessage("Unable to copy referral link");
       window.setTimeout(() => setCopyMessage(""), 2200);
+    }
+  };
+
+  const onUpdateReferralCode = async (event: FormEvent) => {
+    event.preventDefault();
+    setReferralMessage("");
+    try {
+      const { data } = await updateMyReferralCode({ referralCode: newReferralCode.trim().toLowerCase() });
+      const me = data.user;
+      refreshUser({
+        id: me?._id || user?.id || "",
+        userId: me?.userId,
+        username: me?.username || user?.username,
+        name: me?.name || user?.name || "",
+        email: me?.email || user?.email || "",
+        role: me?.role || user?.role,
+        isAdmin: me?.isAdmin ?? user?.isAdmin,
+        referralCode: me?.referralCode,
+        referralCodeChangeCount: me?.referralCodeChangeCount,
+        canChangeReferralCode: me?.canChangeReferralCode,
+        walletAddress: me?.walletAddress || user?.walletAddress,
+      });
+      setNewReferralCode((me?.referralCode || "").toLowerCase());
+      setReferralMessage(data?.message || "Referral code updated");
+    } catch (error: any) {
+      setReferralMessage(error?.response?.data?.message || "Unable to update referral code");
     }
   };
 
@@ -113,6 +153,26 @@ const ProfilePage = () => {
           <p className="font-medium">{user?.email || "-"}</p>
           <p className="mt-2 text-slate-400">Referral Code</p>
           <p className="font-medium">{user?.referralCode || "-"}</p>
+          <form className="mt-3 space-y-2" onSubmit={onUpdateReferralCode}>
+            <input
+              value={newReferralCode}
+              onChange={(e) => setNewReferralCode(e.target.value.toLowerCase())}
+              disabled={user?.canChangeReferralCode === false}
+              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+              placeholder="Change referral code (one time)"
+            />
+            <button
+              type="submit"
+              disabled={user?.canChangeReferralCode === false}
+              className="w-full rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Update Referral Code
+            </button>
+            {user?.canChangeReferralCode === false && (
+              <p className="text-xs text-amber-300">Referral code change already used.</p>
+            )}
+            {referralMessage && <p className="text-xs text-cyan-300">{referralMessage}</p>}
+          </form>
           <p className="mt-2 text-slate-400">Referral Link</p>
           <p className="break-all font-medium">{referralLink || "-"}</p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -155,12 +215,6 @@ const ProfilePage = () => {
               className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
             >
               Twitter
-            </a>
-            <a
-              href={`mailto:?subject=Join%20Cryptiva&body=Join%20Cryptiva%20using%20my%20referral%20link:%20${encodedLink}`}
-              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
-            >
-              Email
             </a>
           </div>
           {copyMessage && <p className="mt-2 text-xs text-cyan-300">{copyMessage}</p>}

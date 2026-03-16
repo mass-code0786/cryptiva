@@ -10,6 +10,8 @@ type AuthUser = {
   role?: "admin" | "user";
   isAdmin?: boolean;
   referralCode?: string;
+  referralCodeChangeCount?: number;
+  canChangeReferralCode?: boolean;
   walletAddress?: string;
 };
 
@@ -19,7 +21,8 @@ type RegisterPayload = {
   email: string;
   password: string;
   pin: string;
-  referralCode?: string;
+  referralCode: string;
+  referrerCode?: string;
 };
 
 type AuthContextValue = {

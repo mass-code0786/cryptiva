@@ -1,10 +1,8 @@
 import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
-import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
 import { logIncomeEvent } from "./incomeLogService.js";
 import { applyIncomeWithCap } from "./incomeCapService.js";
-import { distributeLevelIncomeOnRoi } from "./referralService.js";
 import { getTradingRoiRatePerMinute } from "./tradingSettingsService.js";
 
 const TRADE_LIMIT_MULTIPLIER = Number(process.env.TRADE_LIMIT_MULTIPLIER || 2);
@@ -61,8 +59,6 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRateOverride
   }
 
   trade.totalIncome = Number((trade.totalIncome + creditedAmount).toFixed(6));
-  const traderUser = await User.findById(trade.userId).select("_id userId email referredBy referredByUserId");
-
   await Promise.all([
     trade.save(),
     Transaction.create({
@@ -90,14 +86,6 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRateOverride
       },
       recordedAt: now,
     }),
-    traderUser
-      ? distributeLevelIncomeOnRoi({
-          traderUser,
-          roiAmount: creditedAmount,
-          tradeId: trade._id,
-          roiMetadata: { roiRatePerMinute: effectiveRoiRatePerMinute, elapsedMinutes },
-        })
-      : Promise.resolve(),
   ]);
 
   return { trade, settledAmount: creditedAmount, completed: false };

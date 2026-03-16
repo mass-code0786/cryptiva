@@ -22,12 +22,22 @@ const getLevelIncomePercent = (level) => {
 };
 
 const countActiveDirectReferrals = async (userId) => {
-  const directUsers = await User.find({ referredBy: userId }, "_id");
+  const sponsor = await User.findById(userId).select("_id userId");
+  if (!sponsor) {
+    return 0;
+  }
+  const directUsers = await User.find(
+    { $or: [{ referredBy: sponsor._id }, { referredByUserId: sponsor.userId }] },
+    "_id"
+  );
   if (!directUsers.length) {
     return 0;
   }
   const ids = directUsers.map((entry) => entry._id);
-  return Wallet.countDocuments({ userId: { $in: ids }, tradingWallet: { $gte: 5 } });
+  return Wallet.countDocuments({
+    userId: { $in: ids },
+    $or: [{ tradingWallet: { $gte: 5 } }, { tradingBalance: { $gte: 5 } }],
+  });
 };
 
 const hasMinimumInvestmentForLevelIncome = async (userId) => {
@@ -111,6 +121,13 @@ export const distributeUnilevelIncomeOnTradeStart = async ({ traderUser, tradeAm
   }
 
   await distributeDirectReferralOnTradeStart({ traderUser, tradeAmount: amount, tradeId });
+};
+
+export const distributeLevelIncomeOnRoi = async ({ traderUser, roiAmount, tradeId, roiMetadata = {} }) => {
+  const amount = Number(roiAmount || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return;
+  }
 
   let currentUser = traderUser;
   for (let level = 1; level <= 30; level += 1) {
@@ -144,16 +161,16 @@ export const distributeUnilevelIncomeOnTradeStart = async ({ traderUser, tradeAm
               upline._id,
               "level",
               creditedAmount,
-              `Level ${level} income from ${traderUser.userId || traderUser.email}`,
+              `Level ${level} income from ROI of ${traderUser.userId || traderUser.email}`,
               "completed",
-              { sourceUserId: traderUser._id, tradeId, level, percentage: percent }
+              { sourceUserId: traderUser._id, tradeId, level, percentage: percent, trigger: "roi", ...roiMetadata }
             ),
             logIncomeEvent({
               userId: upline._id,
               incomeType: "level",
               amount: creditedAmount,
-              source: `Level ${level} income from ${traderUser.userId || traderUser.email}`,
-              metadata: { sourceUserId: traderUser._id, tradeId, level, percentage: percent },
+              source: `Level ${level} income from ROI of ${traderUser.userId || traderUser.email}`,
+              metadata: { sourceUserId: traderUser._id, tradeId, level, percentage: percent, trigger: "roi", ...roiMetadata },
             }),
             ReferralIncome.create({
               userId: upline._id,
@@ -166,7 +183,8 @@ export const distributeUnilevelIncomeOnTradeStart = async ({ traderUser, tradeAm
                 sourceUserId: traderUser.userId,
                 sourceEmail: traderUser.email,
                 percentage: percent,
-                trigger: "trade_start",
+                trigger: "roi",
+                ...roiMetadata,
               },
             }),
           ]);

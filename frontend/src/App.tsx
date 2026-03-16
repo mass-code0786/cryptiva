@@ -2,6 +2,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AdminRoute from "./components/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRedirect from "./components/RoleRedirect";
+import UserRoute from "./components/UserRoute";
+import { useAuth } from "./hooks/useAuth";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminDepositsPage from "./pages/admin/AdminDepositsPage";
@@ -21,12 +23,23 @@ import TransferFundsPage from "./pages/TransferFundsPage";
 import WithdrawalPage from "./pages/WithdrawalPage";
 
 const App = () => {
+  const { user } = useAuth();
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <UserRoute>
+              <DashboardPage />
+            </UserRoute>
+          </ProtectedRoute>
+        }
+      />
       <Route path="/trading" element={<ProtectedRoute><TradingPage /></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
       <Route path="/referrals" element={<Navigate to="/team" replace />} />
@@ -34,7 +47,7 @@ const App = () => {
         path="/admin"
         element={
           <ProtectedRoute>
-            <AdminRoute>
+            <AdminRoute user={user}>
               <AdminLayout />
             </AdminRoute>
           </ProtectedRoute>

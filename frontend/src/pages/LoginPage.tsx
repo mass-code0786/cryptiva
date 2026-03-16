@@ -17,9 +17,9 @@ const LoginPage = () => {
     try {
       const user = await login(email, password);
       if (isAdminUser(user)) {
-        navigate("/admin/dashboard");
+        navigate("/admin/dashboard", { replace: true });
       } else {
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
       }
     } catch {
       setError("Invalid credentials");

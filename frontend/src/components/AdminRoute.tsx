@@ -1,14 +1,24 @@
 import { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-import { isAdminUser } from "../utils/isAdminUser";
 
-const AdminRoute = ({ children }: { children: ReactNode }) => {
-  const { user } = useAuth();
-  if (!isAdminUser(user)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-  return <>{children}</>;
+type AdminUser = {
+  role?: string;
+  isAdmin?: boolean;
+} | null;
+
+type AdminRouteProps = {
+  children: ReactNode;
+  user: AdminUser;
 };
 
-export default AdminRoute;
+export default function AdminRoute({ children, user }: AdminRouteProps) {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === "admin" || user.isAdmin === true) {
+    return <>{children}</>;
+  }
+
+  return <Navigate to="/dashboard" replace />;
+}

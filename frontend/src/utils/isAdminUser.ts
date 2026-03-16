@@ -3,4 +3,5 @@ type UserLike = {
   isAdmin?: boolean;
 } | null;
 
-export const isAdminUser = (user: UserLike) => user?.role === "admin" || user?.isAdmin === true;
+export const isAdminUser = (user: UserLike) =>
+  String(user?.role || "").toLowerCase() === "admin" || user?.isAdmin === true;

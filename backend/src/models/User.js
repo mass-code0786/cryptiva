@@ -85,6 +85,22 @@ const userSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    mainLegBusiness: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    otherLegBusiness: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    totalTeamBusiness: {
+      type: Number,
+      default: 0,
+      min: 0,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -138,6 +154,9 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     referralsCount: Array.isArray(this.referrals) ? this.referrals.length : 0,
     salaryRank: this.salaryRank || 0,
     salaryRankName: this.salaryRankName || "",
+    mainLegBusiness: this.mainLegBusiness || 0,
+    otherLegBusiness: this.otherLegBusiness || 0,
+    totalTeamBusiness: this.totalTeamBusiness || 0,
   };
 };
 

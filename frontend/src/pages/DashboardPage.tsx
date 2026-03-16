@@ -27,6 +27,18 @@ const DashboardPage = () => {
   const [copyMessage, setCopyMessage] = useState("");
 
   useEffect(() => {
+    const loadSalary = () =>
+      fetchSalaryProgress()
+        .then((res) => setSalaryRankProgress(res.data))
+        .catch(() =>
+          setSalaryRankProgress((prev) => ({
+            ...prev,
+            currentRank: "Rank 0",
+            nextRank: "Rank 1",
+            progressPercentage: 0,
+          }))
+        );
+
     fetchWallet()
       .then((res) => setWallet(res.data.wallet))
       .catch(() =>
@@ -51,16 +63,9 @@ const DashboardPage = () => {
         setTransactions([]);
         setRecent([]);
       });
-    fetchSalaryProgress()
-      .then((res) => setSalaryRankProgress(res.data))
-      .catch(() =>
-        setSalaryRankProgress((prev) => ({
-          ...prev,
-          currentRank: "Rank 0",
-          nextRank: "Rank 1",
-          progressPercentage: 0,
-        }))
-      );
+    loadSalary();
+    const timer = window.setInterval(loadSalary, 20000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const incomeSummary = useMemo(() => {

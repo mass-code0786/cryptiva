@@ -6,7 +6,9 @@
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "fix:level-income:dry": "node scripts/fixLevelIncomeRecords.js",
+    "fix:level-income:apply": "node scripts/fixLevelIncomeRecords.js --apply"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -8,7 +8,7 @@ import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
 import Withdrawal from "../models/Withdrawal.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
-import { computeTeamBusiness } from "./referralController.js";
+import { computeTeamBusiness, syncTeamBusinessForUserAndUplines } from "./referralController.js";
 import { logIncomeEvent } from "../services/incomeLogService.js";
 import { applyIncomeWithCap } from "../services/incomeCapService.js";
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
@@ -715,6 +715,7 @@ export const approveDeposit = asyncHandler(async (req, res) => {
       metadata: { depositId: deposit._id },
     }),
   ]);
+  await syncTeamBusinessForUserAndUplines(user._id);
 
   res.json({ message: "Deposit approved", deposit, wallet });
 });

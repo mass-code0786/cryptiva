@@ -1,5 +1,5 @@
-import Deposit from "../models/Deposit.js";
 import ReferralIncome from "../models/ReferralIncome.js";
+import Trade from "../models/Trade.js";
 import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
@@ -77,7 +77,7 @@ const collectDescendantIds = async (rootUserId) => {
   return ids;
 };
 
-const sumDeposits = async (userIds) => {
+const sumTeamBusiness = async (userIds) => {
   if (!userIds.length) {
     return 0;
   }
@@ -91,8 +91,8 @@ const sumDeposits = async (userIds) => {
     return 0;
   }
 
-  const result = await Deposit.aggregate([
-    { $match: { userId: { $in: activeUserIds }, status: { $in: ["approved", "confirmed"] } } },
+  const result = await Trade.aggregate([
+    { $match: { userId: { $in: activeUserIds }, status: { $in: ["active", "completed"] } } },
     { $group: { _id: null, total: { $sum: "$amount" } } },
   ]);
 
@@ -243,8 +243,8 @@ export const computeTeamBusiness = async (userId) => {
   for (const member of directReferrals) {
     const descendants = await collectDescendantIds(member._id);
     const allLegIds = [member._id, ...descendants];
-    const teamBusiness = await sumDeposits(allLegIds);
-    const directBusiness = await sumDeposits([member._id]);
+    const teamBusiness = await sumTeamBusiness(allLegIds);
+    const directBusiness = await sumTeamBusiness([member._id]);
 
     legEntries.push({
       id: member._id,
@@ -267,4 +267,43 @@ export const computeTeamBusiness = async (userId) => {
     mainLegBusiness: legTotals[0] || 0,
     otherLegBusiness: legTotals.slice(1).reduce((sum, value) => sum + value, 0),
   };
+};
+
+const resolveParentUser = async (user) => {
+  if (user?.referredBy) {
+    return User.findById(user.referredBy).select("_id userId referredBy referredByUserId");
+  }
+  if (user?.referredByUserId) {
+    return User.findOne({ userId: user.referredByUserId }).select("_id userId referredBy referredByUserId");
+  }
+  return null;
+};
+
+export const syncTeamBusinessForUser = async (userId) => {
+  const result = await computeTeamBusiness(userId);
+  const totalTeamBusiness = Number((result.mainLegBusiness + result.otherLegBusiness).toFixed(6));
+  await User.findByIdAndUpdate(userId, {
+    mainLegBusiness: result.mainLegBusiness,
+    otherLegBusiness: result.otherLegBusiness,
+    totalTeamBusiness,
+  });
+  return { ...result, totalTeamBusiness };
+};
+
+export const syncTeamBusinessForUserAndUplines = async (userId, maxLevels = 30) => {
+  const baseUser = await User.findById(userId).select("_id userId referredBy referredByUserId");
+  if (!baseUser) return { updated: 0 };
+
+  let currentUser = baseUser;
+  let updated = 0;
+
+  for (let level = 1; level <= maxLevels; level += 1) {
+    const parent = await resolveParentUser(currentUser);
+    if (!parent) break;
+    await syncTeamBusinessForUser(parent._id);
+    updated += 1;
+    currentUser = parent;
+  }
+
+  return { updated };
 };

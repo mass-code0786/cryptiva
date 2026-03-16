@@ -2,6 +2,7 @@ import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
+import { syncTeamBusinessForUserAndUplines } from "./referralController.js";
 import { distributeUnilevelIncomeOnTradeStart } from "../services/referralService.js";
 import { getCurrentTradeEngineConfig, getDefaultTradeLimit, settleTradeIncome } from "../services/tradeEngineService.js";
 
@@ -54,6 +55,7 @@ export const placeTrade = asyncHandler(async (req, res) => {
     tradeAmount: amount,
     tradeId: trade._id,
   });
+  await syncTeamBusinessForUserAndUplines(req.user._id);
 
   res.status(201).json({
     message: "Trade placed successfully",

@@ -4,6 +4,7 @@ import Wallet from "../models/Wallet.js";
 import Deposit from "../models/Deposit.js";
 import Withdrawal from "../models/Withdrawal.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
+import { syncTeamBusinessForUserAndUplines } from "./referralController.js";
 import { distributeUnilevelIncomeOnTradeStart } from "../services/referralService.js";
 import { getDefaultTradeLimit } from "../services/tradeEngineService.js";
 
@@ -208,6 +209,7 @@ export const moveToTradingBalance = asyncHandler(async (req, res) => {
     tradeAmount: amount,
     tradeId: trade._id,
   });
+  await syncTeamBusinessForUserAndUplines(req.user._id);
 
   res.status(201).json({
     message: "Amount moved to trading balance",

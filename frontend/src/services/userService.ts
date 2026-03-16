@@ -2,12 +2,17 @@ import api from "./api";
 
 export type SalaryProgress = {
   currentRank: string;
+  currentRankNumber?: number;
   nextRank: string;
+  nextRankTarget?: string;
   mainLegBusiness: number;
   otherLegBusiness: number;
   remainingMainLeg: number;
   remainingOtherLeg: number;
+  remainingBusiness?: number;
   weeklySalary: number;
+  salaryAmountForRank?: number;
+  qualificationActive?: boolean;
   progressPercentage: number;
 };
 

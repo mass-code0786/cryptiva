@@ -4,7 +4,6 @@ import Deposit from "../models/Deposit.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
-import { distributeReferralRewards } from "../services/referralService.js";
 
 const ensureWallet = async (userId) => {
   let wallet = await Wallet.findOne({ userId });

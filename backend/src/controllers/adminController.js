@@ -9,7 +9,6 @@ import Wallet from "../models/Wallet.js";
 import Withdrawal from "../models/Withdrawal.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { computeTeamBusiness } from "./referralController.js";
-import { distributeReferralRewards } from "../services/referralService.js";
 import { logIncomeEvent } from "../services/incomeLogService.js";
 import { applyIncomeWithCap } from "../services/incomeCapService.js";
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
@@ -707,7 +706,6 @@ export const approveDeposit = asyncHandler(async (req, res) => {
       { status: "completed", source: "Deposit approved by admin" },
       { new: true }
     ),
-    distributeReferralRewards({ user, depositAmount: deposit.amount, depositId: deposit._id }),
     addActivityLog({
       adminId: req.user._id,
       type: "deposit_approval",

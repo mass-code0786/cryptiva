@@ -4,6 +4,7 @@ import Wallet from "../models/Wallet.js";
 import Deposit from "../models/Deposit.js";
 import Withdrawal from "../models/Withdrawal.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
+import { distributeUnilevelIncomeOnTradeStart } from "../services/referralService.js";
 import { getDefaultTradeLimit } from "../services/tradeEngineService.js";
 
 const ensureWallet = async (userId) => {
@@ -21,7 +22,22 @@ const ensureWallet = async (userId) => {
 
 export const getWallet = asyncHandler(async (req, res) => {
   const wallet = await ensureWallet(req.user._id);
-  res.json({ wallet });
+  res.json({
+    wallet: {
+      ...wallet.toObject(),
+      tradingWallet: Number(wallet.tradingWallet || wallet.tradingBalance || 0),
+      tradingIncome: Number(wallet.tradingIncomeWallet || 0),
+      referralIncome: Number(wallet.referralIncomeWallet || 0),
+      levelIncome: Number(wallet.levelIncomeWallet || 0),
+      salaryIncome: Number(wallet.salaryIncomeWallet || 0),
+      totalIncome: Number(
+        (Number(wallet.tradingIncomeWallet || 0) +
+          Number(wallet.referralIncomeWallet || 0) +
+          Number(wallet.levelIncomeWallet || 0) +
+          Number(wallet.salaryIncomeWallet || 0)).toFixed(6)
+      ),
+    },
+  });
 });
 
 export const transferToDepositWallet = asyncHandler(async (req, res) => {
@@ -179,12 +195,18 @@ export const moveToTradingBalance = asyncHandler(async (req, res) => {
 
   await Transaction.create({
     userId: req.user._id,
-    type: "trading",
+    type: "wallet_transfer",
     amount,
     network: "INTERNAL",
-    source: "Moved funds to trading balance",
+    source: "Deposit wallet to trading wallet",
     status: "completed",
     metadata: { tradeId: trade._id, action: "trade_open" },
+  });
+
+  await distributeUnilevelIncomeOnTradeStart({
+    traderUser: req.user,
+    tradeAmount: amount,
+    tradeId: trade._id,
   });
 
   res.status(201).json({

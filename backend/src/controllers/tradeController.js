@@ -2,6 +2,7 @@ import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
+import { distributeUnilevelIncomeOnTradeStart } from "../services/referralService.js";
 import { getCurrentTradeEngineConfig, getDefaultTradeLimit, settleTradeIncome } from "../services/tradeEngineService.js";
 
 const ensureWallet = async (userId) => {
@@ -40,12 +41,18 @@ export const placeTrade = asyncHandler(async (req, res) => {
 
   await Transaction.create({
     userId: req.user._id,
-    type: "trading",
+    type: "wallet_transfer",
     amount,
     network: "INTERNAL",
-    source: "Investment moved to trading",
+    source: "Deposit wallet to trading wallet",
     status: "completed",
     metadata: { tradeId: trade._id, action: "trade_open" },
+  });
+
+  await distributeUnilevelIncomeOnTradeStart({
+    traderUser: req.user,
+    tradeAmount: amount,
+    tradeId: trade._id,
   });
 
   res.status(201).json({

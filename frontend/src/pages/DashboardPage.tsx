@@ -15,8 +15,8 @@ const DashboardPage = () => {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [recent, setRecent] = useState<TransactionItem[]>([]);
   const [salaryRankProgress, setSalaryRankProgress] = useState<SalaryProgress>({
-    currentRank: "L0",
-    nextRank: "L1",
+    currentRank: "Rank 0",
+    nextRank: "Rank 1",
     mainLegBusiness: 0,
     otherLegBusiness: 0,
     remainingMainLeg: 2000,
@@ -56,34 +56,28 @@ const DashboardPage = () => {
       .catch(() =>
         setSalaryRankProgress((prev) => ({
           ...prev,
-          currentRank: "L0",
-          nextRank: "L1",
+          currentRank: "Rank 0",
+          nextRank: "Rank 1",
           progressPercentage: 0,
         }))
       );
   }, []);
 
   const incomeSummary = useMemo(() => {
-    const base = {
-      trading: 0,
-      direct: 0,
-      level: 0,
-      salary: 0,
-      total: 0,
+    const tradingIncome = Number(wallet?.tradingIncome || 0);
+    const referralIncome = Number(wallet?.referralIncome || 0);
+    const levelIncome = Number(wallet?.levelIncome || 0);
+    const salaryIncome = Number(wallet?.salaryIncome || 0);
+    const totalIncome = Number(wallet?.totalIncome || tradingIncome + referralIncome + levelIncome + salaryIncome);
+
+    return {
+      trading: tradingIncome,
+      referral: referralIncome,
+      level: levelIncome,
+      salary: salaryIncome,
+      total: totalIncome,
     };
-
-    for (const item of transactions) {
-      const type = String(item.type).toLowerCase();
-      const amount = Number(item.amount) || 0;
-      if (type === "trading") base.trading += amount;
-      if (type === "direct" || type === "referral") base.direct += amount;
-      if (type === "level") base.level += amount;
-      if (type === "salary") base.salary += amount;
-    }
-
-    base.total = base.trading + base.direct + base.level + base.salary;
-    return base;
-  }, [transactions]);
+  }, [wallet]);
 
   const refCode = user?.userId || "";
   const referralLink = refCode ? `https://cryptiva-frontend.onrender.com/register?ref=${encodeURIComponent(refCode)}` : "";
@@ -122,7 +116,7 @@ const DashboardPage = () => {
               <IncomeCard title="Trading Income" amount={incomeSummary.trading} tone="blue" icon="trading" />
             </div>
             <div className="min-w-[150px] md:min-w-0">
-              <IncomeCard title="Direct Income" amount={incomeSummary.direct} tone="violet" icon="direct" />
+              <IncomeCard title="Referral Income" amount={incomeSummary.referral} tone="violet" icon="direct" />
             </div>
             <div className="min-w-[150px] md:min-w-0">
               <IncomeCard title="Level Income" amount={incomeSummary.level} tone="blue" icon="level" />
@@ -145,6 +139,9 @@ const DashboardPage = () => {
               <span className="text-slate-400">Next Rank:</span> {salaryRankProgress.nextRank}
             </p>
             <p>
+              <span className="text-slate-400">Next Rank Target:</span> {salaryRankProgress.nextRankTarget || "-"}
+            </p>
+            <p>
               <span className="text-slate-400">Main Leg Business:</span> {formatCurrency(salaryRankProgress.mainLegBusiness)}
             </p>
             <p>
@@ -155,6 +152,12 @@ const DashboardPage = () => {
             </p>
             <p>
               <span className="text-slate-400">Remaining Other Leg:</span> {formatCurrency(salaryRankProgress.remainingOtherLeg)}
+            </p>
+            <p className="sm:col-span-2">
+              <span className="text-slate-400">Remaining Business:</span>{" "}
+              {formatCurrency(
+                Number(salaryRankProgress.remainingBusiness ?? salaryRankProgress.remainingMainLeg + salaryRankProgress.remainingOtherLeg)
+              )}
             </p>
             <p className="sm:col-span-2">
               <span className="text-slate-400">Weekly Salary:</span> {formatCurrency(salaryRankProgress.weeklySalary)}

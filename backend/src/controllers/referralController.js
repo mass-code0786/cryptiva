@@ -1,20 +1,37 @@
 import Deposit from "../models/Deposit.js";
 import ReferralIncome from "../models/ReferralIncome.js";
 import User from "../models/User.js";
+import Wallet from "../models/Wallet.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
+const buildChildMatch = (parentUserId, parentUserRef) => ({
+  $or: [{ referredBy: parentUserId }, { referredByUserId: parentUserRef }],
+});
+
 const collectAllMembersByLevel = async (rootUserId, maxDepth = 30) => {
-  const queue = [{ userId: rootUserId, level: 0 }];
+  const rootUser = await User.findById(rootUserId).select("_id userId");
+  if (!rootUser) {
+    return [];
+  }
+
+  const queue = [{ id: rootUser._id, userId: rootUser.userId, level: 0 }];
   const members = [];
 
   while (queue.length > 0) {
-    const { userId, level } = queue.shift();
+    const { id, userId, level } = queue.shift();
     if (level >= maxDepth) {
       continue;
     }
 
-    const children = await User.find({ referredBy: userId }).sort({ createdAt: 1 });
+    const children = await User.find(buildChildMatch(id, userId)).sort({ createdAt: 1 });
+    const childIds = children.map((child) => child._id);
+    const wallets = childIds.length ? await Wallet.find({ userId: { $in: childIds } }).select("userId tradingWallet tradingBalance") : [];
+    const walletMap = new Map(wallets.map((wallet) => [wallet.userId.toString(), wallet]));
+
     for (const child of children) {
+      const wallet = walletMap.get(child._id.toString());
+      const investment = Number(wallet?.tradingWallet || wallet?.tradingBalance || 0);
+      const active = investment >= 5;
       const nextLevel = level + 1;
       members.push({
         _id: child._id,
@@ -28,9 +45,11 @@ const collectAllMembersByLevel = async (rootUserId, maxDepth = 30) => {
           referralCode: child.referralCode,
           walletAddress: child.walletAddress,
         },
+        investment,
+        status: active ? "active" : "inactive",
         joinedAt: child.createdAt,
       });
-      queue.push({ userId: child._id, level: nextLevel });
+      queue.push({ id: child._id, userId: child.userId, level: nextLevel });
     }
   }
 
@@ -38,15 +57,20 @@ const collectAllMembersByLevel = async (rootUserId, maxDepth = 30) => {
 };
 
 const collectDescendantIds = async (rootUserId) => {
-  const queue = [rootUserId];
+  const rootUser = await User.findById(rootUserId).select("_id userId");
+  if (!rootUser) {
+    return [];
+  }
+
+  const queue = [{ id: rootUser._id, userId: rootUser.userId }];
   const ids = [];
 
   while (queue.length > 0) {
-    const currentId = queue.shift();
-    const children = await User.find({ referredBy: currentId }, "_id");
+    const current = queue.shift();
+    const children = await User.find(buildChildMatch(current.id, current.userId), "_id userId");
     for (const child of children) {
       ids.push(child._id);
-      queue.push(child._id);
+      queue.push({ id: child._id, userId: child.userId });
     }
   }
 
@@ -58,8 +82,17 @@ const sumDeposits = async (userIds) => {
     return 0;
   }
 
+  const activeWallets = await Wallet.find({
+    userId: { $in: userIds },
+    $or: [{ tradingWallet: { $gte: 5 } }, { tradingBalance: { $gte: 5 } }],
+  }).select("userId");
+  const activeUserIds = activeWallets.map((wallet) => wallet.userId);
+  if (!activeUserIds.length) {
+    return 0;
+  }
+
   const result = await Deposit.aggregate([
-    { $match: { userId: { $in: userIds }, status: "confirmed" } },
+    { $match: { userId: { $in: activeUserIds }, status: { $in: ["approved", "confirmed"] } } },
     { $group: { _id: null, total: { $sum: "$amount" } } },
   ]);
 
@@ -117,7 +150,7 @@ const buildReferralNode = async (user, depthRemaining) => {
     };
   }
 
-  const children = await User.find({ referredBy: user._id }).sort({ createdAt: 1 });
+  const children = await User.find(buildChildMatch(user._id, user.userId)).sort({ createdAt: 1 });
   const childNodes = await Promise.all(children.map((child) => buildReferralNode(child, depthRemaining - 1)));
 
   return {
@@ -131,7 +164,7 @@ const buildReferralNode = async (user, depthRemaining) => {
 };
 
 export const getReferralTree = asyncHandler(async (req, res) => {
-  const depth = Math.min(10, Math.max(1, Number.parseInt(req.query.depth, 10) || 3));
+  const depth = Math.min(30, Math.max(1, Number.parseInt(req.query.depth, 10) || 30));
   const tree = await buildReferralNode(req.user, depth);
 
   res.json({
@@ -199,7 +232,12 @@ export const listReferralIncomeHistory = asyncHandler(async (req, res) => {
 });
 
 export const computeTeamBusiness = async (userId) => {
-  const directReferrals = await User.find({ referredBy: userId }).sort({ createdAt: 1 });
+  const rootUser = await User.findById(userId).select("_id userId");
+  if (!rootUser) {
+    return { referrals: [], mainLegBusiness: 0, otherLegBusiness: 0 };
+  }
+
+  const directReferrals = await User.find(buildChildMatch(rootUser._id, rootUser.userId)).sort({ createdAt: 1 });
   const legEntries = [];
 
   for (const member of directReferrals) {

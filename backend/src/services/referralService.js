@@ -1,6 +1,7 @@
 import ReferralIncome from "../models/ReferralIncome.js";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
+import Wallet from "../models/Wallet.js";
 import { logIncomeEvent } from "./incomeLogService.js";
 import { applyIncomeWithCap } from "./incomeCapService.js";
 
@@ -8,79 +9,171 @@ const addTransaction = (userId, type, amount, source, status = "completed", meta
   Transaction.create({ userId, type, amount, source, status, metadata, network });
 
 export const distributeReferralRewards = async ({ user, depositAmount, depositId }) => {
-  if (!user.referredBy) {
-    return;
+  return { skipped: true, reason: "Direct and level referral payouts are triggered on trade start" };
+};
+
+const getLevelIncomePercent = (level) => {
+  if (level === 1) return 20;
+  if (level === 2) return 10;
+  if (level === 3) return 5;
+  if (level >= 4 && level <= 20) return 4;
+  if (level >= 21 && level <= 30) return 2;
+  return 0;
+};
+
+const countActiveDirectReferrals = async (userId) => {
+  const directUsers = await User.find({ referredBy: userId }, "_id");
+  if (!directUsers.length) {
+    return 0;
+  }
+  const ids = directUsers.map((entry) => entry._id);
+  return Wallet.countDocuments({ userId: { $in: ids }, tradingWallet: { $gte: 5 } });
+};
+
+const hasMinimumInvestmentForLevelIncome = async (userId) => {
+  const wallet = await Wallet.findOne({ userId }).select("tradingWallet tradingBalance");
+  const tradingAmount = Number(wallet?.tradingWallet || wallet?.tradingBalance || 0);
+  return tradingAmount >= 25;
+};
+
+const resolveSponsorFromTrader = async (traderUser) => {
+  if (traderUser?.referredBy) {
+    const sponsorById = await User.findById(traderUser.referredBy);
+    if (sponsorById) return sponsorById;
+  }
+  if (traderUser?.referredByUserId) {
+    const sponsorByUserId = await User.findOne({ userId: traderUser.referredByUserId });
+    if (sponsorByUserId) return sponsorByUserId;
+  }
+  return null;
+};
+
+const distributeDirectReferralOnTradeStart = async ({ traderUser, tradeAmount, tradeId }) => {
+  const sponsor = await resolveSponsorFromTrader(traderUser);
+  if (!sponsor) {
+    return { credited: 0 };
   }
 
-  const directReferrer = await User.findById(user.referredBy);
-  if (!directReferrer) {
-    return;
+  const bonus = Number((Number(tradeAmount || 0) * 0.05).toFixed(6));
+  if (!Number.isFinite(bonus) || bonus <= 0) {
+    return { credited: 0 };
   }
 
-  const directReward = Number((depositAmount * 0.05).toFixed(2));
-  const { creditedAmount: directCredited } = await applyIncomeWithCap({
-    userId: directReferrer._id,
-    requestedAmount: directReward,
+  const { creditedAmount } = await applyIncomeWithCap({
+    userId: sponsor._id,
+    requestedAmount: bonus,
     walletField: "referralIncomeWallet",
   });
 
-  if (directCredited > 0) {
-    await Promise.all([
-      addTransaction(directReferrer._id, "referral", directCredited, `Direct referral bonus from ${user.email}`),
-      logIncomeEvent({
-        userId: directReferrer._id,
-        incomeType: "referral",
-        amount: directCredited,
-        source: `Direct referral bonus from ${user.email}`,
-        metadata: { sourceUserId: user._id, depositId },
-      }),
-      ReferralIncome.create({
-        userId: directReferrer._id,
-        sourceUserId: user._id,
-        depositId,
-        incomeType: "direct",
-        level: 1,
-        amount: directCredited,
-        metadata: { sourceEmail: user.email },
-      }),
-    ]);
+  if (creditedAmount <= 0) {
+    return { credited: 0 };
   }
 
-  if (!directReferrer.referredBy) {
+  await Promise.all([
+    addTransaction(
+      sponsor._id,
+      "referral",
+      creditedAmount,
+      `Direct referral bonus from ${traderUser.userId || traderUser.email}`,
+      "completed",
+      { sourceUserId: traderUser._id, tradeId, percentage: 5, trigger: "trade_start" }
+    ),
+    logIncomeEvent({
+      userId: sponsor._id,
+      incomeType: "referral",
+      amount: creditedAmount,
+      source: `Direct referral bonus from ${traderUser.userId || traderUser.email}`,
+      metadata: { sourceUser: traderUser.userId, sourceUserId: traderUser._id, tradeId, percentage: 5, trigger: "trade_start" },
+    }),
+    ReferralIncome.create({
+      userId: sponsor._id,
+      sourceUserId: traderUser._id,
+      tradeId,
+      incomeType: "direct",
+      level: 1,
+      amount: creditedAmount,
+      metadata: {
+        sourceUserId: traderUser.userId,
+        sourceEmail: traderUser.email,
+        percentage: 5,
+        trigger: "trade_start",
+      },
+    }),
+  ]);
+
+  return { credited: creditedAmount, sponsorId: sponsor._id };
+};
+
+export const distributeUnilevelIncomeOnTradeStart = async ({ traderUser, tradeAmount, tradeId }) => {
+  const amount = Number(tradeAmount || 0);
+  if (!Number.isFinite(amount) || amount <= 0) {
     return;
   }
 
-  const levelReferrer = await User.findById(directReferrer.referredBy);
-  if (!levelReferrer) {
-    return;
-  }
+  await distributeDirectReferralOnTradeStart({ traderUser, tradeAmount: amount, tradeId });
 
-  const levelReward = Number((depositAmount * 0.02).toFixed(2));
-  const { creditedAmount: levelCredited } = await applyIncomeWithCap({
-    userId: levelReferrer._id,
-    requestedAmount: levelReward,
-    walletField: "levelIncomeWallet",
-  });
+  let currentUser = traderUser;
+  for (let level = 1; level <= 30; level += 1) {
+    if (!currentUser?.referredBy) {
+      break;
+    }
 
-  if (levelCredited > 0) {
-    await Promise.all([
-      addTransaction(levelReferrer._id, "level", levelCredited, `Level referral bonus from ${user.email}`),
-      logIncomeEvent({
-        userId: levelReferrer._id,
-        incomeType: "level",
-        amount: levelCredited,
-        source: `Level referral bonus from ${user.email}`,
-        metadata: { sourceUserId: user._id, depositId },
-      }),
-      ReferralIncome.create({
-        userId: levelReferrer._id,
-        sourceUserId: user._id,
-        depositId,
-        incomeType: "level",
-        level: 2,
-        amount: levelCredited,
-        metadata: { sourceEmail: user.email },
-      }),
-    ]);
+    const upline = await User.findById(currentUser.referredBy);
+    if (!upline) {
+      break;
+    }
+
+    const activeDirectCount = await countActiveDirectReferrals(upline._id);
+    const unlockedLevels = Math.min(30, activeDirectCount * 3);
+    const investmentEligible = await hasMinimumInvestmentForLevelIncome(upline._id);
+
+    if (level <= unlockedLevels && investmentEligible) {
+      const percent = getLevelIncomePercent(level);
+      const payout = Number((amount * percent / 100).toFixed(6));
+
+      if (payout > 0) {
+        const { creditedAmount } = await applyIncomeWithCap({
+          userId: upline._id,
+          requestedAmount: payout,
+          walletField: "levelIncomeWallet",
+        });
+
+        if (creditedAmount > 0) {
+          await Promise.all([
+            addTransaction(
+              upline._id,
+              "level",
+              creditedAmount,
+              `Level ${level} income from ${traderUser.userId || traderUser.email}`,
+              "completed",
+              { sourceUserId: traderUser._id, tradeId, level, percentage: percent }
+            ),
+            logIncomeEvent({
+              userId: upline._id,
+              incomeType: "level",
+              amount: creditedAmount,
+              source: `Level ${level} income from ${traderUser.userId || traderUser.email}`,
+              metadata: { sourceUserId: traderUser._id, tradeId, level, percentage: percent },
+            }),
+            ReferralIncome.create({
+              userId: upline._id,
+              sourceUserId: traderUser._id,
+              tradeId,
+              incomeType: "level",
+              level,
+              amount: creditedAmount,
+              metadata: {
+                sourceUserId: traderUser.userId,
+                sourceEmail: traderUser.email,
+                percentage: percent,
+                trigger: "trade_start",
+              },
+            }),
+          ]);
+        }
+      }
+    }
+
+    currentUser = upline;
   }
 };

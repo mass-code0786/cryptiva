@@ -7,6 +7,11 @@ export type Wallet = {
   balance: number;
   tradingWallet: number;
   tradingBalance?: number;
+  tradingIncome?: number;
+  referralIncome?: number;
+  levelIncome?: number;
+  salaryIncome?: number;
+  totalIncome?: number;
   depositTotal: number;
   withdrawTotal: number;
   p2pTotal: number;

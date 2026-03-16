@@ -73,6 +73,18 @@ const userSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    salaryRank: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 8,
+      index: true,
+    },
+    salaryRankName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
   },
   {
     timestamps: true,
@@ -124,6 +136,8 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     lastLoginAt: this.lastLoginAt,
     referredByUserId: this.referredByUserId,
     referralsCount: Array.isArray(this.referrals) ? this.referrals.length : 0,
+    salaryRank: this.salaryRank || 0,
+    salaryRankName: this.salaryRankName || "",
   };
 };
 

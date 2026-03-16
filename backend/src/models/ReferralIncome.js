@@ -17,7 +17,13 @@ const referralIncomeSchema = new mongoose.Schema(
     depositId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Deposit",
-      required: true,
+      default: null,
+      index: true,
+    },
+    tradeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Trade",
+      default: null,
       index: true,
     },
     incomeType: {
@@ -28,7 +34,8 @@ const referralIncomeSchema = new mongoose.Schema(
     },
     level: {
       type: Number,
-      enum: [1, 2],
+      min: 1,
+      max: 30,
       required: true,
     },
     amount: {

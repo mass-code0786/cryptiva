@@ -18,6 +18,7 @@ import userRoutes from "./routes/userRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
 import withdrawalRoutes from "./routes/withdrawalRoutes.js";
 import { settleActiveTrades, startTradeEngine } from "./services/tradeEngineService.js";
+import { startSalaryScheduler } from "./services/salarySchedulerService.js";
 
 const app = express();
 
@@ -89,6 +90,7 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     startTradeEngine();
+    startSalaryScheduler();
 
     settleActiveTrades().catch((error) => {
       console.error("Initial trade settlement failed", error);

@@ -4,9 +4,16 @@ import { asyncHandler } from "../middleware/errorHandler.js";
 export const listTransactions = asyncHandler(async (req, res) => {
   const query = {
     userId: req.user._id,
-    $or: [
-      { type: { $ne: "deposit" } },
-      { type: "deposit", status: { $in: ["completed", "confirmed"] } },
+    $and: [
+      {
+        $or: [
+          { type: { $ne: "deposit" } },
+          { type: "deposit", status: { $in: ["completed", "confirmed"] } },
+        ],
+      },
+      {
+        $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
+      },
     ],
   };
   if (req.query.type) {

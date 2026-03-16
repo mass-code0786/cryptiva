@@ -78,6 +78,7 @@ app.use("/api/deposit", depositRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/withdraw", withdrawalRoutes);
 app.use("/api/referrals", referralRoutes);
+app.use("/api/referral", referralRoutes);
 app.use("/api/salary-progress", salaryRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/trade", tradeRoutes);

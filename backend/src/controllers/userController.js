@@ -1,4 +1,5 @@
 import WalletBinding from "../models/WalletBinding.js";
+import User from "../models/User.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 
 export const getMe = asyncHandler(async (req, res) => {
@@ -50,4 +51,24 @@ export const bindWalletAddress = asyncHandler(async (req, res) => {
 export const getWalletBinding = asyncHandler(async (req, res) => {
   const binding = await WalletBinding.findOne({ userId: req.user._id });
   res.json({ binding });
+});
+
+export const lookupUserByUserId = asyncHandler(async (req, res) => {
+  const userId = String(req.params.userId || "").toUpperCase().trim();
+  if (!userId) {
+    throw new ApiError(400, "User ID is required");
+  }
+
+  const user = await User.findOne({ userId }).select("_id userId name");
+  if (!user) {
+    throw new ApiError(404, "Invalid User ID");
+  }
+
+  res.json({
+    user: {
+      id: user._id,
+      userId: user.userId,
+      name: user.name,
+    },
+  });
 });

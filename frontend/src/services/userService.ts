@@ -24,3 +24,4 @@ export const bindWalletAddress = (payload: { walletAddress: string; network?: "B
   api.post("/users/wallet-binding", payload);
 export const fetchWalletBinding = () => api.get("/users/wallet-binding");
 export const fetchSalaryProgress = () => api.get<SalaryProgress>("/salary-progress");
+export const lookupUserByUserId = (userId: string) => api.get<{ user: { id: string; userId: string; name: string } }>(`/users/lookup/${userId}`);

@@ -9,7 +9,11 @@ const ProfilePage = () => {
   const [walletAddress, setWalletAddress] = useState(user?.walletAddress || "");
   const [network, setNetwork] = useState("BEP20");
   const [message, setMessage] = useState("");
-  const referralLink = user?.userId ? `https://cryptiva-frontend.onrender.com/register?ref=${user.userId}` : "-";
+  const [copyMessage, setCopyMessage] = useState("");
+  const referralLink = user?.userId
+    ? `https://cryptiva-frontend.onrender.com/register?ref=${encodeURIComponent(user.userId)}`
+    : "";
+  const encodedLink = encodeURIComponent(referralLink);
 
   useEffect(() => {
     fetchMyProfile()
@@ -60,6 +64,18 @@ const ProfilePage = () => {
     }
   };
 
+  const onCopyReferralLink = async () => {
+    if (!referralLink) return;
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      setCopyMessage("Referral link copied");
+      window.setTimeout(() => setCopyMessage(""), 2200);
+    } catch {
+      setCopyMessage("Unable to copy referral link");
+      window.setTimeout(() => setCopyMessage(""), 2200);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -98,7 +114,56 @@ const ProfilePage = () => {
           <p className="mt-2 text-slate-400">Referral Code</p>
           <p className="font-medium">{user?.referralCode || "-"}</p>
           <p className="mt-2 text-slate-400">Referral Link</p>
-          <p className="break-all font-medium">{referralLink}</p>
+          <p className="break-all font-medium">{referralLink || "-"}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={!referralLink}
+              onClick={onCopyReferralLink}
+              className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-50"
+            >
+              Copy Link
+            </button>
+            <a
+              href={`https://wa.me/?text=Join%20Cryptiva%20using%20my%20referral%20link:%20${encodedLink}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+            >
+              WhatsApp
+            </a>
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodedLink}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+            >
+              Facebook
+            </a>
+            <a
+              href={`https://t.me/share/url?url=${encodedLink}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+            >
+              Telegram
+            </a>
+            <a
+              href={`https://twitter.com/intent/tweet?text=Join%20Cryptiva%20&url=${encodedLink}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+            >
+              Twitter
+            </a>
+            <a
+              href={`mailto:?subject=Join%20Cryptiva&body=Join%20Cryptiva%20using%20my%20referral%20link:%20${encodedLink}`}
+              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+            >
+              Email
+            </a>
+          </div>
+          {copyMessage && <p className="mt-2 text-xs text-cyan-300">{copyMessage}</p>}
         </div>
       </div>
     </DashboardLayout>

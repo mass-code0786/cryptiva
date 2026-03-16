@@ -20,11 +20,24 @@ export type Wallet = {
 export type TransactionItem = {
   _id: string;
   userId: string;
-  type: "deposit" | "withdraw" | "trading" | "referral" | "level" | "salary" | "p2p" | "wallet_transfer" | "admin_transfer";
+  type:
+    | "deposit"
+    | "withdraw"
+    | "trading"
+    | "referral"
+    | "level"
+    | "salary"
+    | "p2p"
+    | "p2p_transfer"
+    | "p2p_receive"
+    | "P2P_TRANSFER"
+    | "P2P_RECEIVE"
+    | "wallet_transfer"
+    | "admin_transfer";
   amount: number;
   network: "BEP20" | "INTERNAL";
   source: string;
-  status: "pending" | "confirmed" | "completed" | "failed";
+  status: "pending" | "confirmed" | "completed" | "failed" | "success";
   createdAt: string;
 };
 

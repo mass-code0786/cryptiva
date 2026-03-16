@@ -13,19 +13,19 @@ const ensureWallet = async (userId) => {
 
 export const sendP2P = asyncHandler(async (req, res) => {
   const amount = Number(req.body.amount);
-  const receiverEmail = String(req.body.receiverEmail || "").toLowerCase().trim();
+  const receiverUserId = String(req.body.receiverUserId || "").toUpperCase().trim();
   const note = String(req.body.note || "").trim();
 
-  if (!receiverEmail || !Number.isFinite(amount) || amount <= 0) {
-    throw new ApiError(400, "Receiver email and valid amount are required");
+  if (!receiverUserId || !Number.isFinite(amount) || amount <= 0) {
+    throw new ApiError(400, "Receiver User ID and valid amount are required");
   }
 
-  const receiver = await User.findOne({ email: receiverEmail });
+  const receiver = await User.findOne({ userId: receiverUserId });
   if (!receiver) {
-    throw new ApiError(404, "Receiver not found");
+    throw new ApiError(404, "Invalid User ID");
   }
 
-  if (receiver._id.toString() === req.user._id.toString()) {
+  if (String(req.user.userId || "").toUpperCase() === receiverUserId) {
     throw new ApiError(400, "Cannot transfer to your own account");
   }
 
@@ -49,20 +49,22 @@ export const sendP2P = asyncHandler(async (req, res) => {
 
   await Transaction.create({
     userId: req.user._id,
-    type: "p2p",
-    amount,
+    type: "P2P_TRANSFER",
+    amount: -amount,
     network: "INTERNAL",
-    source: `P2P sent to ${receiver.email}${note ? `: ${note}` : ""}`,
-    status: "completed",
+    source: `P2P sent to ${receiver.userId}${note ? `: ${note}` : ""}`,
+    status: "success",
+    metadata: { receiverUserId: receiver.userId, note },
   });
 
   await Transaction.create({
     userId: receiver._id,
-    type: "p2p",
+    type: "P2P_RECEIVE",
     amount,
     network: "INTERNAL",
-    source: `P2P received from ${req.user.email}${note ? `: ${note}` : ""}`,
-    status: "completed",
+    source: `P2P received from ${req.user.userId}${note ? `: ${note}` : ""}`,
+    status: "success",
+    metadata: { senderUserId: req.user.userId, note },
   });
 
   res.json({ message: "P2P transfer completed" });

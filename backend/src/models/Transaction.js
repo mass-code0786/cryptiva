@@ -10,13 +10,26 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["deposit", "withdraw", "trading", "referral", "level", "salary", "p2p", "wallet_transfer", "admin_transfer"],
+      enum: [
+        "deposit",
+        "withdraw",
+        "trading",
+        "referral",
+        "level",
+        "salary",
+        "p2p",
+        "p2p_transfer",
+        "p2p_receive",
+        "P2P_TRANSFER",
+        "P2P_RECEIVE",
+        "wallet_transfer",
+        "admin_transfer",
+      ],
       required: true,
     },
     amount: {
       type: Number,
       required: true,
-      min: 0,
     },
     network: {
       type: String,
@@ -30,7 +43,7 @@ const transactionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "completed", "failed"],
+      enum: ["pending", "confirmed", "completed", "failed", "success"],
       default: "completed",
     },
     metadata: {

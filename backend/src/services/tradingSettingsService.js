@@ -43,3 +43,8 @@ export const getTradingRoiRatePerMinute = async () => {
   const dailyPercent = await getTradingRoiPercent();
   return Number((dailyPercent / 100 / 1440).toFixed(8));
 };
+
+export const getTradingRoiRatePerSecond = async () => {
+  const dailyPercent = await getTradingRoiPercent();
+  return Number((dailyPercent / 100 / 86400).toFixed(12));
+};

@@ -3,12 +3,12 @@ import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import { logIncomeEvent } from "./incomeLogService.js";
 import { applyIncomeWithCap } from "./incomeCapService.js";
-import { getTradingRoiRatePerMinute } from "./tradingSettingsService.js";
+import { getTradingRoiRatePerSecond } from "./tradingSettingsService.js";
 
 const TRADE_LIMIT_MULTIPLIER = Number(process.env.TRADE_LIMIT_MULTIPLIER || 2);
-const TRADE_ENGINE_INTERVAL_MS = 60 * 1000;
+const TRADE_ENGINE_INTERVAL_MS = 1000;
 const DEFAULT_DAILY_ROI_PERCENT = 1.2;
-const DEFAULT_ROI_RATE_PER_MINUTE = Number((DEFAULT_DAILY_ROI_PERCENT / 100 / 1440).toFixed(8));
+const DEFAULT_ROI_RATE_PER_SECOND = Number((DEFAULT_DAILY_ROI_PERCENT / 100 / 86400).toFixed(12));
 
 let engineTimer = null;
 let engineRunning = false;
@@ -28,18 +28,18 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRateOverride
 
   const lastSettledAt = new Date(trade.lastSettledAt || trade.startTime || trade.createdAt);
   const elapsedMs = now.getTime() - lastSettledAt.getTime();
-  const elapsedMinutes = Math.floor(elapsedMs / 60000);
-  if (elapsedMinutes <= 0) {
+  const elapsedSeconds = Math.floor(elapsedMs / 1000);
+  if (elapsedSeconds <= 0) {
     return { trade, settledAmount: 0, completed: false };
   }
 
-  const effectiveRoiRatePerMinute = Number.isFinite(roiRateOverride) ? roiRateOverride : await getTradingRoiRatePerMinute();
-  const perMinuteIncome = trade.amount * effectiveRoiRatePerMinute;
-  const grossDelta = Number((perMinuteIncome * elapsedMinutes).toFixed(6));
+  const effectiveRoiRatePerSecond = Number.isFinite(roiRateOverride) ? roiRateOverride : await getTradingRoiRatePerSecond();
+  const perSecondIncome = trade.amount * effectiveRoiRatePerSecond;
+  const grossDelta = Number((perSecondIncome * elapsedSeconds).toFixed(6));
   const delta = Math.max(0, grossDelta);
 
   const nextLastSettledAt = new Date(lastSettledAt);
-  nextLastSettledAt.setMinutes(nextLastSettledAt.getMinutes() + elapsedMinutes);
+  nextLastSettledAt.setSeconds(nextLastSettledAt.getSeconds() + elapsedSeconds);
   trade.lastSettledAt = nextLastSettledAt;
 
   if (delta <= 0) {
@@ -70,8 +70,8 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRateOverride
       status: "completed",
       metadata: {
         tradeId: trade._id,
-        roiRatePerMinute: effectiveRoiRatePerMinute,
-        elapsedMinutes,
+        roiRatePerSecond: effectiveRoiRatePerSecond,
+        elapsedSeconds,
       },
     }),
     logIncomeEvent({
@@ -81,8 +81,8 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRateOverride
       source: "trading engine",
       metadata: {
         tradeId: trade._id,
-        roiRatePerMinute: effectiveRoiRatePerMinute,
-        elapsedMinutes,
+        roiRatePerSecond: effectiveRoiRatePerSecond,
+        elapsedSeconds,
       },
       recordedAt: now,
     }),
@@ -99,11 +99,11 @@ export const settleActiveTrades = async () => {
   engineRunning = true;
   try {
     const activeTrades = await Trade.find({ status: "active" });
-    const globalRoiRatePerMinute = await getTradingRoiRatePerMinute();
+    const globalRoiRatePerSecond = await getTradingRoiRatePerSecond();
     let credited = 0;
 
     for (const trade of activeTrades) {
-      const result = await settleTradeIncome(trade, new Date(), globalRoiRatePerMinute);
+      const result = await settleTradeIncome(trade, new Date(), globalRoiRatePerSecond);
       if (result.settledAmount > 0) {
         credited += 1;
       }
@@ -128,17 +128,20 @@ export const startTradeEngine = () => {
 };
 
 export const getTradeEngineConfig = () => ({
-  roiRatePerMinute: DEFAULT_ROI_RATE_PER_MINUTE,
+  roiRatePerSecond: DEFAULT_ROI_RATE_PER_SECOND,
+  roiRatePerMinute: Number((DEFAULT_ROI_RATE_PER_SECOND * 60).toFixed(10)),
   dailyRoiPercent: DEFAULT_DAILY_ROI_PERCENT,
   tradeLimitMultiplier: TRADE_LIMIT_MULTIPLIER,
   intervalMs: TRADE_ENGINE_INTERVAL_MS,
 });
 
 export const getCurrentTradeEngineConfig = async () => {
-  const roiRatePerMinute = await getTradingRoiRatePerMinute();
+  const roiRatePerSecond = await getTradingRoiRatePerSecond();
+  const roiRatePerMinute = Number((roiRatePerSecond * 60).toFixed(10));
   return {
+    roiRatePerSecond,
     roiRatePerMinute,
-    dailyRoiPercent: Number((roiRatePerMinute * 1440 * 100).toFixed(6)),
+    dailyRoiPercent: Number((roiRatePerSecond * 86400 * 100).toFixed(6)),
     tradeLimitMultiplier: TRADE_LIMIT_MULTIPLIER,
     intervalMs: TRADE_ENGINE_INTERVAL_MS,
   };

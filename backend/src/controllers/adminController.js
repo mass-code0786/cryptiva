@@ -242,19 +242,24 @@ const listIncomeTransactions = async (query, options = {}) => {
 };
 export const getDashboardOverview = asyncHandler(async (_req, res) => {
   const { start, end } = getTodayRangeUtc();
+  const activeWalletFilter = {
+    $or: [{ depositWallet: { $gt: 0 } }, { tradingWallet: { $gt: 0 } }, { tradingBalance: { $gt: 0 } }],
+  };
 
-  const [totalUsers, totalActiveUsers, totalInactiveUsers, todayJoiningUsers, todayActiveUsers, totalWithdrawals, todayWithdrawals, totalDeposits, todayDeposits] =
+  const [totalUsers, activeUserIds, todayJoiningUsers, todayActiveUserIds, totalWithdrawals, todayWithdrawals, totalDeposits, todayDeposits] =
     await Promise.all([
       User.countDocuments({}),
-      User.countDocuments({ isBlocked: { $ne: true } }),
-      User.countDocuments({ isBlocked: true }),
+      Wallet.distinct("userId", activeWalletFilter),
       User.countDocuments({ createdAt: { $gte: start, $lte: end } }),
-      User.countDocuments({ lastLoginAt: { $gte: start, $lte: end }, isBlocked: { $ne: true } }),
+      Wallet.distinct("userId", { ...activeWalletFilter, updatedAt: { $gte: start, $lte: end } }),
       getSum(Withdrawal, { status: "completed" }),
       getSum(Withdrawal, { status: "completed", createdAt: { $gte: start, $lte: end } }),
       getSum(Deposit, { status: { $in: ["approved", "confirmed"] } }),
       getSum(Deposit, { status: { $in: ["approved", "confirmed"] }, createdAt: { $gte: start, $lte: end } }),
     ]);
+  const totalActiveUsers = activeUserIds.length;
+  const totalInactiveUsers = Math.max(0, totalUsers - totalActiveUsers);
+  const todayActiveUsers = todayActiveUserIds.length;
 
   const [totalTradingIncome, todayTradingIncome, totalReferralIncome, todayReferralIncome, totalLevelIncome, todayLevelIncome, totalSalaryIncome, todaySalaryIncome] =
     await Promise.all([

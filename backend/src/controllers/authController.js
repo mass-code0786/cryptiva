@@ -39,24 +39,34 @@ export const register = asyncHandler(async (req, res) => {
   }
 
   let referredBy = null;
+  let referredByUserId = null;
   if (referralCode) {
-    const referrer = await User.findOne({ referralCode: String(referralCode).trim().toUpperCase() });
+    const normalizedReferral = String(referralCode).trim().toUpperCase();
+    const referrer =
+      (await User.findOne({ userId: normalizedReferral })) ||
+      (await User.findOne({ referralCode: normalizedReferral }));
     if (!referrer) {
       throw new ApiError(400, "Invalid referral code");
     }
     referredBy = referrer._id;
+    referredByUserId = referrer.userId;
   }
 
   const user = new User({
     name: String(name).trim(),
     email: String(email).toLowerCase().trim(),
     referredBy,
+    referredByUserId,
     isAdmin: isAdminEmail(email),
   });
 
   await user.setPassword(String(password));
   await user.setPin(String(pin));
   await user.save();
+
+  if (referredBy) {
+    await User.findByIdAndUpdate(referredBy, { $addToSet: { referrals: user._id } });
+  }
 
   await Wallet.create({ userId: user._id });
 

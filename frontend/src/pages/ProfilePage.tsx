@@ -9,6 +9,7 @@ const ProfilePage = () => {
   const [walletAddress, setWalletAddress] = useState(user?.walletAddress || "");
   const [network, setNetwork] = useState("BEP20");
   const [message, setMessage] = useState("");
+  const referralLink = user?.userId ? `https://cryptiva-frontend.onrender.com/register?ref=${user.userId}` : "-";
 
   useEffect(() => {
     fetchMyProfile()
@@ -96,6 +97,8 @@ const ProfilePage = () => {
           <p className="font-medium">{user?.email || "-"}</p>
           <p className="mt-2 text-slate-400">Referral Code</p>
           <p className="font-medium">{user?.referralCode || "-"}</p>
+          <p className="mt-2 text-slate-400">Referral Link</p>
+          <p className="break-all font-medium">{referralLink}</p>
         </div>
       </div>
     </DashboardLayout>

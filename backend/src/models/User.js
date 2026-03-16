@@ -38,6 +38,21 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
+      index: true,
+    },
+    referredByUserId: {
+      type: String,
+      default: null,
+      index: true,
+    },
+    referrals: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+      ],
+      default: [],
     },
     walletAddress: {
       type: String,
@@ -107,6 +122,8 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     isAdmin: this.isAdmin,
     isBlocked: this.isBlocked,
     lastLoginAt: this.lastLoginAt,
+    referredByUserId: this.referredByUserId,
+    referralsCount: Array.isArray(this.referrals) ? this.referrals.length : 0,
   };
 };
 

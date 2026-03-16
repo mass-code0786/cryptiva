@@ -12,6 +12,8 @@ const ensureWallet = async (userId) => {
     wallet = await Wallet.create({ userId });
   }
 
+  wallet.tradingWallet = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
+  wallet.tradingBalance = wallet.tradingWallet;
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
   return wallet;
@@ -95,8 +97,8 @@ export const withdrawFromWallet = asyncHandler(async (req, res) => {
   const amount = Number(req.body.amount);
   const pin = String(req.body.pin || "");
 
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new ApiError(400, "Enter a valid amount");
+  if (!Number.isFinite(amount) || amount < 10) {
+    throw new ApiError(400, "Minimum withdraw is $10");
   }
 
   if (!pin) {
@@ -161,7 +163,9 @@ export const moveToTradingBalance = asyncHandler(async (req, res) => {
   }
 
   wallet.depositWallet -= amount;
-  wallet.tradingBalance += amount;
+  wallet.tradingWallet = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
+  wallet.tradingWallet += amount;
+  wallet.tradingBalance = wallet.tradingWallet;
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
 

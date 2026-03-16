@@ -24,7 +24,9 @@ export const placeTrade = asyncHandler(async (req, res) => {
   }
 
   wallet.depositWallet -= amount;
-  wallet.tradingBalance += amount;
+  wallet.tradingWallet = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
+  wallet.tradingWallet += amount;
+  wallet.tradingBalance = wallet.tradingWallet;
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
 

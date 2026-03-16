@@ -5,7 +5,8 @@ export type Wallet = {
   depositWallet: number;
   withdrawalWallet: number;
   balance: number;
-  tradingBalance: number;
+  tradingWallet: number;
+  tradingBalance?: number;
   depositTotal: number;
   withdrawTotal: number;
   p2pTotal: number;

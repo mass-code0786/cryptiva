@@ -29,7 +29,27 @@ const walletSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    tradingWallet: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     tradingIncomeWallet: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    referralIncomeWallet: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    levelIncomeWallet: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    salaryIncomeWallet: {
       type: Number,
       default: 0,
       min: 0,
@@ -54,6 +74,15 @@ const walletSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+walletSchema.pre("validate", function syncTradingWallet(next) {
+  const tradingFromLegacy = Number(this.tradingBalance || 0);
+  const tradingFromCurrent = Number(this.tradingWallet || 0);
+  const resolvedTrading = tradingFromCurrent > 0 ? tradingFromCurrent : tradingFromLegacy;
+  this.tradingWallet = resolvedTrading;
+  this.tradingBalance = resolvedTrading;
+  next();
+});
 
 const Wallet = mongoose.model("Wallet", walletSchema);
 

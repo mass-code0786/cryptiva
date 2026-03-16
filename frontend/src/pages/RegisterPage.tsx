@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import CryptivaLogo from "../components/CryptivaLogo";
 import { useAuth } from "../hooks/useAuth";
@@ -23,6 +23,17 @@ const RegisterPage = () => {
   const [error, setError] = useState("");
   const [createdAccount, setCreatedAccount] = useState<CreatedAccountDetails | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) {
+      setForm((prev) => ({
+        ...prev,
+        referralCode: ref.trim().toUpperCase(),
+      }));
+    }
+  }, []);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

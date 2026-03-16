@@ -32,7 +32,7 @@ const DashboardPage = () => {
           depositWallet: 0,
           withdrawalWallet: 0,
           balance: 0,
-          tradingBalance: 0,
+          tradingWallet: 0,
           depositTotal: 0,
           withdrawTotal: 0,
           p2pTotal: 0,
@@ -88,7 +88,7 @@ const DashboardPage = () => {
         <WalletCard
           depositWallet={wallet?.depositWallet || 0}
           withdrawalWallet={wallet?.withdrawalWallet || 0}
-          tradingBalance={wallet?.tradingBalance || 0}
+          tradingWallet={wallet?.tradingWallet || wallet?.tradingBalance || 0}
         />
         <section className="rounded-2xl border border-cyan-900/40 bg-slate-900/50 p-3 sm:p-4">
           <div className="mb-3 flex items-center justify-between">

@@ -2,6 +2,7 @@ import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import { logIncomeEvent } from "./incomeLogService.js";
+import { applyIncomeWithCap } from "./incomeCapService.js";
 
 const TRADE_LIMIT_MULTIPLIER = Number(process.env.TRADE_LIMIT_MULTIPLIER || 2);
 const TRADE_ENGINE_INTERVAL_MS = 60 * 1000;
@@ -45,21 +46,25 @@ export const settleTradeIncome = async (trade, now = new Date()) => {
     return { trade, settledAmount: 0, completed: false };
   }
 
-  const wallet = await ensureWallet(trade.userId);
-  wallet.tradingIncomeWallet = Number(wallet.tradingIncomeWallet || 0);
-  wallet.tradingIncomeWallet += delta;
-  wallet.withdrawalWallet += delta;
+  const { creditedAmount } = await applyIncomeWithCap({
+    userId: trade.userId,
+    requestedAmount: delta,
+    walletField: "tradingIncomeWallet",
+  });
 
-  trade.totalIncome = Number((trade.totalIncome + delta).toFixed(6));
-  wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
+  if (creditedAmount <= 0) {
+    await trade.save();
+    return { trade, settledAmount: 0, completed: false };
+  }
+
+  trade.totalIncome = Number((trade.totalIncome + creditedAmount).toFixed(6));
 
   await Promise.all([
     trade.save(),
-    wallet.save(),
     Transaction.create({
       userId: trade.userId,
       type: "trading",
-      amount: delta,
+      amount: creditedAmount,
       network: "INTERNAL",
       source: "trading engine",
       status: "completed",
@@ -72,7 +77,7 @@ export const settleTradeIncome = async (trade, now = new Date()) => {
     logIncomeEvent({
       userId: trade.userId,
       incomeType: "trading",
-      amount: delta,
+      amount: creditedAmount,
       source: "trading engine",
       metadata: {
         tradeId: trade._id,
@@ -83,7 +88,7 @@ export const settleTradeIncome = async (trade, now = new Date()) => {
     }),
   ]);
 
-  return { trade, settledAmount: delta, completed: false };
+  return { trade, settledAmount: creditedAmount, completed: false };
 };
 
 export const settleActiveTrades = async () => {

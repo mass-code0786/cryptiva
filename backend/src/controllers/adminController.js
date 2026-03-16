@@ -10,6 +10,7 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { computeTeamBusiness } from "./referralController.js";
 import { distributeReferralRewards } from "../services/referralService.js";
 import { logIncomeEvent } from "../services/incomeLogService.js";
+import { applyIncomeWithCap } from "../services/incomeCapService.js";
 
 const INCOME_TYPES = ["trading", "referral", "level", "salary"];
 
@@ -800,44 +801,46 @@ export const adjustTradeIncome = asyncHandler(async (req, res) => {
   const wallet = await ensureWallet(trade.userId);
     if (normalizedAction === "increase") {
       const delta = amountValue;
-
-      trade.totalIncome = Number((trade.totalIncome + delta).toFixed(6));
-      wallet.tradingIncomeWallet = Number(wallet.tradingIncomeWallet || 0);
-      wallet.tradingIncomeWallet += delta;
-      wallet.withdrawalWallet += delta;
-      wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
-
-    await Promise.all([
-      trade.save(),
-      wallet.save(),
-      Transaction.create({
+      const { creditedAmount, capReached, state } = await applyIncomeWithCap({
         userId: trade.userId,
-        type: "trading",
-        amount: delta,
-        network: "INTERNAL",
-        source: reason ? `Admin increased trading income: ${reason}` : "Admin increased trading income",
+        requestedAmount: delta,
+        walletField: "tradingIncomeWallet",
+      });
+      if (creditedAmount <= 0 && capReached) {
+        throw new ApiError(400, "Income cap reached for this user");
+      }
+      trade.totalIncome = Number((trade.totalIncome + creditedAmount).toFixed(6));
+
+      await Promise.all([
+        trade.save(),
+        Transaction.create({
+          userId: trade.userId,
+          type: "trading",
+          amount: creditedAmount,
+          network: "INTERNAL",
+          source: reason ? `Admin increased trading income: ${reason}` : "Admin increased trading income",
         status: "completed",
         metadata: { action: "admin_increase", tradeId: trade._id, adminId: req.user._id },
       }),
-      logIncomeEvent({
-        userId: trade.userId,
-        incomeType: "trading",
-        amount: delta,
-        source: reason ? `Admin increased trading income: ${reason}` : "Admin increased trading income",
+        logIncomeEvent({
+          userId: trade.userId,
+          incomeType: "trading",
+          amount: creditedAmount,
+          source: reason ? `Admin increased trading income: ${reason}` : "Admin increased trading income",
         metadata: { tradeId: trade._id, adminId: req.user._id, action: "admin_increase" },
       }),
     ]);
 
-    await addActivityLog({
-      adminId: req.user._id,
-      action: "Trading income increased",
-      targetUserId: trade.userId,
-      amount: delta,
-      reason: reason || "",
-      metadata: { tradeId: trade._id },
-    });
+      await addActivityLog({
+        adminId: req.user._id,
+        action: "Trading income increased",
+        targetUserId: trade.userId,
+        amount: creditedAmount,
+        reason: reason || "",
+        metadata: { tradeId: trade._id },
+      });
 
-    return res.json({ message: "Trading income increased", trade, wallet, credited: delta });
+    return res.json({ message: "Trading income increased", trade, wallet: state.wallet, credited: creditedAmount });
   }
 
   if (wallet.withdrawalWallet < amountValue) {

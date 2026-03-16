@@ -1,10 +1,10 @@
 type WalletCardProps = {
   depositWallet: number;
   withdrawalWallet: number;
-  tradingBalance: number;
+  tradingWallet: number;
 };
 
-const WalletCard = ({ depositWallet, withdrawalWallet, tradingBalance }: WalletCardProps) => {
+const WalletCard = ({ depositWallet, withdrawalWallet, tradingWallet }: WalletCardProps) => {
   return (
     <div className="rounded-2xl border border-cyan-800/40 bg-gradient-to-br from-slate-900 to-slate-950 p-4 shadow-xl">
       <h2 className="text-lg font-semibold">Wallet Overview</h2>
@@ -18,8 +18,8 @@ const WalletCard = ({ depositWallet, withdrawalWallet, tradingBalance }: WalletC
           <p className="text-2xl font-bold text-cyan-300">${depositWallet.toFixed(2)}</p>
         </div>
         <div className="rounded-xl bg-slate-800/60 p-2">
-          <p className="text-slate-400">Trading Balance</p>
-          <p className="text-2xl font-bold text-indigo-300">${tradingBalance.toFixed(2)}</p>
+          <p className="text-slate-400">Trading Wallet</p>
+          <p className="text-2xl font-bold text-indigo-300">${tradingWallet.toFixed(2)}</p>
         </div>
       </div>
     </div>

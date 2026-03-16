@@ -1,10 +1,10 @@
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
-import Wallet from "../models/Wallet.js";
 import SalaryPayout from "../models/SalaryPayout.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { computeTeamBusiness } from "./referralController.js";
 import { logIncomeEvent } from "../services/incomeLogService.js";
+import { applyIncomeWithCap } from "../services/incomeCapService.js";
 
 const rankTable = [
   { name: "L1", main: 2000, other: 3000, weeklySalary: 25 },
@@ -16,14 +16,6 @@ const rankTable = [
   { name: "L7", main: 200000, other: 320000, weeklySalary: 4500 },
   { name: "L8", main: 400000, other: 640000, weeklySalary: 10000 },
 ];
-
-const ensureWallet = async (userId) => {
-  let wallet = await Wallet.findOne({ userId });
-  if (!wallet) {
-    wallet = await Wallet.create({ userId });
-  }
-  return wallet;
-};
 
 const resolveRank = (mainLegBusiness, otherLegBusiness) => {
   let currentIndex = -1;
@@ -78,15 +70,19 @@ const creditWeeklySalary = async (user, referenceDate = new Date()) => {
     return { status: "skipped_already_paid", payout: existing };
   }
 
-  const wallet = await ensureWallet(user._id);
-  wallet.withdrawalWallet += currentRank.weeklySalary;
-  wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
-  await wallet.save();
+  const { creditedAmount } = await applyIncomeWithCap({
+    userId: user._id,
+    requestedAmount: currentRank.weeklySalary,
+    walletField: "salaryIncomeWallet",
+  });
+  if (creditedAmount <= 0) {
+    return { status: "skipped_cap_reached" };
+  }
 
   const payout = await SalaryPayout.create({
     userId: user._id,
     rankName: currentRank.name,
-    amount: currentRank.weeklySalary,
+    amount: creditedAmount,
     mainLegBusiness,
     otherLegBusiness,
     weekStart,
@@ -97,7 +93,7 @@ const creditWeeklySalary = async (user, referenceDate = new Date()) => {
   const transaction = await Transaction.create({
     userId: user._id,
     type: "salary",
-    amount: currentRank.weeklySalary,
+    amount: creditedAmount,
     network: "INTERNAL",
     source: `Weekly salary credit for ${currentRank.name}`,
     status: "completed",
@@ -107,7 +103,7 @@ const creditWeeklySalary = async (user, referenceDate = new Date()) => {
   await logIncomeEvent({
     userId: user._id,
     incomeType: "salary",
-    amount: currentRank.weeklySalary,
+    amount: creditedAmount,
     source: `Weekly salary credit for ${currentRank.name}`,
     metadata: { salaryPayoutId: payout._id, rankName: currentRank.name, weekStart, weekEnd },
   });
@@ -167,6 +163,7 @@ export const distributeWeeklySalary = asyncHandler(async (req, res) => {
   let credited = 0;
   let skippedNoRank = 0;
   let skippedAlreadyPaid = 0;
+  let skippedCapReached = 0;
 
   for (const user of users) {
     const result = await creditWeeklySalary(user, runDate);
@@ -176,6 +173,8 @@ export const distributeWeeklySalary = asyncHandler(async (req, res) => {
       skippedNoRank += 1;
     } else if (result.status === "skipped_already_paid") {
       skippedAlreadyPaid += 1;
+    } else if (result.status === "skipped_cap_reached") {
+      skippedCapReached += 1;
     }
   }
 
@@ -187,6 +186,7 @@ export const distributeWeeklySalary = asyncHandler(async (req, res) => {
       credited,
       skippedNoRank,
       skippedAlreadyPaid,
+      skippedCapReached,
     },
   });
 });

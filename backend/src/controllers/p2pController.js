@@ -30,17 +30,17 @@ export const sendP2P = asyncHandler(async (req, res) => {
   }
 
   const senderWallet = await ensureWallet(req.user._id);
-  if (senderWallet.withdrawalWallet < amount) {
-    throw new ApiError(400, "Insufficient withdrawal wallet balance");
+  if (senderWallet.depositWallet < amount) {
+    throw new ApiError(400, "Insufficient deposit wallet balance");
   }
 
   const receiverWallet = await ensureWallet(receiver._id);
 
-  senderWallet.withdrawalWallet -= amount;
+  senderWallet.depositWallet -= amount;
   senderWallet.p2pTotal += amount;
   senderWallet.balance = senderWallet.depositWallet + senderWallet.withdrawalWallet;
 
-  receiverWallet.withdrawalWallet += amount;
+  receiverWallet.depositWallet += amount;
   receiverWallet.p2pTotal += amount;
   receiverWallet.balance = receiverWallet.depositWallet + receiverWallet.withdrawalWallet;
 

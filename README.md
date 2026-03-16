@@ -46,7 +46,7 @@ Backend environment variables:
 - `JWT_SECRET`
 - `NOWPAYMENTS_API_KEY`
 - `NOWPAYMENTS_IPN_SECRET` (required for webhook verification)
-- `NOWPAYMENTS_IPN_URL` (example: `https://api.cryptiva.world/api/deposits/webhook`)
+- `NOWPAYMENTS_IPN_URL` (example: `https://api.cryptiva.world/api/deposit/webhook`)
 
 Frontend environment variables:
 - `VITE_API_URL` (example: `https://api.cryptiva.world/api`)
@@ -64,7 +64,7 @@ DNS records (at your domain provider):
 
 Then set:
 - `CLIENT_URL=https://cryptiva.world`
-- `NOWPAYMENTS_IPN_URL=https://api.cryptiva.world/api/deposits/webhook`
+- `NOWPAYMENTS_IPN_URL=https://api.cryptiva.world/api/deposit/webhook`
 - `VITE_API_URL=https://api.cryptiva.world/api`
 
 ## GitHub Workflow

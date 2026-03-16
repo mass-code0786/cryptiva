@@ -29,6 +29,11 @@ const walletSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    tradingIncomeWallet: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     depositTotal: {
       type: Number,
       default: 0,

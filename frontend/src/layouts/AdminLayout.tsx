@@ -1,13 +1,16 @@
-import { LayoutDashboard, LogOut, TrendingUp, Users, Wallet, WalletCards } from "lucide-react";
+import { Activity, GitBranch, LayoutDashboard, LogOut, ScrollText, TrendingUp, Users, WalletCards, WalletMinimal } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/admin/users", label: "Users", icon: Users },
-  { to: "/admin/deposits", label: "Deposits", icon: Wallet },
   { to: "/admin/withdrawals", label: "Withdrawals", icon: WalletCards },
-  { to: "/admin/trades", label: "Trades", icon: TrendingUp },
+  { to: "/admin/trading-control", label: "Trading Control", icon: TrendingUp },
+  { to: "/admin/fund-management", label: "Fund Management", icon: WalletMinimal },
+  { to: "/admin/income-history", label: "Income History", icon: ScrollText },
+  { to: "/admin/referral-tree", label: "Referral Tree", icon: GitBranch },
+  { to: "/admin/activity-logs", label: "Activity Logs", icon: Activity },
 ];
 
 const AdminLayout = () => {

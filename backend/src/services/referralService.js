@@ -2,6 +2,7 @@ import ReferralIncome from "../models/ReferralIncome.js";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
+import { logIncomeEvent } from "./incomeLogService.js";
 
 const ensureWallet = async (userId) => {
   let wallet = await Wallet.findOne({ userId });
@@ -32,6 +33,13 @@ export const distributeReferralRewards = async ({ user, depositAmount, depositId
 
   await Promise.all([
     addTransaction(directReferrer._id, "referral", directReward, `Direct referral bonus from ${user.email}`),
+    logIncomeEvent({
+      userId: directReferrer._id,
+      incomeType: "referral",
+      amount: directReward,
+      source: `Direct referral bonus from ${user.email}`,
+      metadata: { sourceUserId: user._id, depositId },
+    }),
     ReferralIncome.create({
       userId: directReferrer._id,
       sourceUserId: user._id,
@@ -60,6 +68,13 @@ export const distributeReferralRewards = async ({ user, depositAmount, depositId
 
   await Promise.all([
     addTransaction(levelReferrer._id, "level", levelReward, `Level referral bonus from ${user.email}`),
+    logIncomeEvent({
+      userId: levelReferrer._id,
+      incomeType: "level",
+      amount: levelReward,
+      source: `Level referral bonus from ${user.email}`,
+      metadata: { sourceUserId: user._id, depositId },
+    }),
     ReferralIncome.create({
       userId: levelReferrer._id,
       sourceUserId: user._id,

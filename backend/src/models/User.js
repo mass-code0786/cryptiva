@@ -48,6 +48,16 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -95,6 +105,8 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     walletAddress: this.walletAddress,
     role: this.isAdmin ? "admin" : "user",
     isAdmin: this.isAdmin,
+    isBlocked: this.isBlocked,
+    lastLoginAt: this.lastLoginAt,
   };
 };
 

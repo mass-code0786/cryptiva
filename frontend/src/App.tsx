@@ -7,7 +7,12 @@ import { useAuth } from "./hooks/useAuth";
 import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import AdminDepositsPage from "./pages/admin/AdminDepositsPage";
+import AdminActivityLogsPage from "./pages/admin/AdminActivityLogsPage";
+import AdminFundManagementPage from "./pages/admin/AdminFundManagementPage";
+import AdminIncomeHistoryPage from "./pages/admin/AdminIncomeHistoryPage";
+import AdminReferralTreePage from "./pages/admin/AdminReferralTreePage";
 import AdminTradesPage from "./pages/admin/AdminTradesPage";
+import AdminUserDetailPage from "./pages/admin/AdminUserDetailPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminWithdrawalsPage from "./pages/admin/AdminWithdrawalsPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -56,9 +61,16 @@ const App = () => {
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboardPage />} />
         <Route path="users" element={<AdminUsersPage />} />
+        <Route path="user/:id" element={<AdminUserDetailPage />} />
         <Route path="deposits" element={<AdminDepositsPage />} />
         <Route path="withdrawals" element={<AdminWithdrawalsPage />} />
-        <Route path="trades" element={<AdminTradesPage />} />
+        <Route path="trading-control" element={<AdminTradesPage />} />
+        <Route path="trading" element={<Navigate to="/admin/trading-control" replace />} />
+        <Route path="trades" element={<Navigate to="/admin/trading-control" replace />} />
+        <Route path="fund-management" element={<AdminFundManagementPage />} />
+        <Route path="income-history" element={<AdminIncomeHistoryPage />} />
+        <Route path="referral-tree" element={<AdminReferralTreePage />} />
+        <Route path="activity-logs" element={<AdminActivityLogsPage />} />
       </Route>
       <Route path="/history" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
       <Route path="/transactions" element={<Navigate to="/history" replace />} />

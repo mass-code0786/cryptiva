@@ -1,10 +1,12 @@
 import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
+import { logIncomeEvent } from "./incomeLogService.js";
 
-const ROI_RATE_PER_MINUTE = Number(process.env.ROI_RATE_PER_MINUTE || 0.001);
 const TRADE_LIMIT_MULTIPLIER = Number(process.env.TRADE_LIMIT_MULTIPLIER || 2);
 const TRADE_ENGINE_INTERVAL_MS = 60 * 1000;
+const DAILY_ROI_PERCENT = 1.2;
+const FIXED_ROI_RATE_PER_MINUTE = Number((DAILY_ROI_PERCENT / 100 / 1440).toFixed(8));
 
 let engineTimer = null;
 let engineRunning = false;
@@ -29,44 +31,26 @@ export const settleTradeIncome = async (trade, now = new Date()) => {
     return { trade, settledAmount: 0, completed: false };
   }
 
-  const perMinuteIncome = trade.amount * ROI_RATE_PER_MINUTE;
+  const effectiveRoiRatePerMinute = FIXED_ROI_RATE_PER_MINUTE;
+  const perMinuteIncome = trade.amount * effectiveRoiRatePerMinute;
   const grossDelta = Number((perMinuteIncome * elapsedMinutes).toFixed(6));
-  const investmentLimit = trade.investmentLimit || trade.capping;
-  const remainingIncome = Number((investmentLimit - trade.totalIncome).toFixed(6));
-  const delta = Number(Math.min(grossDelta, Math.max(0, remainingIncome)).toFixed(6));
+  const delta = Math.max(0, grossDelta);
 
   const nextLastSettledAt = new Date(lastSettledAt);
   nextLastSettledAt.setMinutes(nextLastSettledAt.getMinutes() + elapsedMinutes);
   trade.lastSettledAt = nextLastSettledAt;
 
   if (delta <= 0) {
-    if (remainingIncome <= 0) {
-      const wallet = await ensureWallet(trade.userId);
-      trade.status = "completed";
-      trade.closedAt = now;
-      wallet.tradingBalance = Math.max(0, wallet.tradingBalance - trade.amount);
-      wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
-      await Promise.all([trade.save(), wallet.save()]);
-      return { trade, settledAmount: 0, completed: true };
-    }
-
     await trade.save();
     return { trade, settledAmount: 0, completed: false };
   }
 
   const wallet = await ensureWallet(trade.userId);
+  wallet.tradingIncomeWallet = Number(wallet.tradingIncomeWallet || 0);
+  wallet.tradingIncomeWallet += delta;
   wallet.withdrawalWallet += delta;
 
   trade.totalIncome = Number((trade.totalIncome + delta).toFixed(6));
-  let completed = false;
-  if (trade.totalIncome >= investmentLimit) {
-    trade.totalIncome = investmentLimit;
-    trade.status = "completed";
-    trade.closedAt = now;
-    wallet.tradingBalance = Math.max(0, wallet.tradingBalance - trade.amount);
-    completed = true;
-  }
-
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
 
   await Promise.all([
@@ -77,17 +61,29 @@ export const settleTradeIncome = async (trade, now = new Date()) => {
       type: "trading",
       amount: delta,
       network: "INTERNAL",
-      source: `ROI credit for trade ${trade._id}`,
+      source: "trading engine",
       status: "completed",
       metadata: {
         tradeId: trade._id,
-        roiRatePerMinute: ROI_RATE_PER_MINUTE,
+        roiRatePerMinute: effectiveRoiRatePerMinute,
         elapsedMinutes,
       },
     }),
+    logIncomeEvent({
+      userId: trade.userId,
+      incomeType: "trading",
+      amount: delta,
+      source: "trading engine",
+      metadata: {
+        tradeId: trade._id,
+        roiRatePerMinute: effectiveRoiRatePerMinute,
+        elapsedMinutes,
+      },
+      recordedAt: now,
+    }),
   ]);
 
-  return { trade, settledAmount: delta, completed };
+  return { trade, settledAmount: delta, completed: false };
 };
 
 export const settleActiveTrades = async () => {
@@ -126,7 +122,8 @@ export const startTradeEngine = () => {
 };
 
 export const getTradeEngineConfig = () => ({
-  roiRatePerMinute: ROI_RATE_PER_MINUTE,
+  roiRatePerMinute: FIXED_ROI_RATE_PER_MINUTE,
+  dailyRoiPercent: DAILY_ROI_PERCENT,
   tradeLimitMultiplier: TRADE_LIMIT_MULTIPLIER,
   intervalMs: TRADE_ENGINE_INTERVAL_MS,
 });

@@ -28,6 +28,11 @@ const tradeSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    manualRoiRate: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
     status: {
       type: String,
       enum: ["active", "completed"],

@@ -82,6 +82,13 @@ export const login = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid email or password");
   }
 
+  if (user.isBlocked) {
+    throw new ApiError(403, "Your account is blocked. Please contact support.");
+  }
+
+  user.lastLoginAt = new Date();
+  await user.save();
+
   res.json({
     token: buildToken(user._id.toString()),
     user: user.toSafeObject(),

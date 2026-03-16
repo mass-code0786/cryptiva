@@ -4,6 +4,7 @@ import Wallet from "../models/Wallet.js";
 import SalaryPayout from "../models/SalaryPayout.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { computeTeamBusiness } from "./referralController.js";
+import { logIncomeEvent } from "../services/incomeLogService.js";
 
 const rankTable = [
   { name: "L1", main: 2000, other: 3000, weeklySalary: 25 },
@@ -100,6 +101,14 @@ const creditWeeklySalary = async (user, referenceDate = new Date()) => {
     network: "INTERNAL",
     source: `Weekly salary credit for ${currentRank.name}`,
     status: "completed",
+    metadata: { salaryPayoutId: payout._id, rankName: currentRank.name, weekStart, weekEnd },
+  });
+
+  await logIncomeEvent({
+    userId: user._id,
+    incomeType: "salary",
+    amount: currentRank.weeklySalary,
+    source: `Weekly salary credit for ${currentRank.name}`,
     metadata: { salaryPayoutId: payout._id, rankName: currentRank.name, weekStart, weekEnd },
   });
 

@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import CryptivaLogo from "../components/CryptivaLogo";
 import { useAuth } from "../hooks/useAuth";
+import { isAdminUser } from "../utils/isAdminUser";
 
 const LoginPage = () => {
   const { login } = useAuth();
@@ -14,8 +15,12 @@ const LoginPage = () => {
     event.preventDefault();
     setError("");
     try {
-      await login(email, password);
-      navigate("/");
+      const user = await login(email, password);
+      if (isAdminUser(user)) {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     } catch {
       setError("Invalid credentials");
     }

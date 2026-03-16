@@ -1,4 +1,5 @@
 import Deposit from "../models/Deposit.js";
+import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
@@ -154,6 +155,36 @@ export const listWithdrawals = asyncHandler(async (req, res) => {
 
   res.json({
     items,
+    total,
+    page,
+    limit,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.max(1, Math.ceil(total / limit)),
+    },
+  });
+});
+
+export const listTrades = asyncHandler(async (req, res) => {
+  const { page, limit, skip } = getPagination(req.query);
+  const query = {};
+
+  if (req.query.status) {
+    query.status = String(req.query.status).toLowerCase();
+  }
+
+  const [items, total] = await Promise.all([
+    Trade.find(query).populate("userId", "name email userId").sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Trade.countDocuments(query),
+  ]);
+
+  res.json({
+    items,
+    total,
+    page,
+    limit,
     pagination: {
       page,
       limit,

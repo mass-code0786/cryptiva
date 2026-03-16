@@ -6,6 +6,8 @@ type AuthUser = {
   userId?: string;
   name: string;
   email: string;
+  role?: "admin" | "user";
+  isAdmin?: boolean;
   referralCode?: string;
   walletAddress?: string;
 };
@@ -21,8 +23,8 @@ type RegisterPayload = {
 type AuthContextValue = {
   user: AuthUser | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthUser>;
+  register: (payload: RegisterPayload) => Promise<AuthUser>;
   refreshUser: (user: AuthUser) => void;
   logout: () => void;
 };
@@ -39,6 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(data.user);
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
+    return data.user as AuthUser;
   };
 
   const register = async (payload: RegisterPayload) => {
@@ -47,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(data.user);
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
+    return data.user as AuthUser;
   };
 
   const logout = () => {

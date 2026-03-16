@@ -93,9 +93,14 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     email: this.email,
     referralCode: this.referralCode,
     walletAddress: this.walletAddress,
+    role: this.isAdmin ? "admin" : "user",
     isAdmin: this.isAdmin,
   };
 };
+
+userSchema.virtual("role").get(function roleGetter() {
+  return this.isAdmin ? "admin" : "user";
+});
 
 const User = mongoose.model("User", userSchema);
 

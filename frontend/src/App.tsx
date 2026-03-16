@@ -1,6 +1,13 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import AdminRoute from "./components/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
-import AdminPage from "./pages/AdminPage";
+import RoleRedirect from "./components/RoleRedirect";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import AdminDepositsPage from "./pages/admin/AdminDepositsPage";
+import AdminTradesPage from "./pages/admin/AdminTradesPage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import AdminWithdrawalsPage from "./pages/admin/AdminWithdrawalsPage";
 import DashboardPage from "./pages/DashboardPage";
 import DepositPage from "./pages/DepositPage";
 import LoginPage from "./pages/LoginPage";
@@ -18,12 +25,28 @@ const App = () => {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/dashboard" element={<Navigate to="/" replace />} />
+      <Route path="/" element={<ProtectedRoute><RoleRedirect /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/trading" element={<ProtectedRoute><TradingPage /></ProtectedRoute>} />
       <Route path="/team" element={<ProtectedRoute><ReferralsPage /></ProtectedRoute>} />
       <Route path="/referrals" element={<Navigate to="/team" replace />} />
-      <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+        <Route path="deposits" element={<AdminDepositsPage />} />
+        <Route path="withdrawals" element={<AdminWithdrawalsPage />} />
+        <Route path="trades" element={<AdminTradesPage />} />
+      </Route>
       <Route path="/history" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
       <Route path="/transactions" element={<Navigate to="/history" replace />} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />

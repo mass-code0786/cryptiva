@@ -23,8 +23,8 @@ const depositSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "failed"],
-      default: "confirmed",
+      enum: ["pending", "approved", "rejected", "confirmed", "failed"],
+      default: "pending",
     },
     txHash: {
       type: String,

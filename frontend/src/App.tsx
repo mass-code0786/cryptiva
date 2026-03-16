@@ -15,6 +15,7 @@ import AdminTradesPage from "./pages/admin/AdminTradesPage";
 import AdminUserDetailPage from "./pages/admin/AdminUserDetailPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminWithdrawalsPage from "./pages/admin/AdminWithdrawalsPage";
+import AdminSupportQueriesPage from "./pages/admin/AdminSupportQueriesPage";
 import DashboardPage from "./pages/DashboardPage";
 import DepositPage from "./pages/DepositPage";
 import LoginPage from "./pages/LoginPage";
@@ -22,6 +23,7 @@ import P2PPage from "./pages/P2PPage";
 import ProfilePage from "./pages/ProfilePage";
 import ReferralsPage from "./pages/ReferralsPage";
 import RegisterPage from "./pages/RegisterPage";
+import SupportPage from "./pages/SupportPage";
 import TradingPage from "./pages/TradingPage";
 import TransactionsPage from "./pages/TransactionsPage";
 import TransferFundsPage from "./pages/TransferFundsPage";
@@ -70,6 +72,7 @@ const App = () => {
         <Route path="fund-management" element={<AdminFundManagementPage />} />
         <Route path="income-history" element={<AdminIncomeHistoryPage />} />
         <Route path="referral-tree" element={<AdminReferralTreePage />} />
+        <Route path="support-queries" element={<AdminSupportQueriesPage />} />
         <Route path="activity-logs" element={<AdminActivityLogsPage />} />
       </Route>
       <Route path="/history" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
@@ -79,6 +82,7 @@ const App = () => {
       <Route path="/deposit" element={<ProtectedRoute><DepositPage /></ProtectedRoute>} />
       <Route path="/withdraw" element={<ProtectedRoute><WithdrawalPage /></ProtectedRoute>} />
       <Route path="/wallet-transfer" element={<ProtectedRoute><TransferFundsPage /></ProtectedRoute>} />
+      <Route path="/support" element={<ProtectedRoute><SupportPage /></ProtectedRoute>} />
       <Route path="/withdrawal" element={<Navigate to="/withdraw" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

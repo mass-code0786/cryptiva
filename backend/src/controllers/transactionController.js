@@ -2,7 +2,13 @@ import Transaction from "../models/Transaction.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
 export const listTransactions = asyncHandler(async (req, res) => {
-  const query = { userId: req.user._id };
+  const query = {
+    userId: req.user._id,
+    $or: [
+      { type: { $ne: "deposit" } },
+      { type: "deposit", status: { $in: ["completed", "confirmed"] } },
+    ],
+  };
   if (req.query.type) {
     query.type = String(req.query.type);
   }

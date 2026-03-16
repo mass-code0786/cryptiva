@@ -2,7 +2,7 @@ import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
-import { getDefaultTradeLimit, getTradeEngineConfig, settleTradeIncome } from "../services/tradeEngineService.js";
+import { getCurrentTradeEngineConfig, getDefaultTradeLimit, settleTradeIncome } from "../services/tradeEngineService.js";
 
 const ensureWallet = async (userId) => {
   let wallet = await Wallet.findOne({ userId });
@@ -63,5 +63,6 @@ export const getTradeStatus = asyncHandler(async (req, res) => {
     settledTrades.push(result.trade);
   }
 
-  res.json({ items: settledTrades, engine: getTradeEngineConfig() });
+  const engine = await getCurrentTradeEngineConfig();
+  res.json({ items: settledTrades, engine });
 });

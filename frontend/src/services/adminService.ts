@@ -12,6 +12,7 @@ export type AdminEntityUser = {
   name?: string;
   email?: string;
   userId?: string;
+  walletAddress?: string;
 } | null;
 
 export type DashboardPoint = {
@@ -140,10 +141,13 @@ export type AdminDepositItem = {
   amount: number;
   currency: string;
   network: string;
-  status: "pending" | "confirmed" | "failed";
+  status: "pending" | "approved" | "rejected" | "confirmed" | "failed";
   createdAt: string;
   txHash?: string;
   userId?: AdminEntityUser;
+  payment?: {
+    pay_address?: string;
+  };
 };
 
 export type AdminWithdrawalItem = {
@@ -185,8 +189,21 @@ export type AdminActivityLogItem = {
   targetUserId?: AdminEntityUser;
 };
 
+export type AdminSupportQueryItem = {
+  _id: string;
+  subject: string;
+  message: string;
+  status: "pending" | "approved" | "rejected";
+  adminReply?: string;
+  createdAt: string;
+  updatedAt: string;
+  userId?: AdminEntityUser;
+};
+
 export const fetchAdminDashboardOverview = () => api.get<AdminDashboardOverview>("/admin/dashboard-overview");
 export const fetchAdminDashboardAnalytics = () => api.get<AdminDashboardAnalytics>("/admin/dashboard-analytics");
+export const fetchAdminTradingRoiSetting = () => api.get<{ tradingROI: number }>("/admin/settings/trading-roi");
+export const updateAdminTradingRoiSetting = (tradingROI: number) => api.patch("/admin/settings/trading-roi", { tradingROI });
 
 export const fetchAdminUsers = (params?: {
   search?: string;
@@ -233,3 +250,9 @@ export const fetchAdminIncomeHistory = (params?: { search?: string; incomeType?:
 
 export const fetchAdminActivityLogs = (params?: { search?: string; page?: number; limit?: number }) =>
   api.get<{ items: AdminActivityLogItem[]; pagination: AdminPagination }>("/admin/activity-logs", { params });
+
+export const fetchAdminSupportQueries = (params?: { search?: string; status?: "pending" | "approved" | "rejected"; page?: number; limit?: number }) =>
+  api.get<{ items: AdminSupportQueryItem[]; pagination: AdminPagination }>("/admin/support-queries", { params });
+export const replyAdminSupportQuery = (queryId: string, adminReply: string) => api.patch(`/admin/support-queries/${queryId}/reply`, { adminReply });
+export const approveAdminSupportQuery = (queryId: string) => api.patch(`/admin/support-queries/${queryId}/approve`);
+export const rejectAdminSupportQuery = (queryId: string) => api.patch(`/admin/support-queries/${queryId}/reject`);

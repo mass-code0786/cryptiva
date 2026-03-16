@@ -15,7 +15,7 @@ export type Wallet = {
 export type TransactionItem = {
   _id: string;
   userId: string;
-  type: "deposit" | "withdraw" | "trading" | "referral" | "level" | "salary" | "p2p" | "wallet_transfer";
+  type: "deposit" | "withdraw" | "trading" | "referral" | "level" | "salary" | "p2p" | "wallet_transfer" | "admin_transfer";
   amount: number;
   network: "BEP20" | "INTERNAL";
   source: string;

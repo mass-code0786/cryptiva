@@ -43,6 +43,9 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-800" to="/wallet-transfer">
                   Transfer Funds
                 </Link>
+                <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-800" to="/support">
+                  Support / Query
+                </Link>
                 <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm hover:bg-slate-800" to="/profile">
                   Wallet address
                 </Link>

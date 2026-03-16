@@ -1,6 +1,7 @@
 import ActivityLog from "../models/ActivityLog.js";
 import Deposit from "../models/Deposit.js";
 import IncomeLog from "../models/IncomeLog.js";
+import SupportQuery from "../models/SupportQuery.js";
 import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
@@ -11,6 +12,7 @@ import { computeTeamBusiness } from "./referralController.js";
 import { distributeReferralRewards } from "../services/referralService.js";
 import { logIncomeEvent } from "../services/incomeLogService.js";
 import { applyIncomeWithCap } from "../services/incomeCapService.js";
+import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
 
 const INCOME_TYPES = ["trading", "referral", "level", "salary"];
 
@@ -52,14 +54,19 @@ const formatIncomeType = (type) => {
   return type;
 };
 
-const addActivityLog = async ({ adminId, action, targetUserId = null, amount = null, reason = "", metadata = {} }) => {
+const addActivityLog = async ({ adminId, action, type = "admin_action", targetUserId = null, amount = null, reason = "", metadata = {} }) => {
+  const now = new Date();
   await ActivityLog.create({
     adminId,
+    type,
     action,
+    userId: targetUserId || null,
     targetUserId,
     amount,
     reason,
     metadata,
+    date: now.toISOString().slice(0, 10),
+    time: now.toISOString().slice(11, 19),
   });
 };
 
@@ -246,8 +253,8 @@ export const getDashboardOverview = asyncHandler(async (_req, res) => {
       User.countDocuments({ lastLoginAt: { $gte: start, $lte: end }, isBlocked: { $ne: true } }),
       getSum(Withdrawal, { status: "completed" }),
       getSum(Withdrawal, { status: "completed", createdAt: { $gte: start, $lte: end } }),
-      getSum(Deposit, { status: "confirmed" }),
-      getSum(Deposit, { status: "confirmed", createdAt: { $gte: start, $lte: end } }),
+      getSum(Deposit, { status: { $in: ["approved", "confirmed"] } }),
+      getSum(Deposit, { status: { $in: ["approved", "confirmed"] }, createdAt: { $gte: start, $lte: end } }),
     ]);
 
   const [totalTradingIncome, todayTradingIncome, totalReferralIncome, todayReferralIncome, totalLevelIncome, todayLevelIncome, totalSalaryIncome, todaySalaryIncome] =
@@ -298,7 +305,7 @@ export const getDashboardAnalytics = asyncHandler(async (_req, res) => {
     getMonthlySeries(incomeMatch, 12),
     getUserGrowthSeries(30),
     getDailySeries(Withdrawal, { status: "completed" }, 30),
-    getDailySeries(Deposit, { status: "confirmed" }, 30),
+    getDailySeries(Deposit, { status: { $in: ["approved", "confirmed"] } }, 30),
   ]);
 
   res.json({
@@ -582,19 +589,23 @@ export const transferFund = asyncHandler(async (req, res) => {
   wallet.depositWallet += amountValue;
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const time = now.toISOString().slice(11, 19);
 
   await Transaction.create({
     userId: user._id,
-    type: "wallet_transfer",
+    type: "admin_transfer",
     amount: amountValue,
     network: "INTERNAL",
-    source: reason ? `Admin fund transfer: ${reason}` : "Admin fund transfer",
+    source: reason || "Admin fund transfer",
     status: "completed",
-    metadata: { action: "admin_fund_transfer", adminId: req.user._id, reason: reason || "" },
+    metadata: { action: "admin_fund_transfer", adminId: req.user._id, reason: reason || "", date, time },
   });
 
   await addActivityLog({
     adminId: req.user._id,
+    type: "admin_transfer",
     action: "Fund transferred",
     targetUserId: user._id,
     amount: amountValue,
@@ -663,7 +674,7 @@ export const listDeposits = asyncHandler(async (req, res) => {
   }
 
   const [items, total] = await Promise.all([
-    Deposit.find(query).populate("userId", "name email userId").sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Deposit.find(query).populate("userId", "name email userId walletAddress").sort({ createdAt: -1 }).skip(skip).limit(limit),
     Deposit.countDocuments(query),
   ]);
 
@@ -687,16 +698,24 @@ export const approveDeposit = asyncHandler(async (req, res) => {
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
 
-  deposit.status = "confirmed";
+  deposit.status = "approved";
   await deposit.save();
 
   await Promise.all([
     Transaction.findOneAndUpdate(
       { "metadata.depositId": deposit._id, type: "deposit" },
-      { status: "confirmed", source: "Deposit approved by admin" },
+      { status: "completed", source: "Deposit approved by admin" },
       { new: true }
     ),
     distributeReferralRewards({ user, depositAmount: deposit.amount, depositId: deposit._id }),
+    addActivityLog({
+      adminId: req.user._id,
+      type: "deposit_approval",
+      action: "Deposit approved",
+      targetUserId: user._id,
+      amount: deposit.amount,
+      metadata: { depositId: deposit._id },
+    }),
   ]);
 
   res.json({ message: "Deposit approved", deposit, wallet });
@@ -708,13 +727,23 @@ export const rejectDeposit = asyncHandler(async (req, res) => {
   if (!deposit) throw new ApiError(404, "Deposit request not found");
   if (deposit.status !== "pending") throw new ApiError(400, "Deposit is already processed");
 
-  deposit.status = "failed";
+  deposit.status = "rejected";
   await deposit.save();
   await Transaction.findOneAndUpdate(
     { "metadata.depositId": deposit._id, type: "deposit" },
     { status: "failed", source: `Deposit rejected: ${reason}` },
     { new: true }
   );
+
+  await addActivityLog({
+    adminId: req.user._id,
+    type: "deposit_rejection",
+    action: "Deposit rejected",
+    targetUserId: deposit.userId,
+    amount: deposit.amount,
+    reason,
+    metadata: { depositId: deposit._id },
+  });
 
   res.json({ message: "Deposit rejected", deposit });
 });
@@ -781,6 +810,30 @@ export const updateTradeProfitRate = asyncHandler(async (req, res) => {
   });
 
   res.json({ message: "Trade profit percentage updated", trade, appliedProfitPercentage: profitPercentage });
+});
+
+export const getTradingRoiSetting = asyncHandler(async (_req, res) => {
+  const tradingROI = await getTradingRoiPercent();
+  res.json({ tradingROI });
+});
+
+export const updateTradingRoiSetting = asyncHandler(async (req, res) => {
+  const tradingROI = Number(req.body.tradingROI);
+  if (!Number.isFinite(tradingROI) || tradingROI <= 0) {
+    throw new ApiError(400, "tradingROI must be a valid positive number");
+  }
+
+  await setTradingRoiPercent(tradingROI);
+  await addActivityLog({
+    adminId: req.user._id,
+    type: "roi_change",
+    action: "Trading ROI changed",
+    amount: tradingROI,
+    reason: `Global trading ROI updated to ${tradingROI}%`,
+    metadata: { tradingROI },
+  });
+
+  res.json({ message: "Trading ROI updated", tradingROI });
 });
 
 export const adjustTradeIncome = asyncHandler(async (req, res) => {
@@ -1061,6 +1114,104 @@ export const listActivityLogs = asyncHandler(async (req, res) => {
     items,
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
   });
+});
+
+export const listSupportQueriesAdmin = asyncHandler(async (req, res) => {
+  const { page, limit, skip } = getPagination(req.query);
+  const search = String(req.query.search || "").trim();
+  const status = String(req.query.status || "").trim().toLowerCase();
+
+  const query = {};
+  if (["pending", "approved", "rejected"].includes(status)) {
+    query.status = status;
+  }
+
+  if (search) {
+    const users = await User.find({
+      $or: [{ userId: { $regex: search, $options: "i" } }, { email: { $regex: search, $options: "i" } }, { name: { $regex: search, $options: "i" } }],
+    }).select("_id");
+    const userIds = users.map((user) => user._id);
+    query.$or = [{ subject: { $regex: search, $options: "i" } }, { message: { $regex: search, $options: "i" } }];
+    if (userIds.length) {
+      query.$or.push({ userId: { $in: userIds } });
+    }
+  }
+
+  const [items, total] = await Promise.all([
+    SupportQuery.find(query).populate("userId", "name email userId").sort({ createdAt: -1 }).skip(skip).limit(limit),
+    SupportQuery.countDocuments(query),
+  ]);
+
+  res.json({
+    items,
+    pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+  });
+});
+
+export const replySupportQueryAdmin = asyncHandler(async (req, res) => {
+  const adminReply = String(req.body.adminReply || "").trim();
+  if (!adminReply) {
+    throw new ApiError(400, "adminReply is required");
+  }
+
+  const item = await SupportQuery.findById(req.params.queryId);
+  if (!item) {
+    throw new ApiError(404, "Support query not found");
+  }
+
+  item.adminReply = adminReply;
+  await item.save();
+
+  await addActivityLog({
+    adminId: req.user._id,
+    type: "support_reply",
+    action: "Support query replied",
+    targetUserId: item.userId,
+    reason: adminReply,
+    metadata: { supportQueryId: item._id },
+  });
+
+  res.json({ message: "Reply saved", item });
+});
+
+export const approveSupportQueryAdmin = asyncHandler(async (req, res) => {
+  const item = await SupportQuery.findById(req.params.queryId);
+  if (!item) {
+    throw new ApiError(404, "Support query not found");
+  }
+
+  item.status = "approved";
+  await item.save();
+
+  await addActivityLog({
+    adminId: req.user._id,
+    type: "support_approve",
+    action: "Support query approved",
+    targetUserId: item.userId,
+    metadata: { supportQueryId: item._id },
+  });
+
+  res.json({ message: "Support query approved", item });
+});
+
+export const rejectSupportQueryAdmin = asyncHandler(async (req, res) => {
+  const item = await SupportQuery.findById(req.params.queryId);
+  if (!item) {
+    throw new ApiError(404, "Support query not found");
+  }
+
+  item.status = "rejected";
+  await item.save();
+
+  await addActivityLog({
+    adminId: req.user._id,
+    type: "support_reject",
+    action: "Support query rejected",
+    targetUserId: item.userId,
+    metadata: { supportQueryId: item._id },
+  });
+
+  res.json({ message: "Support query rejected", item });
 });
 
 export const getTeamBusiness = asyncHandler(async (req, res) => {

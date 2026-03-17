@@ -17,6 +17,7 @@ const transactionSchema = new mongoose.Schema(
         "referral",
         "REFERRAL",
         "level",
+        "LEVEL",
         "salary",
         "SALARY",
         "p2p",

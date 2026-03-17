@@ -13,7 +13,7 @@ import { logIncomeEvent } from "../services/incomeLogService.js";
 import { applyIncomeWithCap } from "../services/incomeCapService.js";
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
 
-const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "salary", "SALARY"];
+const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "LEVEL", "salary", "SALARY"];
 
 const getPagination = (query) => {
   const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
@@ -48,7 +48,7 @@ const findUserByParam = async (userRef) => {
 const formatIncomeType = (type) => {
   if (type === "trading") return "Trading";
   if (type === "referral" || type === "REFERRAL") return "Referral";
-  if (type === "level") return "Level";
+  if (type === "level" || type === "LEVEL") return "Level";
   if (type === "salary" || type === "SALARY") return "Salary";
   return type;
 };
@@ -83,6 +83,7 @@ const buildIncomeBaseFilter = () => ({
 
 const getIncomeTransactionTypeFilter = (incomeType = "") => {
   if (incomeType === "referral") return { $in: ["referral", "REFERRAL"] };
+  if (incomeType === "level") return { $in: ["level", "LEVEL"] };
   if (incomeType === "salary") return { $in: ["salary", "SALARY"] };
   if (incomeType && INCOME_TYPES.includes(incomeType)) return incomeType;
   return { $in: INCOME_TYPES };
@@ -278,8 +279,12 @@ export const getDashboardOverview = asyncHandler(async (_req, res) => {
         status: { $in: ["completed", "confirmed", "success"] },
         createdAt: { $gte: start, $lte: end },
       }),
-      getSum(Transaction, { type: "level", status: { $in: ["completed", "confirmed", "success"] } }),
-      getSum(Transaction, { type: "level", status: { $in: ["completed", "confirmed", "success"] }, createdAt: { $gte: start, $lte: end } }),
+      getSum(Transaction, { type: { $in: ["level", "LEVEL"] }, status: { $in: ["completed", "confirmed", "success"] } }),
+      getSum(Transaction, {
+        type: { $in: ["level", "LEVEL"] },
+        status: { $in: ["completed", "confirmed", "success"] },
+        createdAt: { $gte: start, $lte: end },
+      }),
       getSum(Transaction, { type: { $in: ["salary", "SALARY"] }, status: { $in: ["completed", "confirmed", "success"] } }),
       getSum(Transaction, {
         type: { $in: ["salary", "SALARY"] },
@@ -494,7 +499,7 @@ export const getUserProfileDetail = asyncHandler(async (req, res) => {
   for (const row of incomeBreakdownAgg) {
     if (row._id === "trading") incomeBreakdown.tradingIncome = row.total;
     if (row._id === "referral" || row._id === "REFERRAL") incomeBreakdown.referralIncome += row.total;
-    if (row._id === "level") incomeBreakdown.levelIncome = row.total;
+    if (row._id === "level" || row._id === "LEVEL") incomeBreakdown.levelIncome += row.total;
     if (row._id === "salary" || row._id === "SALARY") incomeBreakdown.salaryIncome += row.total;
   }
 
@@ -1022,6 +1027,8 @@ export const listTransactionsAdmin = asyncHandler(async (req, res) => {
     const type = String(req.query.type).toLowerCase();
     if (type === "referral") {
       query.type = { $in: ["referral", "REFERRAL"] };
+    } else if (type === "level") {
+      query.type = { $in: ["level", "LEVEL"] };
     } else if (type === "salary") {
       query.type = { $in: ["salary", "SALARY"] };
     } else {

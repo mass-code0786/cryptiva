@@ -7,7 +7,7 @@ import { applyIncomeWithCap } from "./incomeCapService.js";
 import { logIncomeEvent } from "./incomeLogService.js";
 
 const LEVEL_INCOME_INTERVAL_MS = 12 * 60 * 60 * 1000;
-const LEVEL_INCOME_TICK_MS = 10 * 60 * 1000;
+const LEVEL_INCOME_TICK_MS = LEVEL_INCOME_INTERVAL_MS;
 const LEVEL_INCOME_LAST_RUN_KEY = "levelIncomeLastRunAt";
 
 let levelIncomeTimer = null;
@@ -95,18 +95,30 @@ export const runLevelIncomeDistribution12h = async (windowEnd = new Date()) => {
   const lastRunAt = await getLastRunAt();
   const startAt = lastRunAt || new Date(endAt.getTime() - LEVEL_INCOME_INTERVAL_MS);
 
-  const roiLogs = await IncomeLog.find({
-    incomeType: "trading",
-    amount: { $gt: 0 },
-    recordedAt: { $gt: startAt, $lte: endAt },
-  }).select("userId amount metadata recordedAt");
+  const roiAgg = await IncomeLog.aggregate([
+    {
+      $match: {
+        incomeType: "trading",
+        amount: { $gt: 0 },
+        recordedAt: { $gt: startAt, $lte: endAt },
+      },
+    },
+    {
+      $group: {
+        _id: "$userId",
+        totalRoi: { $sum: "$amount" },
+        roiRecords: { $sum: 1 },
+      },
+    },
+  ]);
 
-  if (!roiLogs.length) {
+  if (!roiAgg.length) {
     await setLastRunAt(endAt);
     return {
       windowStart: startAt,
       windowEnd: endAt,
       roiLogs: 0,
+      roiUsers: 0,
       payouts: 0,
       creditedUsers: 0,
     };
@@ -116,11 +128,13 @@ export const runLevelIncomeDistribution12h = async (windowEnd = new Date()) => {
   const payoutCountByUser = new Map();
   let payouts = 0;
 
-  for (const roi of roiLogs) {
-    const roiAmount = toAmount(roi.amount);
-    if (roiAmount <= 0) continue;
+  for (const roiUser of roiAgg) {
+    const roiAmount = toAmount(roiUser.totalRoi);
+    if (roiAmount <= 0) {
+      continue;
+    }
 
-    let currentUser = await resolvers.getById(roi.userId);
+    let currentUser = await resolvers.getById(roiUser._id);
     if (!currentUser) continue;
 
     for (let level = 1; level <= 30; level += 1) {
@@ -145,17 +159,20 @@ export const runLevelIncomeDistribution12h = async (windowEnd = new Date()) => {
           await Promise.all([
             Transaction.create({
               userId: upline._id,
-              type: "level",
+              type: "LEVEL",
               amount: creditedAmount,
               network: "INTERNAL",
               source: sourceText,
-              status: "completed",
+              status: "success",
               metadata: {
                 trigger: "roi_12h",
                 level,
                 percentage: percent,
+                sourceUser: currentUser.userId || currentUser.email,
                 sourceUserId: currentUser._id,
-                tradeId: roi.metadata?.tradeId || null,
+                tradeId: null,
+                roiWindowTotal: roiAmount,
+                roiWindowRecords: roiUser.roiRecords,
                 windowStart: startAt,
                 windowEnd: endAt,
                 date: endAt.toISOString().slice(0, 10),
@@ -171,8 +188,11 @@ export const runLevelIncomeDistribution12h = async (windowEnd = new Date()) => {
                 trigger: "roi_12h",
                 level,
                 percentage: percent,
+                sourceUser: currentUser.userId || currentUser.email,
                 sourceUserId: currentUser._id,
-                tradeId: roi.metadata?.tradeId || null,
+                tradeId: null,
+                roiWindowTotal: roiAmount,
+                roiWindowRecords: roiUser.roiRecords,
                 windowStart: startAt,
                 windowEnd: endAt,
               },
@@ -181,13 +201,16 @@ export const runLevelIncomeDistribution12h = async (windowEnd = new Date()) => {
             ReferralIncome.create({
               userId: upline._id,
               sourceUserId: currentUser._id,
-              tradeId: roi.metadata?.tradeId || null,
+              tradeId: null,
               incomeType: "level",
               level,
               amount: creditedAmount,
               metadata: {
                 trigger: "roi_12h",
                 percentage: percent,
+                sourceUser: currentUser.userId || currentUser.email,
+                roiWindowTotal: roiAmount,
+                roiWindowRecords: roiUser.roiRecords,
                 windowStart: startAt,
                 windowEnd: endAt,
               },
@@ -204,7 +227,8 @@ export const runLevelIncomeDistribution12h = async (windowEnd = new Date()) => {
   return {
     windowStart: startAt,
     windowEnd: endAt,
-    roiLogs: roiLogs.length,
+    roiLogs: roiAgg.reduce((sum, entry) => sum + Number(entry.roiRecords || 0), 0),
+    roiUsers: roiAgg.length,
     payouts,
     creditedUsers: payoutCountByUser.size,
   };

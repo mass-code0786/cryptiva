@@ -50,7 +50,7 @@ const TransactionsPage = () => {
     }
 
     const selectedType = tabTypeMap[activeTab];
-    return items.filter((item) => item.type === selectedType);
+    return items.filter((item) => String(item.type || "").toLowerCase() === String(selectedType || "").toLowerCase());
   }, [activeTab, items]);
 
   return (

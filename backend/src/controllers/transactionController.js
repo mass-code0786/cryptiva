@@ -20,6 +20,8 @@ export const listTransactions = asyncHandler(async (req, res) => {
     const type = String(req.query.type).toLowerCase();
     if (type === "referral") {
       query.type = { $in: ["referral", "REFERRAL"] };
+    } else if (type === "level") {
+      query.type = { $in: ["level", "LEVEL"] };
     } else if (type === "salary") {
       query.type = { $in: ["salary", "SALARY"] };
     } else {

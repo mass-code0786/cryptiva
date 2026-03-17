@@ -23,6 +23,17 @@ const ensureWallet = async (userId) => {
   return wallet;
 };
 
+const restoreTradingPrincipalFromActiveTrades = async (wallet, userId) => {
+  const activeTrades = await Trade.find({ userId, status: "active" }).select("amount");
+  const reconstructed = toAmount(activeTrades.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+  if (reconstructed > 0) {
+    wallet.tradingWallet = reconstructed;
+    wallet.tradingBalance = reconstructed;
+    await wallet.save();
+  }
+  return reconstructed;
+};
+
 export const settleTradeIncome = async (trade, now = new Date(), roiRatePerMinuteOverride = null) => {
   if (trade.status !== "active") {
     return { trade, settledAmount: 0, completed: false };
@@ -46,10 +57,13 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRatePerMinut
   }
 
   const wallet = await ensureWallet(trade.userId);
-  const tradingPrincipal = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
+  let tradingPrincipal = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
   if (tradingPrincipal <= 0) {
-    await trade.save();
-    return { trade, settledAmount: 0, completed: false };
+    tradingPrincipal = await restoreTradingPrincipalFromActiveTrades(wallet, trade.userId);
+    if (tradingPrincipal <= 0) {
+      await trade.save();
+      return { trade, settledAmount: 0, completed: false };
+    }
   }
 
   const effectiveRoiRatePerMinute = Number.isFinite(trade.manualRoiRate)

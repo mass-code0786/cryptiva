@@ -28,7 +28,6 @@ export const hasActiveReferral = async (userId) => {
       $or: [
         { referredBy: baseUser._id },
         { referredByUserId: baseUser.userId },
-        { referredBy: baseUser.userId },
       ],
     },
     "_id"

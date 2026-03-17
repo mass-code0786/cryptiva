@@ -63,10 +63,11 @@ export const register = asyncHandler(async (req, res) => {
   const sponsorCode = referrerCode || referredByCode;
   if (sponsorCode) {
     const normalizedSponsorCode = String(sponsorCode).trim().toLowerCase();
-    const normalizedSponsorUserId = String(sponsorCode).trim().toUpperCase();
-    const referrer =
-      (await User.findOne({ referralCode: normalizedSponsorCode })) ||
-      (await User.findOne({ userId: normalizedSponsorUserId }));
+    if (!/^[a-zA-Z0-9]{4,20}$/.test(normalizedSponsorCode)) {
+      throw new ApiError(400, "Invalid referral code");
+    }
+
+    const referrer = await User.findOne({ referralCode: normalizedSponsorCode });
     if (!referrer) {
       throw new ApiError(400, "Invalid referral code");
     }

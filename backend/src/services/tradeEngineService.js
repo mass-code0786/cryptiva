@@ -2,16 +2,17 @@ import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import { logIncomeEvent } from "./incomeLogService.js";
-import { applyIncomeWithCap } from "./incomeCapService.js";
-import { getTradingRoiRatePerSecond } from "./tradingSettingsService.js";
+import { getTradingRoiRatePerMinute } from "./tradingSettingsService.js";
 
 const TRADE_LIMIT_MULTIPLIER = Number(process.env.TRADE_LIMIT_MULTIPLIER || 2);
-const TRADE_ENGINE_INTERVAL_MS = 1000;
+const TRADE_ENGINE_INTERVAL_MS = 60 * 1000;
 const DEFAULT_DAILY_ROI_PERCENT = 1.2;
-const DEFAULT_ROI_RATE_PER_SECOND = Number((DEFAULT_DAILY_ROI_PERCENT / 100 / 86400).toFixed(12));
+const DEFAULT_ROI_RATE_PER_MINUTE = Number((DEFAULT_DAILY_ROI_PERCENT / 100 / 1440).toFixed(8));
 
 let engineTimer = null;
 let engineRunning = false;
+
+const toAmount = (value) => Number(Number(value || 0).toFixed(6));
 
 const ensureWallet = async (userId) => {
   let wallet = await Wallet.findOne({ userId });
@@ -21,45 +22,64 @@ const ensureWallet = async (userId) => {
   return wallet;
 };
 
-export const settleTradeIncome = async (trade, now = new Date(), roiRateOverride = null) => {
+export const settleTradeIncome = async (trade, now = new Date(), roiRatePerMinuteOverride = null) => {
   if (trade.status !== "active") {
     return { trade, settledAmount: 0, completed: false };
   }
 
   const lastSettledAt = new Date(trade.lastSettledAt || trade.startTime || trade.createdAt);
   const elapsedMs = now.getTime() - lastSettledAt.getTime();
-  const elapsedSeconds = Math.floor(elapsedMs / 1000);
-  if (elapsedSeconds <= 0) {
+  const elapsedMinutes = Math.floor(elapsedMs / 60000);
+  if (elapsedMinutes <= 0) {
     return { trade, settledAmount: 0, completed: false };
   }
 
-  const effectiveRoiRatePerSecond = Number.isFinite(roiRateOverride) ? roiRateOverride : await getTradingRoiRatePerSecond();
-  const perSecondIncome = trade.amount * effectiveRoiRatePerSecond;
-  const grossDelta = Number((perSecondIncome * elapsedSeconds).toFixed(6));
-  const delta = Math.max(0, grossDelta);
-
   const nextLastSettledAt = new Date(lastSettledAt);
-  nextLastSettledAt.setSeconds(nextLastSettledAt.getSeconds() + elapsedSeconds);
+  nextLastSettledAt.setMinutes(nextLastSettledAt.getMinutes() + elapsedMinutes);
   trade.lastSettledAt = nextLastSettledAt;
+
+  const tradeAmount = Number(trade.amount || 0);
+  if (tradeAmount <= 0) {
+    await trade.save();
+    return { trade, settledAmount: 0, completed: false };
+  }
+
+  const wallet = await ensureWallet(trade.userId);
+  const tradingPrincipal = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
+  if (tradingPrincipal <= 0) {
+    await trade.save();
+    return { trade, settledAmount: 0, completed: false };
+  }
+
+  const effectiveRoiRatePerMinute = Number.isFinite(trade.manualRoiRate)
+    ? Number(trade.manualRoiRate)
+    : Number.isFinite(roiRatePerMinuteOverride)
+      ? roiRatePerMinuteOverride
+      : await getTradingRoiRatePerMinute();
+
+  const perMinuteIncome = tradeAmount * effectiveRoiRatePerMinute;
+  const grossDelta = Number((perMinuteIncome * elapsedMinutes).toFixed(6));
+  const delta = Math.max(0, grossDelta);
 
   if (delta <= 0) {
     await trade.save();
     return { trade, settledAmount: 0, completed: false };
   }
 
-  const { creditedAmount } = await applyIncomeWithCap({
-    userId: trade.userId,
-    requestedAmount: delta,
-    walletField: "tradingIncomeWallet",
-  });
+  const creditedAmount = delta;
 
   if (creditedAmount <= 0) {
     await trade.save();
     return { trade, settledAmount: 0, completed: false };
   }
 
+  wallet.tradingIncomeWallet = toAmount(wallet.tradingIncomeWallet) + creditedAmount;
+  wallet.withdrawalWallet = toAmount(wallet.withdrawalWallet) + creditedAmount;
+  wallet.balance = toAmount(wallet.depositWallet) + toAmount(wallet.withdrawalWallet);
   trade.totalIncome = Number((trade.totalIncome + creditedAmount).toFixed(6));
+
   await Promise.all([
+    wallet.save(),
     trade.save(),
     Transaction.create({
       userId: trade.userId,
@@ -67,11 +87,12 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRateOverride
       amount: creditedAmount,
       network: "INTERNAL",
       source: "trading engine",
-      status: "completed",
+      status: "success",
       metadata: {
         tradeId: trade._id,
-        roiRatePerSecond: effectiveRoiRatePerSecond,
-        elapsedSeconds,
+        txnType: "TRADING",
+        roiRatePerMinute: effectiveRoiRatePerMinute,
+        elapsedMinutes,
       },
     }),
     logIncomeEvent({
@@ -81,8 +102,8 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRateOverride
       source: "trading engine",
       metadata: {
         tradeId: trade._id,
-        roiRatePerSecond: effectiveRoiRatePerSecond,
-        elapsedSeconds,
+        roiRatePerMinute: effectiveRoiRatePerMinute,
+        elapsedMinutes,
       },
       recordedAt: now,
     }),
@@ -98,12 +119,13 @@ export const settleActiveTrades = async () => {
 
   engineRunning = true;
   try {
+    const now = new Date();
     const activeTrades = await Trade.find({ status: "active" });
-    const globalRoiRatePerSecond = await getTradingRoiRatePerSecond();
+    const globalRoiRatePerMinute = await getTradingRoiRatePerMinute();
     let credited = 0;
 
     for (const trade of activeTrades) {
-      const result = await settleTradeIncome(trade, new Date(), globalRoiRatePerSecond);
+      const result = await settleTradeIncome(trade, now, globalRoiRatePerMinute);
       if (result.settledAmount > 0) {
         credited += 1;
       }
@@ -120,6 +142,10 @@ export const startTradeEngine = () => {
     return;
   }
 
+  settleActiveTrades().catch((error) => {
+    console.error("Initial trade engine cycle failed", error);
+  });
+
   engineTimer = setInterval(() => {
     settleActiveTrades().catch((error) => {
       console.error("Trade engine cycle failed", error);
@@ -127,21 +153,27 @@ export const startTradeEngine = () => {
   }, TRADE_ENGINE_INTERVAL_MS);
 };
 
+export const stopTradeEngine = () => {
+  if (!engineTimer) {
+    return;
+  }
+  clearInterval(engineTimer);
+  engineTimer = null;
+  engineRunning = false;
+};
+
 export const getTradeEngineConfig = () => ({
-  roiRatePerSecond: DEFAULT_ROI_RATE_PER_SECOND,
-  roiRatePerMinute: Number((DEFAULT_ROI_RATE_PER_SECOND * 60).toFixed(10)),
+  roiRatePerMinute: DEFAULT_ROI_RATE_PER_MINUTE,
   dailyRoiPercent: DEFAULT_DAILY_ROI_PERCENT,
   tradeLimitMultiplier: TRADE_LIMIT_MULTIPLIER,
   intervalMs: TRADE_ENGINE_INTERVAL_MS,
 });
 
 export const getCurrentTradeEngineConfig = async () => {
-  const roiRatePerSecond = await getTradingRoiRatePerSecond();
-  const roiRatePerMinute = Number((roiRatePerSecond * 60).toFixed(10));
+  const roiRatePerMinute = await getTradingRoiRatePerMinute();
   return {
-    roiRatePerSecond,
     roiRatePerMinute,
-    dailyRoiPercent: Number((roiRatePerSecond * 86400 * 100).toFixed(6)),
+    dailyRoiPercent: Number((roiRatePerMinute * 1440 * 100).toFixed(6)),
     tradeLimitMultiplier: TRADE_LIMIT_MULTIPLIER,
     intervalMs: TRADE_ENGINE_INTERVAL_MS,
   };

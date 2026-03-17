@@ -17,7 +17,7 @@ import transactionRoutes from "./routes/transactionRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
 import withdrawalRoutes from "./routes/withdrawalRoutes.js";
-import { settleActiveTrades, startTradeEngine } from "./services/tradeEngineService.js";
+import { settleActiveTrades, startTradeEngine, stopTradeEngine } from "./services/tradeEngineService.js";
 import { startLevelIncomeScheduler } from "./services/levelIncomeSchedulerService.js";
 import { startSalaryScheduler } from "./services/salarySchedulerService.js";
 
@@ -107,3 +107,12 @@ mongoose
     console.error("MongoDB connection failed", error);
     process.exit(1);
   });
+
+mongoose.connection.on("disconnected", () => {
+  console.warn("MongoDB disconnected. Stopping trade engine until reconnection.");
+  stopTradeEngine();
+});
+
+mongoose.connection.on("connected", () => {
+  startTradeEngine();
+});

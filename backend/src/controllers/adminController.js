@@ -71,13 +71,13 @@ const addActivityLog = async ({ adminId, action, type = "admin_action", targetUs
 
 const tradingIncomeFilter = {
   type: "trading",
-  status: { $in: ["completed", "confirmed"] },
+  status: { $in: ["completed", "confirmed", "success"] },
   $or: [{ "metadata.action": { $exists: false } }, { "metadata.action": { $ne: "trade_open" } }],
 };
 
 const buildIncomeBaseFilter = () => ({
   type: { $in: INCOME_TYPES },
-  status: { $in: ["completed", "confirmed"] },
+  status: { $in: ["completed", "confirmed", "success"] },
   $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
 });
 
@@ -265,12 +265,12 @@ export const getDashboardOverview = asyncHandler(async (_req, res) => {
     await Promise.all([
       getSum(Transaction, tradingIncomeFilter),
       getSum(Transaction, { ...tradingIncomeFilter, createdAt: { $gte: start, $lte: end } }),
-      getSum(Transaction, { type: "referral", status: { $in: ["completed", "confirmed"] } }),
-      getSum(Transaction, { type: "referral", status: { $in: ["completed", "confirmed"] }, createdAt: { $gte: start, $lte: end } }),
-      getSum(Transaction, { type: "level", status: { $in: ["completed", "confirmed"] } }),
-      getSum(Transaction, { type: "level", status: { $in: ["completed", "confirmed"] }, createdAt: { $gte: start, $lte: end } }),
-      getSum(Transaction, { type: "salary", status: { $in: ["completed", "confirmed"] } }),
-      getSum(Transaction, { type: "salary", status: { $in: ["completed", "confirmed"] }, createdAt: { $gte: start, $lte: end } }),
+      getSum(Transaction, { type: "referral", status: { $in: ["completed", "confirmed", "success"] } }),
+      getSum(Transaction, { type: "referral", status: { $in: ["completed", "confirmed", "success"] }, createdAt: { $gte: start, $lte: end } }),
+      getSum(Transaction, { type: "level", status: { $in: ["completed", "confirmed", "success"] } }),
+      getSum(Transaction, { type: "level", status: { $in: ["completed", "confirmed", "success"] }, createdAt: { $gte: start, $lte: end } }),
+      getSum(Transaction, { type: "salary", status: { $in: ["completed", "confirmed", "success"] } }),
+      getSum(Transaction, { type: "salary", status: { $in: ["completed", "confirmed", "success"] }, createdAt: { $gte: start, $lte: end } }),
     ]);
 
   res.json({
@@ -375,7 +375,7 @@ export const listUsers = asyncHandler(async (req, res) => {
             $match: {
               $expr: { $eq: ["$userId", "$$uid"] },
               type: { $in: INCOME_TYPES },
-              status: { $in: ["completed", "confirmed"] },
+              status: { $in: ["completed", "confirmed", "success"] },
               $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
             },
           },
@@ -451,7 +451,7 @@ export const getUserProfileDetail = asyncHandler(async (req, res) => {
     listIncomeTransactions({
       userId: user._id,
       type: { $in: INCOME_TYPES },
-      status: { $in: ["completed", "confirmed"] },
+      status: { $in: ["completed", "confirmed", "success"] },
       $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
     }),
     buildReferralTree(user, 10, 1),
@@ -461,7 +461,7 @@ export const getUserProfileDetail = asyncHandler(async (req, res) => {
         $match: {
           userId: user._id,
           type: { $in: INCOME_TYPES },
-          status: { $in: ["completed", "confirmed"] },
+          status: { $in: ["completed", "confirmed", "success"] },
           $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
         },
       },
@@ -1076,7 +1076,7 @@ export const getIncomeHistory = asyncHandler(async (req, res) => {
 
   const fallbackQuery = {
     type: incomeType && INCOME_TYPES.includes(incomeType) ? incomeType : { $in: INCOME_TYPES },
-    status: { $in: ["completed", "confirmed"] },
+    status: { $in: ["completed", "confirmed", "success"] },
     $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
   };
   if (incomeLogQuery.userId) fallbackQuery.userId = incomeLogQuery.userId;
@@ -1254,3 +1254,4 @@ export const getTeamBusiness = asyncHandler(async (req, res) => {
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
   });
 });
+

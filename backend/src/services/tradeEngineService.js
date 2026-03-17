@@ -2,6 +2,7 @@ import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import { logIncomeEvent } from "./incomeLogService.js";
+import { applyIncomeWithCap } from "./incomeCapService.js";
 import { getTradingRoiRatePerMinute } from "./tradingSettingsService.js";
 
 const TRADE_LIMIT_MULTIPLIER = Number(process.env.TRADE_LIMIT_MULTIPLIER || 2);
@@ -66,20 +67,19 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRatePerMinut
     return { trade, settledAmount: 0, completed: false };
   }
 
-  const creditedAmount = delta;
+  const { creditedAmount } = await applyIncomeWithCap({
+    userId: trade.userId,
+    requestedAmount: delta,
+    walletField: "tradingIncomeWallet",
+  });
 
   if (creditedAmount <= 0) {
     await trade.save();
     return { trade, settledAmount: 0, completed: false };
   }
-
-  wallet.tradingIncomeWallet = toAmount(wallet.tradingIncomeWallet) + creditedAmount;
-  wallet.withdrawalWallet = toAmount(wallet.withdrawalWallet) + creditedAmount;
-  wallet.balance = toAmount(wallet.depositWallet) + toAmount(wallet.withdrawalWallet);
   trade.totalIncome = Number((trade.totalIncome + creditedAmount).toFixed(6));
 
   await Promise.all([
-    wallet.save(),
     trade.save(),
     Transaction.create({
       userId: trade.userId,

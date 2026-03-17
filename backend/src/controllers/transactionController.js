@@ -17,7 +17,14 @@ export const listTransactions = asyncHandler(async (req, res) => {
     ],
   };
   if (req.query.type) {
-    query.type = String(req.query.type);
+    const type = String(req.query.type).toLowerCase();
+    if (type === "referral") {
+      query.type = { $in: ["referral", "REFERRAL"] };
+    } else if (type === "salary") {
+      query.type = { $in: ["salary", "SALARY"] };
+    } else {
+      query.type = String(req.query.type);
+    }
   }
   const hasPaging = req.query.page !== undefined || req.query.limit !== undefined;
 

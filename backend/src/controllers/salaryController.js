@@ -98,11 +98,11 @@ const creditWeeklySalary = async (user, referenceDate = new Date()) => {
 
   const transaction = await Transaction.create({
     userId: user._id,
-    type: "salary",
+    type: "SALARY",
     amount: creditedAmount,
     network: "INTERNAL",
     source: `Weekly salary credit for ${savedRank.name}`,
-    status: "completed",
+    status: "success",
     metadata: { salaryPayoutId: payout._id, rankName: savedRank.name, rank: nextSavedRankNumber, weekStart, weekEnd },
   });
 

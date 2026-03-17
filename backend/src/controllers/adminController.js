@@ -13,7 +13,7 @@ import { logIncomeEvent } from "../services/incomeLogService.js";
 import { applyIncomeWithCap } from "../services/incomeCapService.js";
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
 
-const INCOME_TYPES = ["trading", "referral", "level", "salary"];
+const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "salary", "SALARY"];
 
 const getPagination = (query) => {
   const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
@@ -47,9 +47,9 @@ const findUserByParam = async (userRef) => {
 
 const formatIncomeType = (type) => {
   if (type === "trading") return "Trading";
-  if (type === "referral") return "Referral";
+  if (type === "referral" || type === "REFERRAL") return "Referral";
   if (type === "level") return "Level";
-  if (type === "salary") return "Salary";
+  if (type === "salary" || type === "SALARY") return "Salary";
   return type;
 };
 
@@ -80,6 +80,13 @@ const buildIncomeBaseFilter = () => ({
   status: { $in: ["completed", "confirmed", "success"] },
   $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
 });
+
+const getIncomeTransactionTypeFilter = (incomeType = "") => {
+  if (incomeType === "referral") return { $in: ["referral", "REFERRAL"] };
+  if (incomeType === "salary") return { $in: ["salary", "SALARY"] };
+  if (incomeType && INCOME_TYPES.includes(incomeType)) return incomeType;
+  return { $in: INCOME_TYPES };
+};
 
 const getSum = async (model, match) => {
   const result = await model.aggregate([{ $match: match }, { $group: { _id: null, total: { $sum: "$amount" } } }]);
@@ -265,12 +272,20 @@ export const getDashboardOverview = asyncHandler(async (_req, res) => {
     await Promise.all([
       getSum(Transaction, tradingIncomeFilter),
       getSum(Transaction, { ...tradingIncomeFilter, createdAt: { $gte: start, $lte: end } }),
-      getSum(Transaction, { type: "referral", status: { $in: ["completed", "confirmed", "success"] } }),
-      getSum(Transaction, { type: "referral", status: { $in: ["completed", "confirmed", "success"] }, createdAt: { $gte: start, $lte: end } }),
+      getSum(Transaction, { type: { $in: ["referral", "REFERRAL"] }, status: { $in: ["completed", "confirmed", "success"] } }),
+      getSum(Transaction, {
+        type: { $in: ["referral", "REFERRAL"] },
+        status: { $in: ["completed", "confirmed", "success"] },
+        createdAt: { $gte: start, $lte: end },
+      }),
       getSum(Transaction, { type: "level", status: { $in: ["completed", "confirmed", "success"] } }),
       getSum(Transaction, { type: "level", status: { $in: ["completed", "confirmed", "success"] }, createdAt: { $gte: start, $lte: end } }),
-      getSum(Transaction, { type: "salary", status: { $in: ["completed", "confirmed", "success"] } }),
-      getSum(Transaction, { type: "salary", status: { $in: ["completed", "confirmed", "success"] }, createdAt: { $gte: start, $lte: end } }),
+      getSum(Transaction, { type: { $in: ["salary", "SALARY"] }, status: { $in: ["completed", "confirmed", "success"] } }),
+      getSum(Transaction, {
+        type: { $in: ["salary", "SALARY"] },
+        status: { $in: ["completed", "confirmed", "success"] },
+        createdAt: { $gte: start, $lte: end },
+      }),
     ]);
 
   res.json({
@@ -478,9 +493,9 @@ export const getUserProfileDetail = asyncHandler(async (req, res) => {
 
   for (const row of incomeBreakdownAgg) {
     if (row._id === "trading") incomeBreakdown.tradingIncome = row.total;
-    if (row._id === "referral") incomeBreakdown.referralIncome = row.total;
+    if (row._id === "referral" || row._id === "REFERRAL") incomeBreakdown.referralIncome += row.total;
     if (row._id === "level") incomeBreakdown.levelIncome = row.total;
-    if (row._id === "salary") incomeBreakdown.salaryIncome = row.total;
+    if (row._id === "salary" || row._id === "SALARY") incomeBreakdown.salaryIncome += row.total;
   }
 
   res.json({
@@ -1003,7 +1018,16 @@ export const rejectWithdrawal = asyncHandler(async (req, res) => {
 export const listTransactionsAdmin = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req.query);
   const query = {};
-  if (req.query.type) query.type = String(req.query.type);
+  if (req.query.type) {
+    const type = String(req.query.type).toLowerCase();
+    if (type === "referral") {
+      query.type = { $in: ["referral", "REFERRAL"] };
+    } else if (type === "salary") {
+      query.type = { $in: ["salary", "SALARY"] };
+    } else {
+      query.type = String(req.query.type);
+    }
+  }
   if (req.query.status) query.status = String(req.query.status);
   if (req.query.userId) {
     const user = await findUserByParam(req.query.userId);
@@ -1075,7 +1099,7 @@ export const getIncomeHistory = asyncHandler(async (req, res) => {
   }
 
   const fallbackQuery = {
-    type: incomeType && INCOME_TYPES.includes(incomeType) ? incomeType : { $in: INCOME_TYPES },
+    type: getIncomeTransactionTypeFilter(incomeType),
     status: { $in: ["completed", "confirmed", "success"] },
     $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
   };

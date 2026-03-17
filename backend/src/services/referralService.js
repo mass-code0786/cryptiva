@@ -90,11 +90,17 @@ const distributeDirectReferralOnTradeStart = async ({ traderUser, tradeAmount, t
   await Promise.all([
     addTransaction(
       sponsor._id,
-      "referral",
+      "REFERRAL",
       creditedAmount,
       `Direct referral bonus from ${traderUser.userId || traderUser.email}`,
-      "completed",
-      { sourceUserId: traderUser._id, tradeId, percentage: 5, trigger: "trade_start" }
+      "success",
+      {
+        sourceUser: traderUser.userId || traderUser.email,
+        sourceUserId: traderUser._id,
+        tradeId,
+        percentage: 5,
+        trigger: "trade_start",
+      }
     ),
     logIncomeEvent({
       userId: sponsor._id,

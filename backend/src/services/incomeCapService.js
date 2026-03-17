@@ -44,10 +44,10 @@ export const hasActiveReferral = async (userId) => {
 
 export const getIncomeCapState = async (userId) => {
   const wallet = await ensureWallet(userId);
-  const depositBase = toAmount(wallet.depositTotal || 0);
+  const investmentBase = toAmount(wallet.tradingWallet || wallet.tradingBalance || 0);
   const workingUser = await hasActiveReferral(userId);
   const multiplier = workingUser ? 6 : 3;
-  const maxCap = toAmount(depositBase * multiplier);
+  const maxCap = toAmount(investmentBase * multiplier);
 
   const tradingIncome = toAmount(wallet.tradingIncomeWallet);
   const referralIncome = toAmount(wallet.referralIncomeWallet);
@@ -58,6 +58,7 @@ export const getIncomeCapState = async (userId) => {
 
   return {
     wallet,
+    investmentBase,
     workingUser,
     maxCap,
     totalIncome,

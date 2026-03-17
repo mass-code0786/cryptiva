@@ -1,4 +1,5 @@
 import ActivityLog from "../models/ActivityLog.js";
+import mongoose from "mongoose";
 import Deposit from "../models/Deposit.js";
 import IncomeLog from "../models/IncomeLog.js";
 import SupportQuery from "../models/SupportQuery.js";
@@ -38,11 +39,29 @@ const ensureWallet = async (userId) => {
 };
 
 const findUserByParam = async (userRef) => {
-  const byId = await User.findById(userRef);
-  if (byId) {
-    return byId;
+  const normalizedRef = String(userRef || "").trim();
+  if (!normalizedRef) {
+    return null;
   }
-  return User.findOne({ userId: String(userRef) });
+
+  if (mongoose.isValidObjectId(normalizedRef)) {
+    const byId = await User.findById(normalizedRef);
+    if (byId) {
+      return byId;
+    }
+  }
+
+  const byUserId = await User.findOne({ userId: normalizedRef.toUpperCase() });
+  if (byUserId) {
+    return byUserId;
+  }
+
+  const byReferralCode = await User.findOne({ referralCode: normalizedRef.toLowerCase() });
+  if (byReferralCode) {
+    return byReferralCode;
+  }
+
+  return User.findOne({ username: normalizedRef.toUpperCase() });
 };
 
 const formatIncomeType = (type) => {
@@ -709,6 +728,10 @@ export const listDeposits = asyncHandler(async (req, res) => {
 });
 
 export const approveDeposit = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.depositId)) {
+    throw new ApiError(404, "Deposit request not found");
+  }
+
   const deposit = await Deposit.findById(req.params.depositId);
   if (!deposit) throw new ApiError(404, "Deposit request not found");
   if (deposit.status !== "pending") throw new ApiError(400, "Deposit is already processed");
@@ -747,6 +770,10 @@ export const approveDeposit = asyncHandler(async (req, res) => {
 
 export const rejectDeposit = asyncHandler(async (req, res) => {
   const reason = String(req.body.reason || "Rejected by admin").trim();
+  if (!mongoose.isValidObjectId(req.params.depositId)) {
+    throw new ApiError(404, "Deposit request not found");
+  }
+
   const deposit = await Deposit.findById(req.params.depositId);
   if (!deposit) throw new ApiError(404, "Deposit request not found");
   if (deposit.status !== "pending") throw new ApiError(400, "Deposit is already processed");
@@ -814,6 +841,10 @@ export const listTrades = asyncHandler(async (req, res) => {
 });
 
 export const updateTradeProfitRate = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.tradeId)) {
+    throw new ApiError(404, "Trade not found");
+  }
+
   const trade = await Trade.findById(req.params.tradeId).populate("userId", "userId email");
   if (!trade) throw new ApiError(404, "Trade not found");
 
@@ -870,6 +901,9 @@ export const adjustTradeIncome = asyncHandler(async (req, res) => {
   }
   if (!["increase", "decrease"].includes(normalizedAction)) {
     throw new ApiError(400, "action must be increase or decrease");
+  }
+  if (!mongoose.isValidObjectId(tradeId)) {
+    throw new ApiError(404, "Trade not found");
   }
 
   const trade = await Trade.findById(tradeId);
@@ -960,6 +994,10 @@ export const adjustTradeIncome = asyncHandler(async (req, res) => {
 });
 
 export const approveWithdrawal = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.withdrawalId)) {
+    throw new ApiError(404, "Withdrawal request not found");
+  }
+
   const withdrawal = await Withdrawal.findById(req.params.withdrawalId);
   if (!withdrawal) throw new ApiError(404, "Withdrawal request not found");
   if (withdrawal.status !== "pending") throw new ApiError(400, "Withdrawal is already processed");
@@ -985,6 +1023,10 @@ export const approveWithdrawal = asyncHandler(async (req, res) => {
 
 export const rejectWithdrawal = asyncHandler(async (req, res) => {
   const reason = String(req.body.reason || "Rejected by admin").trim();
+  if (!mongoose.isValidObjectId(req.params.withdrawalId)) {
+    throw new ApiError(404, "Withdrawal request not found");
+  }
+
   const withdrawal = await Withdrawal.findById(req.params.withdrawalId);
   if (!withdrawal) throw new ApiError(404, "Withdrawal request not found");
   if (withdrawal.status !== "pending") throw new ApiError(400, "Withdrawal is already processed");
@@ -1189,6 +1231,10 @@ export const replySupportQueryAdmin = asyncHandler(async (req, res) => {
     throw new ApiError(400, "adminReply is required");
   }
 
+  if (!mongoose.isValidObjectId(req.params.queryId)) {
+    throw new ApiError(404, "Support query not found");
+  }
+
   const item = await SupportQuery.findById(req.params.queryId);
   if (!item) {
     throw new ApiError(404, "Support query not found");
@@ -1210,6 +1256,10 @@ export const replySupportQueryAdmin = asyncHandler(async (req, res) => {
 });
 
 export const approveSupportQueryAdmin = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.queryId)) {
+    throw new ApiError(404, "Support query not found");
+  }
+
   const item = await SupportQuery.findById(req.params.queryId);
   if (!item) {
     throw new ApiError(404, "Support query not found");
@@ -1230,6 +1280,10 @@ export const approveSupportQueryAdmin = asyncHandler(async (req, res) => {
 });
 
 export const rejectSupportQueryAdmin = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.queryId)) {
+    throw new ApiError(404, "Support query not found");
+  }
+
   const item = await SupportQuery.findById(req.params.queryId);
   if (!item) {
     throw new ApiError(404, "Support query not found");

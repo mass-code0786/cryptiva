@@ -20,6 +20,7 @@ import withdrawalRoutes from "./routes/withdrawalRoutes.js";
 import { settleActiveTrades, startTradeEngine, stopTradeEngine } from "./services/tradeEngineService.js";
 import { startLevelIncomeScheduler } from "./services/levelIncomeSchedulerService.js";
 import { startSalaryScheduler } from "./services/salarySchedulerService.js";
+import { startKeepAliveScheduler, stopKeepAliveScheduler } from "./services/keepAliveService.js";
 
 const app = express();
 
@@ -67,7 +68,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "cryptiva-api" });
+  res.json({ status: "ok", ok: true, service: "cryptiva-api" });
 });
 
 app.use("/api/auth", authRoutes);
@@ -101,6 +102,10 @@ mongoose
 
     app.listen(PORT, () => {
       console.log(`Cryptiva backend running on port ${PORT}`);
+      startKeepAliveScheduler({
+        port: PORT,
+        intervalMs: Number(process.env.KEEP_ALIVE_INTERVAL_MS) || 300000,
+      });
     });
   })
   .catch((error) => {
@@ -115,4 +120,12 @@ mongoose.connection.on("disconnected", () => {
 
 mongoose.connection.on("connected", () => {
   startTradeEngine();
+});
+
+process.on("SIGINT", () => {
+  stopKeepAliveScheduler();
+});
+
+process.on("SIGTERM", () => {
+  stopKeepAliveScheduler();
 });

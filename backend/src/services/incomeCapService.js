@@ -1,4 +1,5 @@
 import Trade from "../models/Trade.js";
+import mongoose from "mongoose";
 import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
 
@@ -13,6 +14,10 @@ const ensureWallet = async (userId) => {
 const toAmount = (value) => Number(Number(value || 0).toFixed(6));
 
 export const hasActiveReferral = async (userId) => {
+  if (!mongoose.isValidObjectId(userId)) {
+    return false;
+  }
+
   const baseUser = await User.findById(userId).select("_id userId");
   if (!baseUser) {
     return false;

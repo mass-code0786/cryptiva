@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import mongoose from "mongoose";
 
 import Deposit from "../models/Deposit.js";
 import Transaction from "../models/Transaction.js";
@@ -102,6 +103,10 @@ export const listDepositHistory = asyncHandler(async (req, res) => {
 });
 
 export const getDepositStatus = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    throw new ApiError(404, "Deposit not found");
+  }
+
   const deposit = await Deposit.findOne({ _id: req.params.id, userId: req.user._id });
   if (!deposit) {
     throw new ApiError(404, "Deposit not found");

@@ -1,4 +1,5 @@
 import ReferralIncome from "../models/ReferralIncome.js";
+import mongoose from "mongoose";
 import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 import { logIncomeEvent } from "./incomeLogService.js";
@@ -13,13 +14,10 @@ export const distributeReferralRewards = async ({ user, depositAmount, depositId
 
 const resolveSponsorFromTrader = async (traderUser) => {
   if (traderUser?.referredBy) {
-    let sponsorById = null;
-    try {
-      sponsorById = await User.findById(traderUser.referredBy);
-    } catch {
-      sponsorById = null;
+    if (mongoose.isValidObjectId(traderUser.referredBy)) {
+      const sponsorById = await User.findById(traderUser.referredBy);
+      if (sponsorById) return sponsorById;
     }
-    if (sponsorById) return sponsorById;
 
     const sponsorByLegacyUserId = await User.findOne({ userId: String(traderUser.referredBy).toUpperCase() });
     if (sponsorByLegacyUserId) return sponsorByLegacyUserId;
@@ -100,7 +98,10 @@ export const distributeUnilevelIncomeOnTradeStart = async ({ traderUser, tradeAm
   }
 
   const trader =
-    (traderUser?._id && (await User.findById(traderUser._id).select("_id userId email referredBy referredByUserId"))) || traderUser;
+    (traderUser?._id &&
+      mongoose.isValidObjectId(traderUser._id) &&
+      (await User.findById(traderUser._id).select("_id userId email referredBy referredByUserId"))) ||
+    traderUser;
   if (!trader?._id) {
     return;
   }

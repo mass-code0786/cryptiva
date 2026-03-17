@@ -1,6 +1,7 @@
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
 import Withdrawal from "../models/Withdrawal.js";
+import mongoose from "mongoose";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 
 const ensureWallet = async (userId) => {
@@ -97,6 +98,10 @@ export const listWithdrawalHistory = asyncHandler(async (req, res) => {
 });
 
 export const getWithdrawalStatus = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    throw new ApiError(404, "Withdrawal not found");
+  }
+
   const withdrawal = await Withdrawal.findOne({ _id: req.params.id, userId: req.user._id });
   if (!withdrawal) {
     throw new ApiError(404, "Withdrawal not found");

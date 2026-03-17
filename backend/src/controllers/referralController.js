@@ -1,4 +1,5 @@
 import ReferralIncome from "../models/ReferralIncome.js";
+import mongoose from "mongoose";
 import Trade from "../models/Trade.js";
 import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
@@ -30,6 +31,10 @@ const buildChildMatch = (parentUserId, parentUserRef) => ({
 });
 
 const collectAllMembersByLevel = async (rootUserId, maxDepth = 30) => {
+  if (!mongoose.isValidObjectId(rootUserId)) {
+    return [];
+  }
+
   const rootUser = await User.findById(rootUserId).select("_id userId");
   if (!rootUser) {
     return [];
@@ -78,6 +83,10 @@ const collectAllMembersByLevel = async (rootUserId, maxDepth = 30) => {
 };
 
 const collectDescendantIds = async (rootUserId) => {
+  if (!mongoose.isValidObjectId(rootUserId)) {
+    return [];
+  }
+
   const rootUser = await User.findById(rootUserId).select("_id userId");
   if (!rootUser) {
     return [];
@@ -253,6 +262,10 @@ export const listReferralIncomeHistory = asyncHandler(async (req, res) => {
 });
 
 export const computeTeamBusiness = async (userId) => {
+  if (!mongoose.isValidObjectId(userId)) {
+    return { referrals: [], mainLegBusiness: 0, otherLegBusiness: 0 };
+  }
+
   const rootUser = await User.findById(userId).select("_id userId");
   if (!rootUser) {
     return { referrals: [], mainLegBusiness: 0, otherLegBusiness: 0 };
@@ -292,7 +305,13 @@ export const computeTeamBusiness = async (userId) => {
 
 const resolveParentUser = async (user) => {
   if (user?.referredBy) {
-    return User.findById(user.referredBy).select("_id userId referredBy referredByUserId");
+    if (mongoose.isValidObjectId(user.referredBy)) {
+      const byId = await User.findById(user.referredBy).select("_id userId referredBy referredByUserId");
+      if (byId) {
+        return byId;
+      }
+    }
+    return User.findOne({ userId: String(user.referredBy).toUpperCase() }).select("_id userId referredBy referredByUserId");
   }
   if (user?.referredByUserId) {
     return User.findOne({ userId: user.referredByUserId }).select("_id userId referredBy referredByUserId");
@@ -303,6 +322,10 @@ const resolveParentUser = async (user) => {
 export const syncTeamBusinessForUser = async (userId) => {
   const result = await computeTeamBusiness(userId);
   const totalTeamBusiness = Number((result.mainLegBusiness + result.otherLegBusiness).toFixed(6));
+  if (!mongoose.isValidObjectId(userId)) {
+    return { ...result, totalTeamBusiness };
+  }
+
   const user = await User.findById(userId).select("_id salaryRank");
   if (!user) {
     return { ...result, totalTeamBusiness };
@@ -324,6 +347,8 @@ export const syncTeamBusinessForUser = async (userId) => {
 };
 
 export const syncTeamBusinessForUserAndUplines = async (userId, maxLevels = 30) => {
+  if (!mongoose.isValidObjectId(userId)) return { updated: 0 };
+
   const baseUser = await User.findById(userId).select("_id userId referredBy referredByUserId");
   if (!baseUser) return { updated: 0 };
 

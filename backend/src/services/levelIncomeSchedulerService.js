@@ -1,4 +1,5 @@
 import IncomeLog from "../models/IncomeLog.js";
+import mongoose from "mongoose";
 import ReferralIncome from "../models/ReferralIncome.js";
 import Setting from "../models/Setting.js";
 import Transaction from "../models/Transaction.js";
@@ -54,6 +55,12 @@ const buildUserResolvers = () => {
     const key = String(id || "");
     if (!key) return null;
     if (byIdCache.has(key)) return byIdCache.get(key);
+    if (!mongoose.isValidObjectId(key)) {
+      const byUserId = await getByUserId(key);
+      byIdCache.set(key, byUserId || null);
+      return byUserId || null;
+    }
+
     const user = await User.findById(key).select("_id userId email referredBy referredByUserId");
     byIdCache.set(key, user || null);
     if (user?.userId) byUserIdCache.set(user.userId, user);
@@ -61,7 +68,7 @@ const buildUserResolvers = () => {
   };
 
   const getByUserId = async (userId) => {
-    const key = String(userId || "");
+    const key = String(userId || "").toUpperCase();
     if (!key) return null;
     if (byUserIdCache.has(key)) return byUserIdCache.get(key);
     const user = await User.findOne({ userId: key }).select("_id userId email referredBy referredByUserId");

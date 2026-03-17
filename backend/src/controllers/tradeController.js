@@ -64,7 +64,7 @@ export const placeTrade = asyncHandler(async (req, res) => {
 });
 
 export const getTradeStatus = asyncHandler(async (req, res) => {
-  const trades = await Trade.find({ userId: req.user._id }).sort({ createdAt: -1 });
+  const trades = await Trade.find({ userId: req.user._id, status: "active" }).sort({ createdAt: -1 });
   const settledTrades = [];
 
   for (const trade of trades) {

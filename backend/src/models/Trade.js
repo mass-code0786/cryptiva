@@ -18,6 +18,11 @@ const tradeSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    roiGenerated: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     capping: {
       type: Number,
       required: true,
@@ -63,6 +68,14 @@ tradeSchema.pre("validate", function syncInvestmentLimit(next) {
 
   if (!this.capping && this.investmentLimit) {
     this.capping = this.investmentLimit;
+  }
+
+  if (!Number.isFinite(Number(this.roiGenerated))) {
+    this.roiGenerated = Number(this.totalIncome || 0);
+  }
+
+  if (Number(this.roiGenerated || 0) < Number(this.totalIncome || 0)) {
+    this.roiGenerated = Number(this.totalIncome || 0);
   }
 
   next();

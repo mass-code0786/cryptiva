@@ -15,6 +15,7 @@ type ActiveTrade = {
 const TradingPage = () => {
   const [amount, setAmount] = useState("5");
   const [walletBalance, setWalletBalance] = useState(0);
+  const [tradingWallet, setTradingWallet] = useState(0);
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -26,14 +27,20 @@ const TradingPage = () => {
     ]);
     const wallet = walletData.wallet as Wallet | null;
     setWalletBalance(wallet?.depositWallet || 0);
+    setTradingWallet(wallet?.tradingWallet || wallet?.tradingBalance || 0);
     setActiveTrades(tradeData.items || []);
   };
 
   useEffect(() => {
     loadData().catch(() => {
       setWalletBalance(0);
+      setTradingWallet(0);
       setActiveTrades([]);
     });
+    const timer = window.setInterval(() => {
+      loadData().catch(() => {});
+    }, 15000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const onSubmit = async (event: FormEvent) => {
@@ -45,11 +52,6 @@ const TradingPage = () => {
       const amountNumber = Number(amount);
       if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
         setMessage("Enter a valid amount");
-        return;
-      }
-
-      if (walletBalance < amountNumber) {
-        setMessage("Please deposit first");
         return;
       }
 
@@ -70,6 +72,9 @@ const TradingPage = () => {
           <h2 className="text-xl font-semibold">Place Trade</h2>
           <p className="mt-2 text-sm text-slate-300">
             Deposit Wallet: <span className="font-semibold text-cyan-300">${walletBalance.toFixed(2)}</span>
+          </p>
+          <p className="mt-1 text-sm text-slate-300">
+            Trading Wallet: <span className="font-semibold text-cyan-300">${tradingWallet.toFixed(2)}</span>
           </p>
           <p className="mt-1 text-sm text-slate-400">Minimum trade amount is $5.</p>
           <form className="mt-4 space-y-3" onSubmit={onSubmit}>

@@ -92,6 +92,7 @@ export const settleTradeIncome = async (trade, now = new Date(), roiRatePerMinut
     return { trade, settledAmount: 0, completed: false };
   }
   trade.totalIncome = Number((trade.totalIncome + creditedAmount).toFixed(6));
+  trade.roiGenerated = Number((Number(trade.roiGenerated || 0) + creditedAmount).toFixed(6));
 
   await Promise.all([
     trade.save(),

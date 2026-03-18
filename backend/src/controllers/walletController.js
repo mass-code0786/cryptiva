@@ -182,7 +182,7 @@ export const moveToTradingBalance = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({
-    message: "Amount moved to trading balance",
+    message: "Wallet-funded activation completed",
     wallet: updatedWallet,
     trade,
   });

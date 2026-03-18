@@ -12,7 +12,9 @@
     "fix:referred-by:dry": "node scripts/fixLegacyReferredBy.js",
     "fix:referred-by:apply": "node scripts/fixLegacyReferredBy.js --apply",
     "audit:activation-mismatch": "node scripts/auditActivationMismatch.js",
-    "audit:activation-mismatch:all": "node scripts/auditActivationMismatch.js --all"
+    "audit:activation-mismatch:all": "node scripts/auditActivationMismatch.js --all",
+    "repair:activation:dry": "node scripts/repairActivationStatusAndIncome.js",
+    "repair:activation:apply": "node scripts/repairActivationStatusAndIncome.js --apply"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

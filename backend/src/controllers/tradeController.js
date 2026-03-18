@@ -12,7 +12,7 @@ export const placeTrade = asyncHandler(async (req, res) => {
 
   const wallet = await Wallet.findOne({ userId: req.user._id });
   if (!wallet || Number(wallet.depositWallet || 0) < amount) {
-    throw new ApiError(400, "Please deposit first");
+    throw new ApiError(400, "Insufficient wallet balance for activation");
   }
 
   const { trade } = await startTradeAndActivate({

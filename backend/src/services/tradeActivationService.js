@@ -1,6 +1,7 @@
 import Trade from "../models/Trade.js";
 import Transaction from "../models/Transaction.js";
 import Wallet from "../models/Wallet.js";
+import PackagePurchase from "../models/PackagePurchase.js";
 import { activateUserById } from "./activationService.js";
 import { distributeUnilevelIncomeOnTradeStart } from "./referralService.js";
 import { getDefaultTradeLimit } from "./tradeEngineService.js";
@@ -16,6 +17,10 @@ const ensureWallet = async (userId) => {
 
 export const startTradeAndActivate = async ({ user, amount, activationSource = "trade_start" }) => {
   const amountValue = Number(amount);
+  if (!Number.isFinite(amountValue) || amountValue <= 0) {
+    throw new Error("Invalid activation amount");
+  }
+
   const wallet = await ensureWallet(user._id);
 
   if (wallet.depositWallet < amountValue) {
@@ -42,9 +47,24 @@ export const startTradeAndActivate = async ({ user, amount, activationSource = "
     type: "wallet_transfer",
     amount: amountValue,
     network: "INTERNAL",
-    source: "Deposit wallet to trading wallet",
+    source: "Wallet balance to trading wallet",
     status: "completed",
-    metadata: { tradeId: trade._id, action: "trade_open" },
+    metadata: { tradeId: trade._id, action: "trade_open", fundingSource: "wallet_balance_any_source" },
+  });
+
+  await PackagePurchase.create({
+    userId: user._id,
+    tradeId: trade._id,
+    packageName: "wallet_activation",
+    amount: amountValue,
+    status: "active",
+    activationSource,
+    fundingSource: "wallet_balance_any_source",
+    activatedAt: new Date(),
+    metadata: {
+      trigger: "trade_open",
+      note: "Activation funded from wallet balance without source restrictions",
+    },
   });
 
   await activateUserById({ userId: user._id, source: activationSource });

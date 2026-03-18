@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import Trade from "../models/Trade.js";
 import User from "../models/User.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
-import { ACTIVATION_MIN_TRADE_AMOUNT, getActivatedUserIdSet, getActivationInvestmentByUserIds } from "../services/activationService.js";
+import { getActivatedUserIdSet, getActivationInvestmentByUserIds, getUserActivationStatusMap } from "../services/activationService.js";
 
 const salaryRankTable = [
   { rank: 1, name: "Rank 1", main: 2000, other: 3000, weeklySalary: 50 },
@@ -52,10 +52,12 @@ const collectAllMembersByLevel = async (rootUserId, maxDepth = 30) => {
     const children = await User.find(buildChildMatch(id, userId)).sort({ createdAt: 1 });
     const childIds = children.map((child) => child._id);
     const investmentByUserId = childIds.length ? await getActivationInvestmentByUserIds(childIds) : new Map();
+    const activationByUserId = childIds.length ? await getUserActivationStatusMap(childIds) : new Map();
 
     for (const child of children) {
-      const investment = Number(investmentByUserId.get(child._id.toString()) || 0);
-      const active = investment >= ACTIVATION_MIN_TRADE_AMOUNT;
+      const childId = child._id.toString();
+      const investment = Number(investmentByUserId.get(childId) || 0);
+      const active = Boolean(activationByUserId.get(childId)?.active);
       const nextLevel = level + 1;
       members.push({
         _id: child._id,

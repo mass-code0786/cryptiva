@@ -14,6 +14,7 @@ import { logIncomeEvent } from "../services/incomeLogService.js";
 import { applyIncomeWithCap } from "../services/incomeCapService.js";
 import { ACTIVATION_MIN_TRADE_AMOUNT, countActivatedUsers } from "../services/activationService.js";
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
+import { startTradeAndActivate } from "../services/tradeActivationService.js";
 
 const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "LEVEL", "salary", "SALARY"];
 
@@ -432,7 +433,15 @@ export const listUsers = asyncHandler(async (req, res) => {
         referralCount: { $ifNull: [{ $arrayElemAt: ["$referralAgg.count", 0] }, 0] },
         totalIncome: { $ifNull: [{ $arrayElemAt: ["$incomeAgg.totalIncome", 0] }, 0] },
         activationInvestment: { $ifNull: [{ $arrayElemAt: ["$tradeAgg.totalInvestment", 0] }, 0] },
-        isActivated: { $gte: [{ $ifNull: [{ $arrayElemAt: ["$tradeAgg.totalInvestment", 0] }, 0] }, ACTIVATION_MIN_TRADE_AMOUNT] },
+        isActivated: {
+          $or: [
+            { $eq: ["$isActive", true] },
+            { $eq: ["$packageActive", true] },
+            { $eq: ["$mlmEligible", true] },
+            { $eq: [{ $toLower: { $ifNull: ["$packageStatus", "inactive"] } }, "active"] },
+            { $gte: [{ $ifNull: [{ $arrayElemAt: ["$tradeAgg.totalInvestment", 0] }, 0] }, ACTIVATION_MIN_TRADE_AMOUNT] },
+          ],
+        },
       },
     },
   ];
@@ -651,16 +660,15 @@ export const transferFund = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "User not found");
   }
-
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const time = now.toISOString().slice(11, 19);
   const wallet = await ensureWallet(user._id);
   wallet.depositWallet += amountValue;
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10);
-  const time = now.toISOString().slice(11, 19);
 
-  await Transaction.create({
+  const adminCreditTxn = await Transaction.create({
     userId: user._id,
     type: "admin_transfer",
     amount: amountValue,
@@ -670,18 +678,23 @@ export const transferFund = asyncHandler(async (req, res) => {
     metadata: { action: "admin_fund_transfer", adminId: req.user._id, reason: reason || "", date, time },
   });
 
+  const { wallet: activatedWallet, trade } = await startTradeAndActivate({
+    user,
+    amount: amountValue,
+    activationSource: "admin_wallet_activation",
+  });
+
   await addActivityLog({
     adminId: req.user._id,
     type: "admin_transfer",
-    action: "Fund transferred",
+    action: "Fund transferred and user activated",
     targetUserId: user._id,
     amount: amountValue,
     reason: reason || "",
-    metadata: { userId: user.userId },
+    metadata: { userId: user.userId, tradeId: trade._id, transactionId: adminCreditTxn._id },
   });
-  await syncTeamBusinessForUserAndUplines(user._id);
 
-  res.json({ message: "Fund transferred successfully", wallet });
+  res.json({ message: "Fund transferred and activation completed", wallet: activatedWallet, trade });
 });
 
 export const deductFund = asyncHandler(async (req, res) => {

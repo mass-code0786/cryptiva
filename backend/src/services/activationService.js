@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Trade from "../models/Trade.js";
+import User from "../models/User.js";
 
 export const ACTIVATION_MIN_TRADE_AMOUNT = 5;
 const ACTIVATION_TRADE_STATUSES = ["active", "completed"];
@@ -36,10 +37,10 @@ export const getActivationInvestmentByUserIds = async (userIds = []) => {
 };
 
 export const getActivatedUserIdSet = async (userIds = []) => {
-  const investmentByUserId = await getActivationInvestmentByUserIds(userIds);
+  const statusByUserId = await getUserActivationStatusMap(userIds);
   const activated = new Set();
-  for (const [userId, totalInvestment] of investmentByUserId.entries()) {
-    if (totalInvestment >= ACTIVATION_MIN_TRADE_AMOUNT) {
+  for (const [userId, state] of statusByUserId.entries()) {
+    if (state.active) {
       activated.add(userId);
     }
   }
@@ -47,19 +48,90 @@ export const getActivatedUserIdSet = async (userIds = []) => {
 };
 
 export const countActivatedUsers = async ({ createdFrom = null, createdTo = null } = {}) => {
-  const match = { status: { $in: ACTIVATION_TRADE_STATUSES } };
+  const query = {};
   if (createdFrom || createdTo) {
-    match.createdAt = {};
-    if (createdFrom) match.createdAt.$gte = createdFrom;
-    if (createdTo) match.createdAt.$lte = createdTo;
+    query.createdAt = {};
+    if (createdFrom) query.createdAt.$gte = createdFrom;
+    if (createdTo) query.createdAt.$lte = createdTo;
   }
 
-  const rows = await Trade.aggregate([
-    { $match: match },
-    { $group: { _id: "$userId", totalInvestment: { $sum: "$amount" } } },
-    { $match: { totalInvestment: { $gte: ACTIVATION_MIN_TRADE_AMOUNT } } },
-    { $count: "count" },
+  const users = await User.find(query).select("_id isActive packageActive packageStatus mlmEligible");
+  if (!users.length) {
+    return 0;
+  }
+
+  const userIds = users.map((user) => user._id);
+  const investmentByUserId = await getActivationInvestmentByUserIds(userIds);
+
+  let count = 0;
+  for (const user of users) {
+    const userId = String(user._id);
+    const totalInvestment = Number(investmentByUserId.get(userId) || 0);
+    if (resolveActivationState({ user, totalInvestment })) {
+      count += 1;
+    }
+  }
+
+  return count;
+};
+
+const resolveActivationState = ({ user, totalInvestment = 0 }) => {
+  const packageStatus = String(user?.packageStatus || "").toLowerCase();
+  const explicitActive =
+    Boolean(user?.isActive) ||
+    Boolean(user?.packageActive) ||
+    Boolean(user?.mlmEligible) ||
+    packageStatus === "active";
+
+  if (explicitActive) {
+    return true;
+  }
+
+  return Number(totalInvestment || 0) >= ACTIVATION_MIN_TRADE_AMOUNT;
+};
+
+export const getUserActivationStatusMap = async (userIds = []) => {
+  const ids = normalizeIds(userIds);
+  if (!ids.length) {
+    return new Map();
+  }
+
+  const [users, investmentByUserId] = await Promise.all([
+    User.find({ _id: { $in: ids } }).select("_id isActive packageActive packageStatus mlmEligible"),
+    getActivationInvestmentByUserIds(ids),
   ]);
 
-  return Number(rows[0]?.count || 0);
+  const userById = new Map(users.map((user) => [String(user._id), user]));
+  const map = new Map();
+
+  for (const id of ids) {
+    const key = String(id);
+    const user = userById.get(key);
+    const totalInvestment = Number(investmentByUserId.get(key) || 0);
+    const active = resolveActivationState({ user, totalInvestment });
+    map.set(key, { active, totalInvestment });
+  }
+
+  return map;
+};
+
+export const activateUserById = async ({ userId, source = "trade_start", activatedAt = new Date() } = {}) => {
+  if (!mongoose.isValidObjectId(userId)) {
+    return null;
+  }
+
+  return User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        isActive: true,
+        packageActive: true,
+        packageStatus: "active",
+        mlmEligible: true,
+        activatedAt,
+        lastActivationSource: String(source || "trade_start").toLowerCase(),
+      },
+    },
+    { new: true }
+  );
 };

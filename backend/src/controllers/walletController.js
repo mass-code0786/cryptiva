@@ -1,12 +1,9 @@
 import Transaction from "../models/Transaction.js";
-import Trade from "../models/Trade.js";
 import Wallet from "../models/Wallet.js";
 import Deposit from "../models/Deposit.js";
 import Withdrawal from "../models/Withdrawal.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
-import { syncTeamBusinessForUserAndUplines } from "./referralController.js";
-import { distributeUnilevelIncomeOnTradeStart } from "../services/referralService.js";
-import { getDefaultTradeLimit } from "../services/tradeEngineService.js";
+import { startTradeAndActivate } from "../services/tradeActivationService.js";
 
 const ensureWallet = async (userId) => {
   let wallet = await Wallet.findOne({ userId });
@@ -170,50 +167,23 @@ export const withdrawFromWallet = asyncHandler(async (req, res) => {
 export const moveToTradingBalance = asyncHandler(async (req, res) => {
   const amount = Number(req.body.amount);
 
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new ApiError(400, "Enter a valid amount");
+  if (!Number.isFinite(amount) || amount < 5) {
+    throw new ApiError(400, "Minimum trade amount is $5");
   }
 
   const wallet = await ensureWallet(req.user._id);
   if (wallet.depositWallet < amount) {
     throw new ApiError(400, "Insufficient deposit wallet balance");
   }
-
-  wallet.depositWallet -= amount;
-  wallet.tradingWallet = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
-  wallet.tradingWallet += amount;
-  wallet.tradingBalance = wallet.tradingWallet;
-  wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
-  await wallet.save();
-
-  const trade = await Trade.create({
-    userId: req.user._id,
+  const { wallet: updatedWallet, trade } = await startTradeAndActivate({
+    user: req.user,
     amount,
-    capping: getDefaultTradeLimit(amount),
-    investmentLimit: getDefaultTradeLimit(amount),
-    status: "active",
+    activationSource: "wallet_trade_start",
   });
-
-  await Transaction.create({
-    userId: req.user._id,
-    type: "wallet_transfer",
-    amount,
-    network: "INTERNAL",
-    source: "Deposit wallet to trading wallet",
-    status: "completed",
-    metadata: { tradeId: trade._id, action: "trade_open" },
-  });
-
-  await distributeUnilevelIncomeOnTradeStart({
-    traderUser: req.user,
-    tradeAmount: amount,
-    tradeId: trade._id,
-  });
-  await syncTeamBusinessForUserAndUplines(req.user._id);
 
   res.status(201).json({
     message: "Amount moved to trading balance",
-    wallet,
+    wallet: updatedWallet,
     trade,
   });
 });

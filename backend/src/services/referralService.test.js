@@ -130,3 +130,46 @@ test("prevents duplicate direct commission on repeated callback for same event",
   assert.equal(state.incomeLogs.length, 1);
   assert.equal(state.referralIncomes.length, 1);
 });
+
+test("direct referral passes working-user bypass to income cap service", async () => {
+  const { state } = buildDeps({ creditedAmount: 5 });
+  let capturedArgs = null;
+
+  const deps = {
+    logger: { info: () => {}, warn: () => {} },
+    UserModel: {
+      findById: async (id) => (String(id) === String(SPONSOR._id) ? SPONSOR : null),
+      findOne: async (query) => (String(query?.userId || "").toUpperCase() === SPONSOR.userId ? SPONSOR : null),
+    },
+    ReferralIncomeModel: {
+      findOne: async () => null,
+      create: async (payload) => {
+        state.referralIncomes.push(payload);
+        return payload;
+      },
+    },
+    applyIncomeWithCapFn: async (args) => {
+      capturedArgs = args;
+      return { creditedAmount: 5 };
+    },
+    addTransactionFn: async (...args) => {
+      state.transactions.push(args);
+    },
+    logIncomeEventFn: async (payload) => {
+      state.incomeLogs.push(payload);
+    },
+  };
+
+  const result = await creditDirectReferralCommission({
+    traderUser: TRADER,
+    transactionAmount: 100,
+    eventType: "deposit_approved",
+    eventId: "507f1f77bcf86cd799439016",
+    eventStatus: "approved",
+    deps,
+  });
+
+  assert.equal(result.credited, 5);
+  assert.equal(capturedArgs?.bypassWorkingUserRestriction, true);
+  assert.equal(state.referralIncomes.length, 1);
+});

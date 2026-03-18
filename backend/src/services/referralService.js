@@ -4,6 +4,7 @@ import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 import { logIncomeEvent } from "./incomeLogService.js";
 import { applyIncomeWithCap } from "./incomeCapService.js";
+import { getIncomeCapState } from "./incomeCapService.js";
 
 const DIRECT_REFERRAL_PERCENT = 5;
 const QUALIFYING_SUCCESS_STATUSES = new Set(["success", "completed", "confirmed", "approved", "paid", "active"]);
@@ -78,6 +79,7 @@ export const creditDirectReferralCommission = async ({
   eventType,
   eventId = null,
   eventStatus = "success",
+  dryRun = false,
   sourceText = "",
   metadata = {},
   deps = {},
@@ -86,6 +88,7 @@ export const creditDirectReferralCommission = async ({
   const UserModel = deps.UserModel || User;
   const ReferralIncomeModel = deps.ReferralIncomeModel || ReferralIncome;
   const applyIncomeWithCapFn = deps.applyIncomeWithCapFn || applyIncomeWithCap;
+  const getIncomeCapStateFn = deps.getIncomeCapStateFn || getIncomeCapState;
   const addTransactionFn = deps.addTransactionFn || addTransaction;
   const logIncomeEventFn = deps.logIncomeEventFn || logIncomeEvent;
 
@@ -133,17 +136,25 @@ export const creditDirectReferralCommission = async ({
     return { credited: 0, skipped: true, reason: "invalid_amount" };
   }
 
-  const { creditedAmount } = await applyIncomeWithCapFn({
-    userId: sponsor._id,
-    requestedAmount: bonus,
-    walletField: "referralIncomeWallet",
-  });
+  let creditedAmount = 0;
+  if (dryRun) {
+    const capState = await getIncomeCapStateFn(sponsor._id);
+    creditedAmount = toAmount(Math.min(bonus, Number(capState.remainingCap || 0)));
+  } else {
+    const creditResult = await applyIncomeWithCapFn({
+      userId: sponsor._id,
+      requestedAmount: bonus,
+      walletField: "referralIncomeWallet",
+      bypassWorkingUserRestriction: true,
+    });
+    creditedAmount = Number(creditResult.creditedAmount || 0);
+  }
 
   if (creditedAmount <= 0) {
     logger.info(
       `[referral] direct referral commission capped/skipped: sponsor=${sponsor.userId || sponsor._id} trader=${traderUser.userId || traderUser._id} requested=${bonus}`
     );
-    return { credited: 0, skipped: true, reason: "cap_or_ineligible" };
+    return { credited: 0, skipped: true, reason: "cap_or_ineligible", dryRun };
   }
 
   const eventMetadata = {
@@ -176,35 +187,39 @@ export const creditDirectReferralCommission = async ({
     referralIncomePayload.depositId = new mongoose.Types.ObjectId(eventIdText);
   }
 
-  await Promise.all([
-    addTransactionFn(sponsor._id, "REFERRAL", creditedAmount, txnSourceText, "success", {
-      sourceUser: traderUser.userId || traderUser.email,
-      sourceUserId: traderUser._id,
-      percentage: DIRECT_REFERRAL_PERCENT,
-      event: eventMetadata,
-      ...metadata,
-    }),
-    logIncomeEventFn({
-      userId: sponsor._id,
-      incomeType: "referral",
-      amount: creditedAmount,
-      source: txnSourceText,
-      metadata: {
+  if (!dryRun) {
+    await Promise.all([
+      addTransactionFn(sponsor._id, "REFERRAL", creditedAmount, txnSourceText, "success", {
         sourceUser: traderUser.userId || traderUser.email,
         sourceUserId: traderUser._id,
         percentage: DIRECT_REFERRAL_PERCENT,
         event: eventMetadata,
         ...metadata,
-      },
-    }),
-    ReferralIncomeModel.create(referralIncomePayload),
-  ]);
+      }),
+      logIncomeEventFn({
+        userId: sponsor._id,
+        incomeType: "referral",
+        amount: creditedAmount,
+        source: txnSourceText,
+        metadata: {
+          sourceUser: traderUser.userId || traderUser.email,
+          sourceUserId: traderUser._id,
+          percentage: DIRECT_REFERRAL_PERCENT,
+          event: eventMetadata,
+          ...metadata,
+        },
+      }),
+      ReferralIncomeModel.create(referralIncomePayload),
+    ]);
+  }
 
   logger.info(
-    `[referral] credited direct referral commission: sponsor=${sponsor.userId || sponsor._id} trader=${traderUser.userId || traderUser._id} amount=${creditedAmount} eventType=${eventType} eventId=${eventIdText || "n/a"}`
+    dryRun
+      ? `[referral] dry-run direct referral commission eligible: sponsor=${sponsor.userId || sponsor._id} trader=${traderUser.userId || traderUser._id} amount=${creditedAmount} eventType=${eventType} eventId=${eventIdText || "n/a"}`
+      : `[referral] credited direct referral commission: sponsor=${sponsor.userId || sponsor._id} trader=${traderUser.userId || traderUser._id} amount=${creditedAmount} eventType=${eventType} eventId=${eventIdText || "n/a"}`
   );
 
-  return { credited: creditedAmount, sponsorId: sponsor._id, skipped: false };
+  return { credited: creditedAmount, sponsorId: sponsor._id, skipped: false, dryRun };
 };
 
 const getLevelPercentOnTradeStart = (level) => {

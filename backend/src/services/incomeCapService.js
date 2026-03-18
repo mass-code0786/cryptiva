@@ -70,7 +70,7 @@ export const getIncomeCapState = async (userId) => {
   };
 };
 
-export const applyIncomeWithCap = async ({ userId, requestedAmount, walletField }) => {
+export const applyIncomeWithCap = async ({ userId, requestedAmount, walletField, bypassWorkingUserRestriction = false }) => {
   const amount = toAmount(requestedAmount);
   if (!Number.isFinite(amount) || amount <= 0) {
     return { creditedAmount: 0, capReached: false, state: await getIncomeCapState(userId) };
@@ -78,7 +78,7 @@ export const applyIncomeWithCap = async ({ userId, requestedAmount, walletField 
 
   const state = await getIncomeCapState(userId);
   const nonTradingIncome = walletField !== "tradingIncomeWallet";
-  if (!state.workingUser && nonTradingIncome) {
+  if (!state.workingUser && nonTradingIncome && !bypassWorkingUserRestriction) {
     return { creditedAmount: 0, capReached: false, state };
   }
   const creditedAmount = toAmount(Math.min(amount, state.remainingCap));

@@ -14,7 +14,9 @@
     "audit:activation-mismatch": "node scripts/auditActivationMismatch.js",
     "audit:activation-mismatch:all": "node scripts/auditActivationMismatch.js --all",
     "repair:activation:dry": "node scripts/repairActivationStatusAndIncome.js",
-    "repair:activation:apply": "node scripts/repairActivationStatusAndIncome.js --apply"
+    "repair:activation:apply": "node scripts/repairActivationStatusAndIncome.js --apply",
+    "backfill:direct-referral:dry": "node scripts/backfillDirectReferralIncome.js",
+    "backfill:direct-referral:apply": "node scripts/backfillDirectReferralIncome.js --apply"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

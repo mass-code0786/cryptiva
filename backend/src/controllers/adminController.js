@@ -15,6 +15,7 @@ import { applyIncomeWithCap } from "../services/incomeCapService.js";
 import { ACTIVATION_MIN_TRADE_AMOUNT, countActivatedUsers } from "../services/activationService.js";
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
 import { startTradeAndActivate } from "../services/tradeActivationService.js";
+import { creditDirectReferralCommission } from "../services/referralService.js";
 
 const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "LEVEL", "salary", "SALARY"];
 
@@ -802,6 +803,20 @@ export const approveDeposit = asyncHandler(async (req, res) => {
       metadata: { depositId: deposit._id },
     }),
   ]);
+
+  await creditDirectReferralCommission({
+    traderUser: user,
+    transactionAmount: deposit.amount,
+    eventType: "deposit_approved",
+    eventId: deposit._id,
+    eventStatus: "approved",
+    sourceText: `Direct referral bonus from approved deposit of ${user.userId || user.email}`,
+    metadata: {
+      trigger: "deposit_approved",
+      depositId: deposit._id,
+    },
+  });
+
   await syncTeamBusinessForUserAndUplines(user._id);
 
   res.json({ message: "Deposit approved", deposit, wallet });

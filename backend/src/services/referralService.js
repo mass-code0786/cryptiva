@@ -5,28 +5,206 @@ import User from "../models/User.js";
 import { logIncomeEvent } from "./incomeLogService.js";
 import { applyIncomeWithCap } from "./incomeCapService.js";
 
+const DIRECT_REFERRAL_PERCENT = 5;
+const QUALIFYING_SUCCESS_STATUSES = new Set(["success", "completed", "confirmed", "approved", "paid", "active"]);
+
+const toAmount = (value) => Number(Number(value || 0).toFixed(6));
+const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
+
 const addTransaction = (userId, type, amount, source, status = "completed", metadata = {}, network = "INTERNAL") =>
   Transaction.create({ userId, type, amount, source, status, metadata, network });
 
 export const distributeReferralRewards = async ({ user, depositAmount, depositId }) => {
-  return { skipped: true, reason: "Direct and level referral payouts are triggered on trade start" };
+  return creditDirectReferralCommission({
+    traderUser: user,
+    transactionAmount: depositAmount,
+    eventType: "deposit_approved",
+    eventId: depositId,
+    eventStatus: "approved",
+    sourceText: `Direct referral bonus from deposit of ${user?.userId || user?.email || "user"}`,
+    metadata: {
+      trigger: "deposit_approved",
+      percentage: DIRECT_REFERRAL_PERCENT,
+    },
+  });
 };
 
-const resolveSponsorFromTrader = async (traderUser) => {
+const resolveSponsorFromTrader = async (traderUser, UserModel = User) => {
   if (traderUser?.referredBy) {
     if (mongoose.isValidObjectId(traderUser.referredBy)) {
-      const sponsorById = await User.findById(traderUser.referredBy);
+      const sponsorById = await UserModel.findById(traderUser.referredBy);
       if (sponsorById) return sponsorById;
     }
 
-    const sponsorByLegacyUserId = await User.findOne({ userId: String(traderUser.referredBy).toUpperCase() });
+    const sponsorByLegacyUserId = await UserModel.findOne({ userId: String(traderUser.referredBy).toUpperCase() });
     if (sponsorByLegacyUserId) return sponsorByLegacyUserId;
   }
   if (traderUser?.referredByUserId) {
-    const sponsorByUserId = await User.findOne({ userId: String(traderUser.referredByUserId).toUpperCase() });
+    const sponsorByUserId = await UserModel.findOne({ userId: String(traderUser.referredByUserId).toUpperCase() });
     if (sponsorByUserId) return sponsorByUserId;
   }
   return null;
+};
+
+const getDirectIncomeDuplicateQuery = ({ sponsorId, traderId, eventType, eventId }) => {
+  const query = {
+    userId: sponsorId,
+    sourceUserId: traderId,
+    incomeType: "direct",
+  };
+
+  const eventIdText = eventId ? String(eventId) : "";
+  if (eventType === "trade_start" && eventIdText && mongoose.isValidObjectId(eventIdText)) {
+    query.tradeId = new mongoose.Types.ObjectId(eventIdText);
+  }
+
+  if (eventType === "deposit_approved" && eventIdText && mongoose.isValidObjectId(eventIdText)) {
+    query.depositId = new mongoose.Types.ObjectId(eventIdText);
+  }
+
+  if (!query.tradeId && !query.depositId) {
+    query["metadata.event"] = {
+      type: eventType,
+      id: eventIdText,
+    };
+  }
+
+  return query;
+};
+
+export const creditDirectReferralCommission = async ({
+  traderUser,
+  transactionAmount,
+  eventType,
+  eventId = null,
+  eventStatus = "success",
+  sourceText = "",
+  metadata = {},
+  deps = {},
+}) => {
+  const logger = deps.logger || console;
+  const UserModel = deps.UserModel || User;
+  const ReferralIncomeModel = deps.ReferralIncomeModel || ReferralIncome;
+  const applyIncomeWithCapFn = deps.applyIncomeWithCapFn || applyIncomeWithCap;
+  const addTransactionFn = deps.addTransactionFn || addTransaction;
+  const logIncomeEventFn = deps.logIncomeEventFn || logIncomeEvent;
+
+  const status = normalizeStatus(eventStatus);
+  if (!QUALIFYING_SUCCESS_STATUSES.has(status)) {
+    logger.info(
+      `[referral] skip direct referral commission due to non-qualifying status: eventType=${eventType} status=${status || "unknown"}`
+    );
+    return { credited: 0, skipped: true, reason: "non_qualifying_status" };
+  }
+
+  if (!traderUser?._id) {
+    logger.warn(`[referral] skip direct referral commission due to missing trader user: eventType=${eventType}`);
+    return { credited: 0, skipped: true, reason: "missing_trader" };
+  }
+
+  const sponsor = await resolveSponsorFromTrader(traderUser, UserModel);
+  if (!sponsor?._id) {
+    logger.info(
+      `[referral] skip direct referral commission due to missing sponsor: trader=${traderUser.userId || traderUser.email || traderUser._id}`
+    );
+    return { credited: 0, skipped: true, reason: "missing_sponsor" };
+  }
+
+  const duplicateQuery = getDirectIncomeDuplicateQuery({
+    sponsorId: sponsor._id,
+    traderId: traderUser._id,
+    eventType,
+    eventId,
+  });
+  const duplicate = await ReferralIncomeModel.findOne(duplicateQuery);
+  if (duplicate) {
+    logger.info(
+      `[referral] skip duplicate direct referral commission: sponsor=${sponsor.userId || sponsor._id} trader=${traderUser.userId || traderUser._id} eventType=${eventType} eventId=${eventId || "n/a"}`
+    );
+    return { credited: 0, skipped: true, reason: "duplicate" };
+  }
+
+  const baseAmount = toAmount(transactionAmount);
+  const bonus = toAmount((baseAmount * DIRECT_REFERRAL_PERCENT) / 100);
+  if (!Number.isFinite(bonus) || bonus <= 0) {
+    logger.info(
+      `[referral] skip direct referral commission due to non-positive amount: trader=${traderUser.userId || traderUser._id} amount=${baseAmount}`
+    );
+    return { credited: 0, skipped: true, reason: "invalid_amount" };
+  }
+
+  const { creditedAmount } = await applyIncomeWithCapFn({
+    userId: sponsor._id,
+    requestedAmount: bonus,
+    walletField: "referralIncomeWallet",
+  });
+
+  if (creditedAmount <= 0) {
+    logger.info(
+      `[referral] direct referral commission capped/skipped: sponsor=${sponsor.userId || sponsor._id} trader=${traderUser.userId || traderUser._id} requested=${bonus}`
+    );
+    return { credited: 0, skipped: true, reason: "cap_or_ineligible" };
+  }
+
+  const eventMetadata = {
+    type: eventType || "",
+    id: eventId ? String(eventId) : "",
+    status,
+  };
+  const txnSourceText = sourceText || `Direct referral bonus from ${traderUser.userId || traderUser.email}`;
+
+  const referralIncomePayload = {
+    userId: sponsor._id,
+    sourceUserId: traderUser._id,
+    incomeType: "direct",
+    level: 1,
+    amount: creditedAmount,
+    metadata: {
+      ...metadata,
+      sourceUserId: traderUser.userId,
+      sourceEmail: traderUser.email,
+      percentage: DIRECT_REFERRAL_PERCENT,
+      event: eventMetadata,
+    },
+  };
+
+  const eventIdText = eventId ? String(eventId) : "";
+  if (eventType === "trade_start" && eventIdText && mongoose.isValidObjectId(eventIdText)) {
+    referralIncomePayload.tradeId = new mongoose.Types.ObjectId(eventIdText);
+  }
+  if (eventType === "deposit_approved" && eventIdText && mongoose.isValidObjectId(eventIdText)) {
+    referralIncomePayload.depositId = new mongoose.Types.ObjectId(eventIdText);
+  }
+
+  await Promise.all([
+    addTransactionFn(sponsor._id, "REFERRAL", creditedAmount, txnSourceText, "success", {
+      sourceUser: traderUser.userId || traderUser.email,
+      sourceUserId: traderUser._id,
+      percentage: DIRECT_REFERRAL_PERCENT,
+      event: eventMetadata,
+      ...metadata,
+    }),
+    logIncomeEventFn({
+      userId: sponsor._id,
+      incomeType: "referral",
+      amount: creditedAmount,
+      source: txnSourceText,
+      metadata: {
+        sourceUser: traderUser.userId || traderUser.email,
+        sourceUserId: traderUser._id,
+        percentage: DIRECT_REFERRAL_PERCENT,
+        event: eventMetadata,
+        ...metadata,
+      },
+    }),
+    ReferralIncomeModel.create(referralIncomePayload),
+  ]);
+
+  logger.info(
+    `[referral] credited direct referral commission: sponsor=${sponsor.userId || sponsor._id} trader=${traderUser.userId || traderUser._id} amount=${creditedAmount} eventType=${eventType} eventId=${eventIdText || "n/a"}`
+  );
+
+  return { credited: creditedAmount, sponsorId: sponsor._id, skipped: false };
 };
 
 const getLevelPercentOnTradeStart = (level) => {
@@ -39,65 +217,18 @@ const getLevelPercentOnTradeStart = (level) => {
 };
 
 const distributeDirectReferralOnTradeStart = async ({ traderUser, tradeAmount, tradeId }) => {
-  const sponsor = await resolveSponsorFromTrader(traderUser);
-  if (!sponsor) {
-    return { credited: 0 };
-  }
-
-  const bonus = Number((Number(tradeAmount || 0) * 0.05).toFixed(6));
-  if (!Number.isFinite(bonus) || bonus <= 0) {
-    return { credited: 0 };
-  }
-
-  const { creditedAmount } = await applyIncomeWithCap({
-    userId: sponsor._id,
-    requestedAmount: bonus,
-    walletField: "referralIncomeWallet",
-  });
-
-  if (creditedAmount <= 0) {
-    return { credited: 0 };
-  }
-
-  await Promise.all([
-    addTransaction(
-      sponsor._id,
-      "REFERRAL",
-      creditedAmount,
-      `Direct referral bonus from ${traderUser.userId || traderUser.email}`,
-      "success",
-      {
-        sourceUser: traderUser.userId || traderUser.email,
-        sourceUserId: traderUser._id,
-        tradeId,
-        percentage: 5,
-        trigger: "trade_start",
-      }
-    ),
-    logIncomeEvent({
-      userId: sponsor._id,
-      incomeType: "referral",
-      amount: creditedAmount,
-      source: `Direct referral bonus from ${traderUser.userId || traderUser.email}`,
-      metadata: { sourceUser: traderUser.userId, sourceUserId: traderUser._id, tradeId, percentage: 5, trigger: "trade_start" },
-    }),
-    ReferralIncome.create({
-      userId: sponsor._id,
-      sourceUserId: traderUser._id,
+  return creditDirectReferralCommission({
+    traderUser,
+    transactionAmount: tradeAmount,
+    eventType: "trade_start",
+    eventId: tradeId,
+    eventStatus: "success",
+    sourceText: `Direct referral bonus from ${traderUser.userId || traderUser.email}`,
+    metadata: {
+      trigger: "trade_start",
       tradeId,
-      incomeType: "direct",
-      level: 1,
-      amount: creditedAmount,
-      metadata: {
-        sourceUserId: traderUser.userId,
-        sourceEmail: traderUser.email,
-        percentage: 5,
-        trigger: "trade_start",
-      },
-    }),
-  ]);
-
-  return { credited: creditedAmount, sponsorId: sponsor._id };
+    },
+  });
 };
 
 const distributeLevelReferralOnTradeStart = async ({ traderUser, tradeAmount, tradeId }) => {

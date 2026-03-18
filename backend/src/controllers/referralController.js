@@ -2,8 +2,8 @@ import ReferralIncome from "../models/ReferralIncome.js";
 import mongoose from "mongoose";
 import Trade from "../models/Trade.js";
 import User from "../models/User.js";
-import Wallet from "../models/Wallet.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
+import { ACTIVATION_MIN_TRADE_AMOUNT, getActivatedUserIdSet, getActivationInvestmentByUserIds } from "../services/activationService.js";
 
 const salaryRankTable = [
   { rank: 1, name: "Rank 1", main: 2000, other: 3000, weeklySalary: 50 },
@@ -51,13 +51,11 @@ const collectAllMembersByLevel = async (rootUserId, maxDepth = 30) => {
 
     const children = await User.find(buildChildMatch(id, userId)).sort({ createdAt: 1 });
     const childIds = children.map((child) => child._id);
-    const wallets = childIds.length ? await Wallet.find({ userId: { $in: childIds } }).select("userId tradingWallet tradingBalance") : [];
-    const walletMap = new Map(wallets.map((wallet) => [wallet.userId.toString(), wallet]));
+    const investmentByUserId = childIds.length ? await getActivationInvestmentByUserIds(childIds) : new Map();
 
     for (const child of children) {
-      const wallet = walletMap.get(child._id.toString());
-      const investment = Number(wallet?.tradingWallet || wallet?.tradingBalance || 0);
-      const active = investment >= 5;
+      const investment = Number(investmentByUserId.get(child._id.toString()) || 0);
+      const active = investment >= ACTIVATION_MIN_TRADE_AMOUNT;
       const nextLevel = level + 1;
       members.push({
         _id: child._id,
@@ -112,17 +110,14 @@ const sumTeamBusiness = async (userIds) => {
     return 0;
   }
 
-  const activeWallets = await Wallet.find({
-    userId: { $in: userIds },
-    $or: [{ tradingWallet: { $gte: 5 } }, { tradingBalance: { $gte: 5 } }],
-  }).select("userId");
-  const activeUserIds = activeWallets.map((wallet) => wallet.userId);
-  if (!activeUserIds.length) {
+  const activatedUserIdSet = await getActivatedUserIdSet(userIds);
+  const activatedUserIds = userIds.filter((userId) => activatedUserIdSet.has(String(userId)));
+  if (!activatedUserIds.length) {
     return 0;
   }
 
   const result = await Trade.aggregate([
-    { $match: { userId: { $in: activeUserIds }, status: { $in: ["active", "completed"] } } },
+    { $match: { userId: { $in: activatedUserIds }, status: { $in: ["active", "completed"] } } },
     { $group: { _id: null, total: { $sum: "$amount" } } },
   ]);
 

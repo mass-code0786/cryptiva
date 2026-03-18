@@ -36,7 +36,7 @@ const ReferralsPage = () => {
       <div className="space-y-4">
         <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
           <h2 className="text-xl font-semibold">Team - 30 Level View</h2>
-          <p className="mt-1 text-sm text-slate-400">Active members are counted when trading wallet is at least $5.</p>
+          <p className="mt-1 text-sm text-slate-400">Active members are counted when total active/completed trade amount is at least $5.</p>
           <div className="mt-4 grid grid-cols-3 gap-2 text-xs sm:grid-cols-5">
             {Array.from(levelMap.entries()).map(([level, members]) => (
               <div key={level} className="rounded-xl bg-slate-800/60 p-2">

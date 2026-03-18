@@ -12,6 +12,7 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { computeTeamBusiness, syncTeamBusinessForUserAndUplines } from "./referralController.js";
 import { logIncomeEvent } from "../services/incomeLogService.js";
 import { applyIncomeWithCap } from "../services/incomeCapService.js";
+import { ACTIVATION_MIN_TRADE_AMOUNT, countActivatedUsers } from "../services/activationService.js";
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
 
 const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "LEVEL", "salary", "SALARY"];
@@ -269,24 +270,19 @@ const listIncomeTransactions = async (query, options = {}) => {
 };
 export const getDashboardOverview = asyncHandler(async (_req, res) => {
   const { start, end } = getTodayRangeUtc();
-  const activeWalletFilter = {
-    $or: [{ depositWallet: { $gt: 0 } }, { tradingWallet: { $gt: 0 } }, { tradingBalance: { $gt: 0 } }],
-  };
 
-  const [totalUsers, activeUserIds, todayJoiningUsers, todayActiveUserIds, totalWithdrawals, todayWithdrawals, totalDeposits, todayDeposits] =
+  const [totalUsers, totalActiveUsers, todayJoiningUsers, todayActiveUsers, totalWithdrawals, todayWithdrawals, totalDeposits, todayDeposits] =
     await Promise.all([
       User.countDocuments({}),
-      Wallet.distinct("userId", activeWalletFilter),
+      countActivatedUsers(),
       User.countDocuments({ createdAt: { $gte: start, $lte: end } }),
-      Wallet.distinct("userId", { ...activeWalletFilter, updatedAt: { $gte: start, $lte: end } }),
+      countActivatedUsers({ createdFrom: start, createdTo: end }),
       getSum(Withdrawal, { status: "completed" }),
       getSum(Withdrawal, { status: "completed", createdAt: { $gte: start, $lte: end } }),
       getSum(Deposit, { status: { $in: ["approved", "confirmed"] } }),
       getSum(Deposit, { status: { $in: ["approved", "confirmed"] }, createdAt: { $gte: start, $lte: end } }),
     ]);
-  const totalActiveUsers = activeUserIds.length;
   const totalInactiveUsers = Math.max(0, totalUsers - totalActiveUsers);
-  const todayActiveUsers = todayActiveUserIds.length;
 
   const [totalTradingIncome, todayTradingIncome, totalReferralIncome, todayReferralIncome, totalLevelIncome, todayLevelIncome, totalSalaryIncome, todaySalaryIncome] =
     await Promise.all([
@@ -377,17 +373,8 @@ export const listUsers = asyncHandler(async (req, res) => {
     ];
   }
 
-  if (status === "active") {
-    match.isBlocked = { $ne: true };
-  } else if (status === "inactive") {
-    match.isBlocked = true;
-  }
-
-  const total = await User.countDocuments(match);
-
   const sortStage = sortBy === "income" ? { totalIncome: sortOrder, createdAt: -1 } : { createdAt: sortOrder };
-
-  const users = await User.aggregate([
+  const basePipeline = [
     { $match: match },
     {
       $lookup: {
@@ -424,12 +411,45 @@ export const listUsers = asyncHandler(async (req, res) => {
       },
     },
     {
+      $lookup: {
+        from: "trades",
+        let: { uid: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $eq: ["$userId", "$$uid"] },
+              status: { $in: ["active", "completed"] },
+            },
+          },
+          { $group: { _id: null, totalInvestment: { $sum: "$amount" } } },
+        ],
+        as: "tradeAgg",
+      },
+    },
+    {
       $addFields: {
         wallet: { $arrayElemAt: ["$walletArr", 0] },
         referralCount: { $ifNull: [{ $arrayElemAt: ["$referralAgg.count", 0] }, 0] },
         totalIncome: { $ifNull: [{ $arrayElemAt: ["$incomeAgg.totalIncome", 0] }, 0] },
+        activationInvestment: { $ifNull: [{ $arrayElemAt: ["$tradeAgg.totalInvestment", 0] }, 0] },
+        isActivated: { $gte: [{ $ifNull: [{ $arrayElemAt: ["$tradeAgg.totalInvestment", 0] }, 0] }, ACTIVATION_MIN_TRADE_AMOUNT] },
       },
     },
+  ];
+
+  const statusPipeline =
+    status === "active"
+      ? [{ $match: { isActivated: true } }]
+      : status === "inactive"
+        ? [{ $match: { isActivated: false } }]
+        : [];
+
+  const totalRows = await User.aggregate([...basePipeline, ...statusPipeline, { $count: "total" }]);
+  const total = Number(totalRows[0]?.total || 0);
+
+  const users = await User.aggregate([
+    ...basePipeline,
+    ...statusPipeline,
     {
       $project: {
         _id: 1,
@@ -446,6 +466,8 @@ export const listUsers = asyncHandler(async (req, res) => {
         tradingBalance: { $ifNull: ["$wallet.tradingBalance", 0] },
         referralCount: 1,
         totalIncome: 1,
+        activationInvestment: 1,
+        isActivated: 1,
       },
     },
     { $sort: sortStage },
@@ -470,6 +492,8 @@ export const listUsers = asyncHandler(async (req, res) => {
       tradingBalance: user.tradingBalance || 0,
       referralCount: user.referralCount || 0,
       totalIncome: user.totalIncome || 0,
+      activationInvestment: user.activationInvestment || 0,
+      isActivated: Boolean(user.isActivated),
     })),
     pagination: {
       page,
@@ -655,6 +679,7 @@ export const transferFund = asyncHandler(async (req, res) => {
     reason: reason || "",
     metadata: { userId: user.userId },
   });
+  await syncTeamBusinessForUserAndUplines(user._id);
 
   res.json({ message: "Fund transferred successfully", wallet });
 });
@@ -706,6 +731,7 @@ export const deductFund = asyncHandler(async (req, res) => {
     reason: reason || "",
     metadata: { userId: user.userId },
   });
+  await syncTeamBusinessForUserAndUplines(user._id);
 
   res.json({ message: "Fund deducted successfully", wallet });
 });

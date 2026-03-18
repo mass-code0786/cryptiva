@@ -71,6 +71,8 @@ export type AdminUserItem = {
   walletBalance?: number;
   tradingBalance?: number;
   totalIncome?: number;
+  activationInvestment?: number;
+  isActivated?: boolean;
 };
 
 export type AdminUserProfile = {

@@ -192,11 +192,12 @@ const AdminUsersPage = () => {
                     <td className="px-4 py-3">
                       <span
                         className={`rounded-full px-2 py-1 text-xs uppercase tracking-wide ${
-                          item.isBlocked ? "bg-rose-500/20 text-rose-200" : "bg-emerald-500/20 text-emerald-200"
+                          item.isActivated ? "bg-emerald-500/20 text-emerald-200" : "bg-slate-700 text-slate-300"
                         }`}
                       >
-                        {item.isBlocked ? "Blocked" : "Active"}
+                        {item.isActivated ? "Active" : "Inactive"}
                       </span>
+                      {item.isBlocked ? <p className="mt-1 text-[11px] text-rose-300">Blocked</p> : null}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">

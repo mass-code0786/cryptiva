@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 
 import IncomeLog from "../src/models/IncomeLog.js";
 import Deposit from "../src/models/Deposit.js";
+import PackagePurchase from "../src/models/PackagePurchase.js";
 import ReferralIncome from "../src/models/ReferralIncome.js";
 import Trade from "../src/models/Trade.js";
 import Transaction from "../src/models/Transaction.js";
@@ -23,6 +24,8 @@ const LIMIT = LIMIT_ARG ? Math.max(1, Number.parseInt(LIMIT_ARG.split("=")[1], 1
 
 const ACTIVE_TRADE_STATUSES = ["active", "completed"];
 const SUCCESS_STATUSES = ["completed", "confirmed", "success", "approved"];
+const P2P_RECEIVE_TYPES = ["P2P_RECEIVE", "p2p_receive", "p2p"];
+const ACTIVATION_DEBIT_SOURCE_REGEX = "trading wallet|activation";
 const toAmount = (value) => Number(Number(value || 0).toFixed(6));
 
 const LEVEL_PERCENT_BY_LEVEL = (level) => {
@@ -52,7 +55,7 @@ const findSponsor = async (user) => {
 };
 
 const collectAffectedUsers = async () => {
-  const [tradeAgg, depositAgg, depositTxnAgg, adminTransferTxnAgg, walletAgg, adminActivationLogAgg] = await Promise.all([
+  const [tradeAgg, depositAgg, depositTxnAgg, adminTransferTxnAgg, walletAgg, adminActivationLogAgg, p2pCreditAgg, activationDebitAgg, packagePurchaseAgg] = await Promise.all([
     Trade.aggregate([
       { $match: { status: { $in: ACTIVE_TRADE_STATUSES } } },
       { $group: { _id: "$userId", totalInvestment: { $sum: "$amount" }, tradeCount: { $sum: 1 } } },
@@ -109,6 +112,30 @@ const collectAffectedUsers = async () => {
       },
       { $match: { _id: { $ne: null } } },
     ]),
+    Transaction.aggregate([
+      {
+        $match: {
+          type: { $in: P2P_RECEIVE_TYPES },
+          status: { $in: SUCCESS_STATUSES },
+          amount: { $gt: 0 },
+        },
+      },
+      { $group: { _id: "$userId", totalP2PCredit: { $sum: "$amount" }, p2pCreditCount: { $sum: 1 } } },
+    ]),
+    Transaction.aggregate([
+      {
+        $match: {
+          type: "wallet_transfer",
+          status: { $in: SUCCESS_STATUSES },
+          amount: { $gt: 0 },
+          $or: [{ source: { $regex: ACTIVATION_DEBIT_SOURCE_REGEX, $options: "i" } }, { "metadata.action": "trade_open" }],
+        },
+      },
+      { $group: { _id: "$userId", totalActivationDebit: { $sum: "$amount" }, activationDebitCount: { $sum: 1 } } },
+    ]),
+    PackagePurchase.aggregate([
+      { $group: { _id: "$userId", packagePurchaseCount: { $sum: 1 }, totalPackagePurchase: { $sum: "$amount" } } },
+    ]),
   ]);
 
   const evidenceMap = new Map();
@@ -127,6 +154,12 @@ const collectAffectedUsers = async () => {
         walletDepositTotal: 0,
         walletTradingBalance: 0,
         activationLogCount: 0,
+        p2pCreditCount: 0,
+        totalP2PCredit: 0,
+        activationDebitCount: 0,
+        totalActivationDebit: 0,
+        packagePurchaseCount: 0,
+        totalPackagePurchase: 0,
       });
     }
     return evidenceMap.get(key);
@@ -161,6 +194,21 @@ const collectAffectedUsers = async () => {
     const item = ensureEvidence(row._id);
     item.activationLogCount = Number(row.activationLogCount || 0);
   }
+  for (const row of p2pCreditAgg) {
+    const item = ensureEvidence(row._id);
+    item.p2pCreditCount = Number(row.p2pCreditCount || 0);
+    item.totalP2PCredit = Number(row.totalP2PCredit || 0);
+  }
+  for (const row of activationDebitAgg) {
+    const item = ensureEvidence(row._id);
+    item.activationDebitCount = Number(row.activationDebitCount || 0);
+    item.totalActivationDebit = Number(row.totalActivationDebit || 0);
+  }
+  for (const row of packagePurchaseAgg) {
+    const item = ensureEvidence(row._id);
+    item.packagePurchaseCount = Number(row.packagePurchaseCount || 0);
+    item.totalPackagePurchase = Number(row.totalPackagePurchase || 0);
+  }
 
   const userIds = Array.from(evidenceMap.keys()).filter((id) => mongoose.isValidObjectId(id));
   if (!userIds.length) return [];
@@ -170,8 +218,6 @@ const collectAffectedUsers = async () => {
     $or: [
       { isActive: { $ne: true } },
       { mlmEligible: { $ne: true } },
-      { packageActive: { $ne: true } },
-      { packageStatus: { $ne: "active" } },
     ],
   };
 
@@ -193,11 +239,81 @@ const collectAffectedUsers = async () => {
       walletDepositTotal: 0,
       walletTradingBalance: 0,
       activationLogCount: 0,
+      p2pCreditCount: 0,
+      totalP2PCredit: 0,
+      activationDebitCount: 0,
+      totalActivationDebit: 0,
+      packagePurchaseCount: 0,
+      totalPackagePurchase: 0,
     },
   }));
 
-  if (!LIMIT) return merged;
-  return merged.slice(0, LIMIT);
+  const p2pFundedMissingActivationRecords = merged.filter(
+    (row) =>
+      Number(row.stats.p2pCreditCount || 0) > 0 &&
+      Number(row.stats.activationDebitCount || 0) > 0 &&
+      Number(row.stats.packagePurchaseCount || 0) === 0
+  );
+
+  if (!LIMIT) return p2pFundedMissingActivationRecords;
+  return p2pFundedMissingActivationRecords.slice(0, LIMIT);
+};
+
+const createMissingPackagePurchaseForUser = async ({ user, stats, dryRun }) => {
+  const existing = await PackagePurchase.findOne({ userId: user._id }).select("_id");
+  if (existing) {
+    return { created: 0, skippedExisting: 1, skippedNoAmount: 0 };
+  }
+
+  const [trade, activationDebitTxn] = await Promise.all([
+    Trade.findOne({ userId: user._id, status: { $in: ACTIVE_TRADE_STATUSES } }).sort({ createdAt: 1 }).select("_id amount createdAt"),
+    Transaction.findOne({
+      userId: user._id,
+      type: "wallet_transfer",
+      status: { $in: SUCCESS_STATUSES },
+      amount: { $gt: 0 },
+      $or: [{ source: { $regex: ACTIVATION_DEBIT_SOURCE_REGEX, $options: "i" } }, { "metadata.action": "trade_open" }],
+    })
+      .sort({ createdAt: 1 })
+      .select("_id amount createdAt metadata"),
+  ]);
+
+  const fallbackAmount = Math.abs(Number(activationDebitTxn?.amount || 0));
+  const amount = toAmount(Number(trade?.amount || fallbackAmount));
+  if (amount <= 0) {
+    return { created: 0, skippedExisting: 0, skippedNoAmount: 1 };
+  }
+
+  const metadataTradeId = activationDebitTxn?.metadata?.tradeId;
+  const resolvedTradeId =
+    trade?._id ||
+    (metadataTradeId && mongoose.isValidObjectId(metadataTradeId) ? new mongoose.Types.ObjectId(String(metadataTradeId)) : null);
+
+  if (dryRun) {
+    return { created: 1, skippedExisting: 0, skippedNoAmount: 0 };
+  }
+
+  await PackagePurchase.create({
+    userId: user._id,
+    tradeId: resolvedTradeId,
+    packageName: "wallet_activation",
+    amount,
+    status: "active",
+    activationSource: "repair_p2p_funding_backfill",
+    fundingSource: "p2p_wallet_credit",
+    activatedAt: trade?.createdAt || activationDebitTxn?.createdAt || new Date(),
+    metadata: {
+      trigger: "repair_activation_backfill",
+      note: "Backfilled package purchase for legacy P2P-funded activation",
+      p2pCreditCount: Number(stats?.p2pCreditCount || 0),
+      totalP2PCredit: toAmount(Number(stats?.totalP2PCredit || 0)),
+      activationDebitCount: Number(stats?.activationDebitCount || 0),
+      totalActivationDebit: toAmount(Number(stats?.totalActivationDebit || 0)),
+      activationDebitTxnId: activationDebitTxn?._id || null,
+    },
+  });
+
+  return { created: 1, skippedExisting: 0, skippedNoAmount: 0 };
 };
 
 const backfillDirectReferralForTrades = async ({ user, dryRun }) => {
@@ -399,7 +515,11 @@ const backfillLevelIncomeFromRoiIfMissing = async ({ user, dryRun }) => {
 };
 
 const main = async () => {
-  console.log(APPLY ? "Running activation repair in APPLY mode" : "Running activation repair in DRY-RUN mode");
+  console.log(
+    APPLY
+      ? "Running activation repair (P2P-funded users) in APPLY mode"
+      : "Running activation repair (P2P-funded users) in DRY-RUN mode"
+  );
   if (LIMIT) console.log(`User limit: ${LIMIT}`);
 
   await mongoose.connect(MONGO_URI);
@@ -409,6 +529,7 @@ const main = async () => {
 
     const summary = {
       activatedUsers: 0,
+      packagePurchaseCreated: 0,
       directCreated: 0,
       levelCreated: 0,
       levelSkippedExisting: 0,
@@ -424,12 +545,19 @@ const main = async () => {
           tradeStats.approvedDepositCount
         }/${toAmount(tradeStats.totalApprovedDeposits)} depositTx=${tradeStats.depositTransactionCount}/${toAmount(
           tradeStats.totalDepositTransactions
-        )} adminTransfer=${tradeStats.adminTransferCount}/${toAmount(tradeStats.totalAdminTransfer)} wallet(depositTotal=${toAmount(
+        )} adminTransfer=${tradeStats.adminTransferCount}/${toAmount(tradeStats.totalAdminTransfer)} p2pCredit=${
+          tradeStats.p2pCreditCount
+        }/${toAmount(tradeStats.totalP2PCredit)} activationDebit=${tradeStats.activationDebitCount}/${toAmount(
+          tradeStats.totalActivationDebit
+        )} packagePurchases=${tradeStats.packagePurchaseCount}/${toAmount(tradeStats.totalPackagePurchase)} wallet(depositTotal=${toAmount(
           tradeStats.walletDepositTotal
         )},trading=${toAmount(tradeStats.walletTradingBalance)}) adminActivationLogs=${tradeStats.activationLogCount} | isActive=${Boolean(
           user.isActive
         )} mlmEligible=${Boolean(user.mlmEligible)}`
       );
+
+      const packageRepair = await createMissingPackagePurchaseForUser({ user, stats: tradeStats, dryRun: !APPLY });
+      summary.packagePurchaseCreated += packageRepair.created;
 
       if (APPLY) {
         await activateUserById({ userId: user._id, source: "repair_script" });
@@ -450,6 +578,7 @@ const main = async () => {
 
     console.log("Summary:");
     console.log(`- Users processed: ${summary.activatedUsers}`);
+    console.log(`- Package purchases backfilled: ${summary.packagePurchaseCreated}`);
     console.log(`- Trades scanned for direct backfill: ${summary.scannedTrades}`);
     console.log(`- Direct incomes backfilled: ${summary.directCreated}`);
     console.log(`- ROI logs scanned for level backfill: ${summary.roiLogs}`);

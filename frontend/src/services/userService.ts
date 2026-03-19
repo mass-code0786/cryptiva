@@ -23,7 +23,30 @@ export const changeMyPassword = (payload: { currentPassword: string; newPassword
   api.patch("/users/change-password", payload);
 export const updateMyReferralCode = (payload: { referralCode: string }) =>
   api.patch("/users/referral-code", payload);
-export const fetchTeamReferrals = () => api.get("/referrals");
+export const fetchTeamReferrals = () => api.get<TeamReferralsResponse>("/referrals");
+
+export type TeamReferralsResponse = {
+  referrals: Array<{
+    _id: string;
+    level: number;
+    status?: "active" | "inactive";
+    investment?: number;
+    joinedAt?: string;
+    fromUser?: {
+      name?: string;
+      email?: string;
+      userId?: string;
+    };
+  }>;
+  totalDirectTeam?: number;
+  totalLevelTeam?: number;
+  levelCounts?: Array<{
+    level: number;
+    total: number;
+    active: number;
+    inactive: number;
+  }>;
+};
 export const bindWalletAddress = (payload: { walletAddress: string; network?: "BEP20" }) =>
   api.post("/users/wallet-binding", payload);
 export const fetchWalletBinding = () => api.get("/users/wallet-binding");

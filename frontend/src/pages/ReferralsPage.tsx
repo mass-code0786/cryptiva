@@ -17,11 +17,25 @@ type TeamItem = {
 
 const ReferralsPage = () => {
   const [items, setItems] = useState<TeamItem[]>([]);
+  const [totalDirectTeam, setTotalDirectTeam] = useState(0);
+  const [totalLevelTeam, setTotalLevelTeam] = useState(0);
+  const [levelCountRows, setLevelCountRows] = useState<Array<{ level: number; total: number; active: number; inactive: number }>>([]);
 
   useEffect(() => {
     fetchTeamReferrals()
-      .then((res) => setItems(res.data.referrals || []))
-      .catch(() => setItems([]));
+      .then((res) => {
+        const referrals = res.data.referrals || [];
+        setItems(referrals);
+        setTotalDirectTeam(Number(res.data.totalDirectTeam || referrals.filter((item) => Number(item.level) === 1).length));
+        setTotalLevelTeam(Number(res.data.totalLevelTeam || referrals.length));
+        setLevelCountRows(res.data.levelCounts || []);
+      })
+      .catch(() => {
+        setItems([]);
+        setTotalDirectTeam(0);
+        setTotalLevelTeam(0);
+        setLevelCountRows([]);
+      });
   }, []);
 
   const levelMap = useMemo(() => {
@@ -31,9 +45,43 @@ const ReferralsPage = () => {
     return map;
   }, [items]);
 
+  const levelSummaries = useMemo(() => {
+    if (levelCountRows.length > 0) {
+      const map = new Map<number, { total: number; active: number; inactive: number }>();
+      levelCountRows.forEach((row) => {
+        map.set(Number(row.level), {
+          total: Number(row.total || 0),
+          active: Number(row.active || 0),
+          inactive: Number(row.inactive || 0),
+        });
+      });
+      return map;
+    }
+
+    const map = new Map<number, { total: number; active: number; inactive: number }>();
+    for (let level = 1; level <= 30; level += 1) {
+      const members = levelMap.get(level) || [];
+      const active = members.filter((entry) => entry.status === "active").length;
+      map.set(level, { total: members.length, active, inactive: Math.max(0, members.length - active) });
+    }
+    return map;
+  }, [levelCountRows, levelMap]);
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Direct Team</p>
+            <p className="mt-2 text-2xl font-semibold text-cyan-200">{totalDirectTeam}</p>
+            <p className="mt-1 text-xs text-slate-500">Direct referrals only (Level 1)</p>
+          </div>
+          <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Level Team</p>
+            <p className="mt-2 text-2xl font-semibold text-cyan-200">{totalLevelTeam}</p>
+            <p className="mt-1 text-xs text-slate-500">All downline members across 30 levels</p>
+          </div>
+        </div>
         <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
           <h2 className="text-xl font-semibold">Team - 30 Level View</h2>
           <p className="mt-1 text-sm text-slate-400">Active members are counted when total active/completed trade amount is at least $5.</p>
@@ -41,7 +89,7 @@ const ReferralsPage = () => {
             {Array.from(levelMap.entries()).map(([level, members]) => (
               <div key={level} className="rounded-xl bg-slate-800/60 p-2">
                 <p className="text-slate-400">L{level}</p>
-                <p className="font-semibold text-cyan-300">{members.filter((entry) => entry.status === "active").length}</p>
+                <p className="font-semibold text-cyan-300">{levelSummaries.get(level)?.active ?? members.filter((entry) => entry.status === "active").length}</p>
               </div>
             ))}
           </div>

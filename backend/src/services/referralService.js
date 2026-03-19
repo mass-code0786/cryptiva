@@ -9,6 +9,7 @@ import { acquireIdempotencyLock, generateIdempotencyKey } from "./idempotencySer
 
 const DIRECT_REFERRAL_PERCENT = 5;
 const QUALIFYING_SUCCESS_STATUSES = new Set(["success", "completed", "confirmed", "approved", "paid", "active"]);
+const DIRECT_REFERRAL_ELIGIBLE_EVENTS = new Set(["trade_start"]);
 
 const toAmount = (value) => Number(Number(value || 0).toFixed(6));
 const normalizeStatus = (status) => String(status || "").trim().toLowerCase();
@@ -17,18 +18,15 @@ const addTransaction = (userId, type, amount, source, status = "completed", meta
   Transaction.create({ userId, type, amount, source, status, metadata, network });
 
 export const distributeReferralRewards = async ({ user, depositAmount, depositId }) => {
-  return creditDirectReferralCommission({
-    traderUser: user,
-    transactionAmount: depositAmount,
+  return {
+    credited: 0,
+    skipped: true,
+    reason: "deposit_approval_not_eligible",
     eventType: "deposit_approved",
-    eventId: depositId,
-    eventStatus: "approved",
-    sourceText: `Direct referral bonus from deposit of ${user?.userId || user?.email || "user"}`,
-    metadata: {
-      trigger: "deposit_approved",
-      percentage: DIRECT_REFERRAL_PERCENT,
-    },
-  });
+    eventId: depositId || null,
+    userId: user?._id || null,
+    amount: toAmount(depositAmount),
+  };
 };
 
 const resolveSponsorFromTrader = async (traderUser, UserModel = User) => {
@@ -95,6 +93,11 @@ export const creditDirectReferralCommission = async ({
   const acquireIdempotencyLockFn = deps.acquireIdempotencyLockFn || acquireIdempotencyLock;
 
   const status = normalizeStatus(eventStatus);
+  if (!DIRECT_REFERRAL_ELIGIBLE_EVENTS.has(String(eventType || "").trim().toLowerCase())) {
+    logger.info(`[referral] skip direct referral commission due to non-eligible event: eventType=${eventType || "unknown"}`);
+    return { credited: 0, skipped: true, reason: "non_eligible_event" };
+  }
+
   if (!QUALIFYING_SUCCESS_STATUSES.has(status)) {
     logger.info(
       `[referral] skip direct referral commission due to non-qualifying status: eventType=${eventType} status=${status || "unknown"}`

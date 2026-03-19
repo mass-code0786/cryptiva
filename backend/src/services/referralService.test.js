@@ -69,7 +69,7 @@ const buildDeps = ({ creditedAmount = 5 } = {}) => {
   };
 };
 
-test("credits 5% direct referral income for successful qualifying transaction", async () => {
+test("deposit approval does not credit direct referral income", async () => {
   const { deps, state } = buildDeps({ creditedAmount: 5 });
   const depositId = "507f1f77bcf86cd799439012";
 
@@ -82,11 +82,11 @@ test("credits 5% direct referral income for successful qualifying transaction", 
     deps,
   });
 
-  assert.equal(result.credited, 5);
-  assert.equal(state.transactions.length, 1);
-  assert.equal(state.incomeLogs.length, 1);
-  assert.equal(state.referralIncomes.length, 1);
-  assert.equal(String(state.referralIncomes[0].depositId), depositId);
+  assert.equal(result.credited, 0);
+  assert.equal(result.reason, "non_eligible_event");
+  assert.equal(state.transactions.length, 0);
+  assert.equal(state.incomeLogs.length, 0);
+  assert.equal(state.referralIncomes.length, 0);
 });
 
 test("does not credit commission when payment status is failed", async () => {
@@ -95,7 +95,7 @@ test("does not credit commission when payment status is failed", async () => {
   const result = await creditDirectReferralCommission({
     traderUser: TRADER,
     transactionAmount: 100,
-    eventType: "deposit_approved",
+    eventType: "trade_start",
     eventId: "507f1f77bcf86cd799439013",
     eventStatus: "failed",
     deps,
@@ -110,23 +110,23 @@ test("does not credit commission when payment status is failed", async () => {
 
 test("prevents duplicate direct commission on repeated callback for same event", async () => {
   const { deps, state } = buildDeps({ creditedAmount: 5 });
-  const depositId = "507f1f77bcf86cd799439014";
+  const tradeId = "507f1f77bcf86cd799439014";
 
   const first = await creditDirectReferralCommission({
     traderUser: TRADER,
     transactionAmount: 100,
-    eventType: "deposit_approved",
-    eventId: depositId,
-    eventStatus: "approved",
+    eventType: "trade_start",
+    eventId: tradeId,
+    eventStatus: "success",
     deps,
   });
 
   const second = await creditDirectReferralCommission({
     traderUser: TRADER,
     transactionAmount: 100,
-    eventType: "deposit_approved",
-    eventId: depositId,
-    eventStatus: "approved",
+    eventType: "trade_start",
+    eventId: tradeId,
+    eventStatus: "success",
     deps,
   });
 
@@ -171,9 +171,9 @@ test("direct referral passes working-user bypass to income cap service", async (
   const result = await creditDirectReferralCommission({
     traderUser: TRADER,
     transactionAmount: 100,
-    eventType: "deposit_approved",
+    eventType: "trade_start",
     eventId: "507f1f77bcf86cd799439016",
-    eventStatus: "approved",
+    eventStatus: "success",
     deps,
   });
 

@@ -9,7 +9,7 @@ const chain = (rows) => ({
   }),
 });
 
-const createDepositModel = (rows) => ({
+const createDepositModel = (rows = []) => ({
   find: (query) => {
     const filtered = rows.filter((row) => {
       const statusOk = query?.status?.$in ? query.status.$in.includes(row.status) : true;
@@ -37,18 +37,18 @@ const createUserModel = (users) => ({
   }),
 });
 
-test("backfill credits missing direct referral commission", async () => {
-  const deposits = [{ _id: "d1", userId: "u1", amount: 100, status: "approved", createdAt: new Date() }];
+test("backfill credits missing direct referral commission from trade activations", async () => {
+  const trades = [{ _id: "t1", userId: "u1", amount: 100, status: "active", createdAt: new Date() }];
   const users = {
     u1: { _id: "u1", userId: "CTV-U1", email: "u1@demo.com", referredByUserId: "CTV-SP1" },
   };
 
   const summary = await backfillDirectReferralIncome({
     dryRun: false,
-    sources: "deposits",
+    sources: "trades",
     deps: {
-      DepositModel: createDepositModel(deposits),
-      TradeModel: createTradeModel(),
+      DepositModel: createDepositModel(),
+      TradeModel: createTradeModel(trades),
       UserModel: createUserModel(users),
       logger: { info: () => {}, warn: () => {} },
       creditFn: async () => ({ skipped: false, credited: 5 }),
@@ -62,17 +62,17 @@ test("backfill credits missing direct referral commission", async () => {
 });
 
 test("already-credited transaction is skipped", async () => {
-  const deposits = [{ _id: "d2", userId: "u2", amount: 100, status: "approved", createdAt: new Date() }];
+  const trades = [{ _id: "t2", userId: "u2", amount: 100, status: "active", createdAt: new Date() }];
   const users = {
     u2: { _id: "u2", userId: "CTV-U2", email: "u2@demo.com", referredByUserId: "CTV-SP2" },
   };
 
   const summary = await backfillDirectReferralIncome({
     dryRun: false,
-    sources: "deposits",
+    sources: "trades",
     deps: {
-      DepositModel: createDepositModel(deposits),
-      TradeModel: createTradeModel(),
+      DepositModel: createDepositModel(),
+      TradeModel: createTradeModel(trades),
       UserModel: createUserModel(users),
       logger: { info: () => {}, warn: () => {} },
       creditFn: async () => ({ skipped: true, reason: "duplicate", credited: 0 }),
@@ -84,10 +84,10 @@ test("already-credited transaction is skipped", async () => {
   assert.equal(summary.counters.skipped_duplicate, 1);
 });
 
-test("failed payment is skipped and not processed as qualifying event", async () => {
-  const deposits = [
-    { _id: "d3", userId: "u3", amount: 100, status: "failed", createdAt: new Date() },
-    { _id: "d4", userId: "u3", amount: 50, status: "approved", createdAt: new Date() },
+test("deposit source is ignored and falls back to trade activation processing", async () => {
+  const trades = [
+    { _id: "t3", userId: "u3", amount: 100, status: "active", createdAt: new Date() },
+    { _id: "t4", userId: "u3", amount: 50, status: "completed", createdAt: new Date() },
   ];
   const users = {
     u3: { _id: "u3", userId: "CTV-U3", email: "u3@demo.com", referredByUserId: "CTV-SP3" },
@@ -98,8 +98,8 @@ test("failed payment is skipped and not processed as qualifying event", async ()
     dryRun: true,
     sources: "deposits",
     deps: {
-      DepositModel: createDepositModel(deposits),
-      TradeModel: createTradeModel(),
+      DepositModel: createDepositModel([{ _id: "d3", userId: "u3", amount: 100, status: "approved", createdAt: new Date() }]),
+      TradeModel: createTradeModel(trades),
       UserModel: createUserModel(users),
       logger: { info: () => {}, warn: () => {} },
       creditFn: async ({ eventId }) => {
@@ -109,21 +109,21 @@ test("failed payment is skipped and not processed as qualifying event", async ()
     },
   });
 
-  assert.deepEqual(seenEvents, ["d4"]);
+  assert.deepEqual(seenEvents, ["t3", "t4"]);
 });
 
 test("user without sponsor is skipped safely", async () => {
-  const deposits = [{ _id: "d5", userId: "u5", amount: 100, status: "approved", createdAt: new Date() }];
+  const trades = [{ _id: "t5", userId: "u5", amount: 100, status: "active", createdAt: new Date() }];
   const users = {
     u5: { _id: "u5", userId: "CTV-U5", email: "u5@demo.com", referredByUserId: null, referredBy: null },
   };
 
   const summary = await backfillDirectReferralIncome({
     dryRun: false,
-    sources: "deposits",
+    sources: "trades",
     deps: {
-      DepositModel: createDepositModel(deposits),
-      TradeModel: createTradeModel(),
+      DepositModel: createDepositModel(),
+      TradeModel: createTradeModel(trades),
       UserModel: createUserModel(users),
       logger: { info: () => {}, warn: () => {} },
       creditFn: async ({ traderUser }) => {

@@ -128,7 +128,26 @@ const sumTeamBusiness = async (userIds) => {
 
 export const listReferrals = asyncHandler(async (req, res) => {
   const referrals = await collectAllMembersByLevel(req.user._id, 30);
-  res.json({ referrals });
+  const levelCounts = Array.from({ length: 30 }, (_, index) => index + 1).map((level) => {
+    const members = referrals.filter((item) => Number(item.level) === level);
+    const active = members.filter((item) => item.status === "active").length;
+    return {
+      level,
+      total: members.length,
+      active,
+      inactive: Math.max(0, members.length - active),
+    };
+  });
+
+  const totalDirectTeam = levelCounts.find((row) => row.level === 1)?.total || 0;
+  const totalLevelTeam = referrals.length;
+
+  res.json({
+    referrals,
+    totalDirectTeam,
+    totalLevelTeam,
+    levelCounts,
+  });
 });
 
 export const getReferralSummary = asyncHandler(async (req, res) => {

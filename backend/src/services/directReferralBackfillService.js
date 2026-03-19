@@ -16,13 +16,12 @@ const parseSources = (sourcesRaw) => {
     raw
       .map((entry) => String(entry || "").trim().toLowerCase())
       .filter(Boolean)
-      .flatMap((entry) => (entry === "all" ? ["deposits", "trades"] : [entry]))
+      .flatMap((entry) => (entry === "all" ? ["trades"] : [entry]))
   );
 
   const sources = [];
-  if (parsed.has("deposits")) sources.push("deposits");
   if (parsed.has("trades")) sources.push("trades");
-  return sources.length ? sources : ["deposits", "trades"];
+  return sources.length ? sources : ["trades"];
 };
 
 const buildDateMatch = ({ from = null, to = null } = {}) => {
@@ -55,35 +54,8 @@ const findTraderUser = async (userId, { UserModel, cache }) => {
 };
 
 const processDeposit = async ({ deposit, traderUser, dryRun, logger, creditFn }) => {
-  if (!traderUser?._id) {
-    logger.warn(`[backfill:direct] skip deposit=${deposit._id} due to missing user`);
-    return { category: "skipped_missing_user", credited: 0 };
-  }
-
-  const amount = toAmount(deposit.amount);
-  if (!(amount > 0)) {
-    return { category: "skipped_invalid_amount", credited: 0 };
-  }
-
-  const result = await creditFn({
-    traderUser,
-    transactionAmount: amount,
-    eventType: "deposit_approved",
-    eventId: deposit._id,
-    eventStatus: deposit.status,
-    dryRun,
-    sourceText: `Direct referral backfill from deposit of ${traderUser.userId || traderUser.email}`,
-    metadata: {
-      trigger: "backfill_direct_referral_deposit",
-      depositId: deposit._id,
-      originalCreatedAt: deposit.createdAt,
-    },
-  });
-
-  return {
-    category: result.skipped ? `skipped_${result.reason}` : "credited",
-    credited: Number(result.credited || 0),
-  };
+  logger.info(`[backfill:direct] skip deposit=${deposit._id} because deposit-approved direct referral is disabled`);
+  return { category: "skipped_non_eligible_event", credited: 0 };
 };
 
 const processTrade = async ({ trade, traderUser, dryRun, logger, creditFn }) => {

@@ -103,6 +103,8 @@ const buildIncomeBaseFilter = () => ({
   $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
 });
 
+const isAuditView = (query = {}) => ["raw", "audit"].includes(String(query.view || query.mode || "").toLowerCase());
+
 const getIncomeTransactionTypeFilter = (incomeType = "") => {
   if (incomeType === "referral") return { $in: ["referral", "REFERRAL"] };
   if (incomeType === "level") return { $in: ["level", "LEVEL"] };
@@ -114,6 +116,108 @@ const getIncomeTransactionTypeFilter = (incomeType = "") => {
 const getSum = async (model, match) => {
   const result = await model.aggregate([{ $match: match }, { $group: { _id: null, total: { $sum: "$amount" } } }]);
   return result[0]?.total || 0;
+};
+
+const buildReportingSignedAmountExpr = () => ({
+  $let: {
+    vars: {
+      amount: { $ifNull: ["$amount", 0] },
+      direction: { $toLower: { $ifNull: ["$metadata.direction", ""] } },
+    },
+    in: {
+      $cond: [
+        { $isNumber: "$metadata.amountSigned" },
+        "$metadata.amountSigned",
+        {
+          $cond: [
+            { $isNumber: "$metadata.signedAmount" },
+            "$metadata.signedAmount",
+            {
+              $cond: [
+                { $eq: ["$$direction", "debit"] },
+                { $multiply: [{ $abs: "$$amount" }, -1] },
+                {
+                  $cond: [{ $eq: ["$$direction", "credit"] }, { $abs: "$$amount" }, "$$amount"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+});
+
+const buildReportingReconciliationLookupStages = () => [
+  {
+    $lookup: {
+      from: "reconciliationadjustments",
+      let: { adjustmentId: "$metadata.adjustmentId" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $eq: [{ $toString: "$_id" }, { $ifNull: [{ $toString: "$$adjustmentId" }, ""] }],
+            },
+          },
+        },
+        { $project: { status: 1, metadata: 1 } },
+      ],
+      as: "reconciliationAdjustment",
+    },
+  },
+  {
+    $addFields: {
+      reconciliationAdjustment: { $arrayElemAt: ["$reconciliationAdjustment", 0] },
+    },
+  },
+];
+
+const buildReportingDecorationStages = () => [
+  ...buildReportingReconciliationLookupStages(),
+  {
+    $addFields: {
+      reportingAmountSigned: buildReportingSignedAmountExpr(),
+      includeInReporting: {
+        $and: [
+          { $ne: [{ $ifNull: ["$metadata.excludedFromReporting", false] }, true] },
+          { $ne: [{ $ifNull: ["$metadata.duplicateHistorical", false] }, true] },
+          {
+            $or: [
+              { $eq: ["$reconciliationAdjustment", null] },
+              {
+                $and: [
+                  { $eq: [{ $ifNull: ["$reconciliationAdjustment.status", "applied"] }, "applied"] },
+                  { $ne: [{ $ifNull: ["$reconciliationAdjustment.metadata.excludedFromReporting", false] }, true] },
+                  { $ne: [{ $ifNull: ["$reconciliationAdjustment.metadata.duplicateHistorical", false] }, true] },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    },
+  },
+];
+
+const getReportingTransactionSum = async (match) => {
+  const result = await Transaction.aggregate([
+    { $match: match },
+    ...buildReportingDecorationStages(),
+    { $match: { includeInReporting: true } },
+    { $group: { _id: null, total: { $sum: "$reportingAmountSigned" } } },
+  ]);
+  return result[0]?.total || 0;
+};
+
+const getReportingTransactionCount = async (match) => {
+  const result = await Transaction.aggregate([
+    { $match: match },
+    ...buildReportingDecorationStages(),
+    { $match: { includeInReporting: true } },
+    { $count: "total" },
+  ]);
+  return Number(result[0]?.total || 0);
 };
 
 const formatTimeSeries = (items, labelKey = "_id", valueKey = "amount") =>
@@ -150,13 +254,15 @@ const getWeeklySeries = async (match, weeks = 12) => {
 
   const raw = await Transaction.aggregate([
     { $match: { ...match, createdAt: { $gte: since } } },
+    ...buildReportingDecorationStages(),
+    { $match: { includeInReporting: true } },
     {
       $group: {
         _id: {
           year: { $isoWeekYear: "$createdAt" },
           week: { $isoWeek: "$createdAt" },
         },
-        amount: { $sum: "$amount" },
+        amount: { $sum: "$reportingAmountSigned" },
       },
     },
     { $sort: { "_id.year": 1, "_id.week": 1 } },
@@ -176,12 +282,14 @@ const getMonthlySeries = async (match, months = 12) => {
 
   const raw = await Transaction.aggregate([
     { $match: { ...match, createdAt: { $gte: since } } },
+    ...buildReportingDecorationStages(),
+    { $match: { includeInReporting: true } },
     {
       $group: {
         _id: {
           $dateToString: { format: "%Y-%m", date: "$createdAt", timezone: "UTC" },
         },
-        amount: { $sum: "$amount" },
+        amount: { $sum: "$reportingAmountSigned" },
       },
     },
     { $sort: { _id: 1 } },
@@ -248,20 +356,60 @@ const flattenTreeByLevel = (nodes, map = new Map()) => {
 };
 
 const listIncomeTransactions = async (query, options = {}) => {
-  const { page = 1, limit = 500 } = options;
+  const { page = 1, limit = 500, reporting = true } = options;
   const skip = (page - 1) * limit;
 
-  const items = await Transaction.find(query).populate("userId", "name email userId").sort({ createdAt: -1 }).skip(skip).limit(limit);
+  if (!reporting) {
+    const items = await Transaction.find(query).populate("userId", "name email userId").sort({ createdAt: -1 }).skip(skip).limit(limit);
+    return items.map((item) => {
+      const createdAt = new Date(item.createdAt);
+      return {
+        id: item._id,
+        userId: item.userId?._id?.toString() || null,
+        userRef: item.userId?.userId || "-",
+        userName: item.userId?.name || "User",
+        incomeType: formatIncomeType(item.type),
+        amount: item.amount,
+        source: item.source || "System income",
+        date: createdAt.toISOString().slice(0, 10),
+        time: createdAt.toISOString().slice(11, 19),
+        createdAt,
+        transactionType: item.type,
+      };
+    });
+  }
+
+  const items = await Transaction.aggregate([
+    { $match: query },
+    ...buildReportingDecorationStages(),
+    { $match: { includeInReporting: true } },
+    { $sort: { createdAt: -1 } },
+    { $skip: skip },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "userDoc",
+      },
+    },
+    {
+      $addFields: {
+        userDoc: { $arrayElemAt: ["$userDoc", 0] },
+      },
+    },
+  ]);
 
   return items.map((item) => {
-    const createdAt = new Date(item.createdAt);
+    const createdAt = new Date(item.createdAt || new Date());
     return {
       id: item._id,
-      userId: item.userId?._id?.toString() || null,
-      userRef: item.userId?.userId || "-",
-      userName: item.userId?.name || "User",
+      userId: item.userDoc?._id?.toString() || null,
+      userRef: item.userDoc?.userId || "-",
+      userName: item.userDoc?.name || "User",
       incomeType: formatIncomeType(item.type),
-      amount: item.amount,
+      amount: Number(item.reportingAmountSigned || 0),
       source: item.source || "System income",
       date: createdAt.toISOString().slice(0, 10),
       time: createdAt.toISOString().slice(11, 19),
@@ -288,27 +436,36 @@ export const getDashboardOverview = asyncHandler(async (_req, res) => {
 
   const [totalTradingIncome, todayTradingIncome, totalReferralIncome, todayReferralIncome, totalLevelIncome, todayLevelIncome, totalSalaryIncome, todaySalaryIncome] =
     await Promise.all([
-      getSum(Transaction, tradingIncomeFilter),
-      getSum(Transaction, { ...tradingIncomeFilter, createdAt: { $gte: start, $lte: end } }),
-      getSum(Transaction, { type: { $in: ["referral", "REFERRAL"] }, status: { $in: ["completed", "confirmed", "success"] } }),
-      getSum(Transaction, {
+      getReportingTransactionSum(tradingIncomeFilter),
+      getReportingTransactionSum({ ...tradingIncomeFilter, createdAt: { $gte: start, $lte: end } }),
+      getReportingTransactionSum({ type: { $in: ["referral", "REFERRAL"] }, status: { $in: ["completed", "confirmed", "success"] } }),
+      getReportingTransactionSum({
         type: { $in: ["referral", "REFERRAL"] },
         status: { $in: ["completed", "confirmed", "success"] },
         createdAt: { $gte: start, $lte: end },
       }),
-      getSum(Transaction, { type: { $in: ["level", "LEVEL"] }, status: { $in: ["completed", "confirmed", "success"] } }),
-      getSum(Transaction, {
+      getReportingTransactionSum({ type: { $in: ["level", "LEVEL"] }, status: { $in: ["completed", "confirmed", "success"] } }),
+      getReportingTransactionSum({
         type: { $in: ["level", "LEVEL"] },
         status: { $in: ["completed", "confirmed", "success"] },
         createdAt: { $gte: start, $lte: end },
       }),
-      getSum(Transaction, { type: { $in: ["salary", "SALARY"] }, status: { $in: ["completed", "confirmed", "success"] } }),
-      getSum(Transaction, {
+      getReportingTransactionSum({ type: { $in: ["salary", "SALARY"] }, status: { $in: ["completed", "confirmed", "success"] } }),
+      getReportingTransactionSum({
         type: { $in: ["salary", "SALARY"] },
         status: { $in: ["completed", "confirmed", "success"] },
         createdAt: { $gte: start, $lte: end },
       }),
     ]);
+
+  const [totalLevelIncomeRaw, todayLevelIncomeRaw] = await Promise.all([
+    getSum(Transaction, { type: { $in: ["level", "LEVEL"] }, status: { $in: ["completed", "confirmed", "success"] } }),
+    getSum(Transaction, {
+      type: { $in: ["level", "LEVEL"] },
+      status: { $in: ["completed", "confirmed", "success"] },
+      createdAt: { $gte: start, $lte: end },
+    }),
+  ]);
 
   res.json({
     users: {
@@ -327,6 +484,8 @@ export const getDashboardOverview = asyncHandler(async (_req, res) => {
       todayLevelIncome,
       totalSalaryIncome,
       todaySalaryIncome,
+      totalLevelIncomeRaw,
+      todayLevelIncomeRaw,
     },
     finance: {
       totalWithdrawals,
@@ -407,7 +566,9 @@ export const listUsers = asyncHandler(async (req, res) => {
               $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
             },
           },
-          { $group: { _id: null, totalIncome: { $sum: "$amount" } } },
+          ...buildReportingDecorationStages(),
+          { $match: { includeInReporting: true } },
+          { $group: { _id: null, totalIncome: { $sum: "$reportingAmountSigned" } } },
         ],
         as: "incomeAgg",
       },
@@ -538,7 +699,9 @@ export const getUserProfileDetail = asyncHandler(async (req, res) => {
           $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
         },
       },
-      { $group: { _id: "$type", total: { $sum: "$amount" } } },
+      ...buildReportingDecorationStages(),
+      { $match: { includeInReporting: true } },
+      { $group: { _id: "$type", total: { $sum: "$reportingAmountSigned" } } },
     ]),
   ]);
 
@@ -1118,6 +1281,7 @@ export const rejectWithdrawal = asyncHandler(async (req, res) => {
 });
 export const listTransactionsAdmin = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req.query);
+  const auditView = isAuditView(req.query);
   const query = {};
   if (req.query.type) {
     const type = String(req.query.type).toLowerCase();
@@ -1138,10 +1302,43 @@ export const listTransactionsAdmin = asyncHandler(async (req, res) => {
     query.userId = user._id;
   }
 
-  const [items, total] = await Promise.all([
-    Transaction.find(query).populate("userId", "name email userId").sort({ createdAt: -1 }).skip(skip).limit(limit),
-    Transaction.countDocuments(query),
-  ]);
+  let items = [];
+  let total = 0;
+
+  if (!auditView) {
+    const [rows, count] = await Promise.all([
+      Transaction.aggregate([
+        { $match: query },
+        ...buildReportingDecorationStages(),
+        { $match: { includeInReporting: true } },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: "users",
+            localField: "userId",
+            foreignField: "_id",
+            as: "userDoc",
+          },
+        },
+        {
+          $addFields: {
+            userId: { $arrayElemAt: ["$userDoc", 0] },
+            amount: "$reportingAmountSigned",
+          },
+        },
+      ]),
+      getReportingTransactionCount(query),
+    ]);
+    items = rows;
+    total = count;
+  } else {
+    [items, total] = await Promise.all([
+      Transaction.find(query).populate("userId", "name email userId").sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Transaction.countDocuments(query),
+    ]);
+  }
 
   res.json({
     items,
@@ -1151,6 +1348,7 @@ export const listTransactionsAdmin = asyncHandler(async (req, res) => {
 
 export const getIncomeHistory = asyncHandler(async (req, res) => {
   const { page, limit, skip } = getPagination(req.query);
+  const auditView = isAuditView(req.query);
   const search = String(req.query.search || "").trim();
   const incomeType = String(req.query.incomeType || "").toLowerCase();
 
@@ -1175,6 +1373,24 @@ export const getIncomeHistory = asyncHandler(async (req, res) => {
     incomeLogQuery.userId = { $in: users.map((user) => user._id) };
   }
 
+  const canonicalTxQuery = {
+    type: getIncomeTransactionTypeFilter(incomeType),
+    status: { $in: ["completed", "confirmed", "success"] },
+    $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
+  };
+  if (incomeLogQuery.userId) canonicalTxQuery.userId = incomeLogQuery.userId;
+
+  if (!auditView) {
+    const [total, items] = await Promise.all([
+      getReportingTransactionCount(canonicalTxQuery),
+      listIncomeTransactions(canonicalTxQuery, { page, limit, reporting: true }),
+    ]);
+    return res.json({
+      items,
+      pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+    });
+  }
+
   const [items, total] = await Promise.all([
     IncomeLog.find(incomeLogQuery).populate("userId", "name email userId").sort({ recordedAt: -1 }).skip(skip).limit(limit),
     IncomeLog.countDocuments(incomeLogQuery),
@@ -1183,14 +1399,14 @@ export const getIncomeHistory = asyncHandler(async (req, res) => {
   if (total > 0) {
     return res.json({
       items: items.map((item) => {
-        const createdAt = new Date(item.recordedAt || item.createdAt);
+        const createdAt = new Date(item.recordedAt || item.createdAt || new Date());
         return {
           id: item._id,
           userId: item.userId?._id?.toString() || null,
           userRef: item.userId?.userId || "-",
           userName: item.userId?.name || "User",
           incomeType: formatIncomeType(item.incomeType),
-          amount: item.amount,
+          amount: Number(item.amount || 0),
           source: item.source || "System income",
           date: createdAt.toISOString().slice(0, 10),
           time: createdAt.toISOString().slice(11, 19),
@@ -1201,15 +1417,10 @@ export const getIncomeHistory = asyncHandler(async (req, res) => {
     });
   }
 
-  const fallbackQuery = {
-    type: getIncomeTransactionTypeFilter(incomeType),
-    status: { $in: ["completed", "confirmed", "success"] },
-    $or: [{ type: { $ne: "trading" } }, { "metadata.action": { $ne: "trade_open" } }],
-  };
-  if (incomeLogQuery.userId) fallbackQuery.userId = incomeLogQuery.userId;
-
-  const fallbackTotal = await Transaction.countDocuments(fallbackQuery);
-  const fallbackItems = await listIncomeTransactions(fallbackQuery, { page, limit });
+  const [fallbackTotal, fallbackItems] = await Promise.all([
+    Transaction.countDocuments(canonicalTxQuery),
+    listIncomeTransactions(canonicalTxQuery, { page, limit, reporting: false }),
+  ]);
   res.json({
     items: fallbackItems,
     pagination: { page, limit, total: fallbackTotal, pages: Math.max(1, Math.ceil(fallbackTotal / limit)) },

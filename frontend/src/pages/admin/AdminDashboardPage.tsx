@@ -57,6 +57,25 @@ const initialAnalytics: AdminDashboardAnalytics = {
 
 const money = (value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const resolveCanonicalLevel = (income: AdminDashboardOverview["income"]) => {
+  const canonicalTotal =
+    income.totalLevelIncomeCanonical ??
+    income.totalLevelIncomeBusiness ??
+    income.totalLevelIncomeNet ??
+    income.totalLevelIncome;
+
+  const canonicalToday =
+    income.todayLevelIncomeCanonical ??
+    income.todayLevelIncomeBusiness ??
+    income.todayLevelIncomeNet ??
+    income.todayLevelIncome;
+
+  return {
+    total: Number(canonicalTotal || 0),
+    today: Number(canonicalToday || 0),
+  };
+};
+
 const chartStyle = {
   background: "rgba(15,23,42,0.55)",
   border: "1px solid rgba(8,145,178,0.22)",
@@ -87,7 +106,9 @@ const AdminDashboardPage = () => {
   }, []);
 
   const allCards = useMemo(
-    () => [
+    () => {
+      const canonicalLevel = resolveCanonicalLevel(overview.income);
+      return [
       { label: "Total Users", value: overview.users.totalUsers, currency: false },
       { label: "Active Users", value: overview.users.totalActiveUsers, currency: false },
       { label: "Inactive Users", value: overview.users.totalInactiveUsers, currency: false },
@@ -97,15 +118,16 @@ const AdminDashboardPage = () => {
       { label: "Today Trading Income", value: overview.income.todayTradingIncome, currency: true },
       { label: "Total Referral Income", value: overview.income.totalReferralIncome, currency: true },
       { label: "Today Referral Income", value: overview.income.todayReferralIncome, currency: true },
-      { label: "Total Level Income", value: overview.income.totalLevelIncome, currency: true },
-      { label: "Today Level Income", value: overview.income.todayLevelIncome, currency: true },
+      { label: "Total Level Income", value: canonicalLevel.total, currency: true },
+      { label: "Today Level Income", value: canonicalLevel.today, currency: true },
       { label: "Total Salary Income", value: overview.income.totalSalaryIncome, currency: true },
       { label: "Today Salary Income", value: overview.income.todaySalaryIncome, currency: true },
       { label: "Total Withdrawals", value: overview.finance.totalWithdrawals, currency: true },
       { label: "Today Withdrawals", value: overview.finance.todayWithdrawals, currency: true },
       { label: "Total Deposits", value: overview.finance.totalDeposits, currency: true },
       { label: "Today Deposits", value: overview.finance.todayDeposits, currency: true },
-    ],
+    ];
+    },
     [overview]
   );
 

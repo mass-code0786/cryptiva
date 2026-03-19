@@ -29,6 +29,12 @@ export type AdminDashboardOverview = {
     todayActiveUsers: number;
   };
   income: {
+    totalLevelIncomeCanonical?: number;
+    todayLevelIncomeCanonical?: number;
+    totalLevelIncomeBusiness?: number;
+    todayLevelIncomeBusiness?: number;
+    totalLevelIncomeNet?: number;
+    todayLevelIncomeNet?: number;
     totalTradingIncome: number;
     todayTradingIncome: number;
     totalReferralIncome: number;
@@ -202,8 +208,23 @@ export type AdminSupportQueryItem = {
   userId?: AdminEntityUser;
 };
 
-export const fetchAdminDashboardOverview = () => api.get<AdminDashboardOverview>("/admin/dashboard-overview");
-export const fetchAdminDashboardAnalytics = () => api.get<AdminDashboardAnalytics>("/admin/dashboard-analytics");
+export const fetchAdminDashboardOverview = () =>
+  api.get<AdminDashboardOverview>("/admin/dashboard-overview", {
+    params: {
+      mode: "business",
+      view: "business",
+      _ts: Date.now(),
+    },
+  });
+
+export const fetchAdminDashboardAnalytics = () =>
+  api.get<AdminDashboardAnalytics>("/admin/dashboard-analytics", {
+    params: {
+      mode: "business",
+      view: "business",
+      _ts: Date.now(),
+    },
+  });
 export const fetchAdminTradingRoiSetting = () => api.get<{ tradingROI: number }>("/admin/settings/trading-roi");
 export const updateAdminTradingRoiSetting = (tradingROI: number) => api.patch("/admin/settings/trading-roi", { tradingROI });
 

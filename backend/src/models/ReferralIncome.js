@@ -52,11 +52,18 @@ const referralIncomeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    idempotencyKey: {
+      type: String,
+      default: "",
+      trim: true,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+referralIncomeSchema.index({ idempotencyKey: 1 }, { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string", $ne: "" } } });
 
 const ReferralIncome = mongoose.model("ReferralIncome", referralIncomeSchema);
 

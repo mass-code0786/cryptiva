@@ -6,6 +6,7 @@ import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { computeTeamBusiness } from "./referralController.js";
 import { logIncomeEvent } from "../services/incomeLogService.js";
 import { applyIncomeWithCap } from "../services/incomeCapService.js";
+import { acquireIdempotencyLock, generateIdempotencyKey } from "../services/idempotencyService.js";
 
 const rankTable = [
   { name: "Rank 1", main: 2000, other: 3000, weeklySalary: 50 },
@@ -71,6 +72,17 @@ const creditWeeklySalary = async (user, referenceDate = new Date()) => {
   if (existing) {
     return { status: "skipped_already_paid", payout: existing };
   }
+  const lock = await acquireIdempotencyLock({
+    key: generateIdempotencyKey("salary_weekly", {
+      userId: user._id,
+      eventType: "salary_weekly",
+      eventId: weekStart.toISOString(),
+    }),
+    scope: "salary_weekly",
+  });
+  if (!lock.acquired) {
+    return { status: "skipped_already_paid" };
+  }
 
   const { creditedAmount } = await applyIncomeWithCap({
     userId: user._id,
@@ -85,16 +97,24 @@ const creditWeeklySalary = async (user, referenceDate = new Date()) => {
   const date = now.toISOString().slice(0, 10);
   const time = now.toISOString().slice(11, 19);
 
-  const payout = await SalaryPayout.create({
-    userId: user._id,
-    rankName: savedRank.name,
-    amount: creditedAmount,
-    mainLegBusiness,
-    otherLegBusiness,
-    weekStart,
-    weekEnd,
-    status: "credited",
-  });
+  let payout;
+  try {
+    payout = await SalaryPayout.create({
+      userId: user._id,
+      rankName: savedRank.name,
+      amount: creditedAmount,
+      mainLegBusiness,
+      otherLegBusiness,
+      weekStart,
+      weekEnd,
+      status: "credited",
+    });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return { status: "skipped_already_paid" };
+    }
+    throw error;
+  }
 
   const transaction = await Transaction.create({
     userId: user._id,

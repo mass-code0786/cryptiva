@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { creditDirectReferralCommission } from "./referralService.js";
+import { creditDirectReferralCommission, distributeUnilevelIncomeOnTradeStart } from "./referralService.js";
 
 const SPONSOR = { _id: "507f1f77bcf86cd799439011", userId: "CTV-SPONSOR", email: "sponsor@example.com" };
 const TRADER = {
@@ -35,6 +35,7 @@ const buildDeps = ({ creditedAmount = 5 } = {}) => {
   const transactions = [];
   const incomeLogs = [];
   const referralIncomes = [];
+  const idempotencyLocks = new Set();
 
   return {
     state: { transactions, incomeLogs, referralIncomes },
@@ -57,6 +58,12 @@ const buildDeps = ({ creditedAmount = 5 } = {}) => {
       },
       logIncomeEventFn: async (payload) => {
         incomeLogs.push(payload);
+      },
+      acquireIdempotencyLockFn: async ({ key }) => {
+        const lockKey = String(key || "");
+        if (idempotencyLocks.has(lockKey)) return { acquired: false, key: lockKey };
+        idempotencyLocks.add(lockKey);
+        return { acquired: true, key: lockKey };
       },
     },
   };
@@ -158,6 +165,7 @@ test("direct referral passes working-user bypass to income cap service", async (
     logIncomeEventFn: async (payload) => {
       state.incomeLogs.push(payload);
     },
+    acquireIdempotencyLockFn: async ({ key }) => ({ acquired: true, key }),
   };
 
   const result = await creditDirectReferralCommission({
@@ -172,4 +180,72 @@ test("direct referral passes working-user bypass to income cap service", async (
   assert.equal(result.credited, 5);
   assert.equal(capturedArgs?.bypassWorkingUserRestriction, true);
   assert.equal(state.referralIncomes.length, 1);
+});
+
+test("trade_start credits only direct referral records and no level artifacts", async () => {
+  const { deps, state } = buildDeps({ creditedAmount: 5 });
+  const tradeId = "507f1f77bcf86cd799439017";
+
+  const result = await creditDirectReferralCommission({
+    traderUser: TRADER,
+    transactionAmount: 100,
+    eventType: "trade_start",
+    eventId: tradeId,
+    eventStatus: "success",
+    deps,
+  });
+
+  assert.equal(result.credited, 5);
+  assert.equal(state.transactions.length, 1);
+  assert.equal(state.transactions[0][1], "REFERRAL");
+  assert.equal(state.incomeLogs.length, 1);
+  assert.equal(state.incomeLogs[0].incomeType, "referral");
+  assert.equal(state.referralIncomes.length, 1);
+  assert.equal(state.referralIncomes[0].incomeType, "direct");
+  assert.equal(String(state.referralIncomes[0].tradeId), tradeId);
+});
+
+test("trade_start unilevel distribution does not invoke level distribution path", async () => {
+  let directCalls = 0;
+  let levelCalls = 0;
+
+  await distributeUnilevelIncomeOnTradeStart({
+    traderUser: { ...TRADER, _id: "not_an_object_id" },
+    tradeAmount: 100,
+    tradeId: "507f1f77bcf86cd799439018",
+    deps: {
+      distributeDirectReferralOnTradeStartFn: async () => {
+        directCalls += 1;
+      },
+      // This callback is intentionally unused now; it should never be called.
+      distributeLevelReferralOnTradeStartFn: async () => {
+        levelCalls += 1;
+      },
+    },
+  });
+
+  assert.equal(directCalls, 1);
+  assert.equal(levelCalls, 0);
+});
+
+test("concurrent direct referral execution creates only one income record", async () => {
+  const { deps, state } = buildDeps({ creditedAmount: 5 });
+  const payload = {
+    traderUser: TRADER,
+    transactionAmount: 100,
+    eventType: "trade_start",
+    eventId: "507f1f77bcf86cd799439099",
+    eventStatus: "success",
+    deps,
+  };
+
+  const [first, second] = await Promise.all([
+    creditDirectReferralCommission(payload),
+    creditDirectReferralCommission(payload),
+  ]);
+
+  assert.equal(Number(first.credited > 0) + Number(second.credited > 0), 1);
+  assert.equal(state.referralIncomes.length, 1);
+  assert.equal(state.transactions.length, 1);
+  assert.equal(state.incomeLogs.length, 1);
 });

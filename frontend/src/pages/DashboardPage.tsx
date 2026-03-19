@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import IncomeCard from "../components/IncomeCard";
 import WalletCard from "../components/WalletCard";
+import { apkDownloadUrl } from "../config/appConfig";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { fetchSalaryProgress, type SalaryProgress } from "../services/userService";
 import { fetchTransactions, fetchWallet, type TransactionItem, type Wallet } from "../services/walletService";
@@ -89,6 +90,26 @@ const DashboardPage = () => {
           withdrawalWallet={wallet?.withdrawalWallet || 0}
           tradingWallet={wallet?.tradingWallet || wallet?.tradingBalance || 0}
         />
+        <section className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/80 via-slate-900 to-blue-950/70 p-4 shadow-[0_0_24px_rgba(34,211,238,0.15)] sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-300/80">Android App</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-50">Install Cryptiva on your phone</h2>
+              <p className="mt-1 max-w-xl text-sm text-slate-300">
+                Download the latest Android APK for faster access to your dashboard, trading, and wallet tools.
+              </p>
+            </div>
+            <a
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
+              href={apkDownloadUrl}
+              download
+              target="_blank"
+              rel="noreferrer"
+            >
+              Download App
+            </a>
+          </div>
+        </section>
         <section className="rounded-2xl border border-cyan-900/40 bg-slate-900/50 p-3 sm:p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-cyan-200 sm:text-base">Income Summary</h2>

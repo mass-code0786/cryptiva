@@ -1,0 +1,5 @@
+Place the production Android APK at this path after building it:
+
+/downloads/cryptiva-android-latest.apk
+
+If you host the APK somewhere else, set VITE_APK_DOWNLOAD_URL to the public file URL.

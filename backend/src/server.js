@@ -30,6 +30,10 @@ const allowedOrigins = new Set(
     .filter(Boolean)
 );
 allowedOrigins.add("http://localhost:5173");
+allowedOrigins.add("http://localhost");
+allowedOrigins.add("https://localhost");
+allowedOrigins.add("capacitor://localhost");
+allowedOrigins.add("ionic://localhost");
 
 app.use(
   cors({

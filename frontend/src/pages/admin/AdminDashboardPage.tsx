@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import {
+  changeAdminPassword,
   fetchAdminDashboardAnalytics,
   fetchAdminDashboardOverview,
   type AdminDashboardAnalytics,
@@ -87,6 +88,11 @@ const AdminDashboardPage = () => {
   const [analytics, setAnalytics] = useState<AdminDashboardAnalytics>(initialAnalytics);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -130,6 +136,48 @@ const AdminDashboardPage = () => {
     },
     [overview]
   );
+
+  const isStrongPassword = (value: string) =>
+    value.length >= 8 &&
+    value.length <= 128 &&
+    /[A-Z]/.test(value) &&
+    /[a-z]/.test(value) &&
+    /\d/.test(value) &&
+    /[^A-Za-z0-9]/.test(value) &&
+    !/\s/.test(value);
+
+  const onChangeAdminPassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setPasswordMessage("");
+
+    if (!currentPassword || !newPassword) {
+      setPasswordMessage("Current password and new password are required");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("Confirm password does not match new password");
+      return;
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      setPasswordMessage("New password must be 8+ chars with uppercase, lowercase, number, and special character");
+      return;
+    }
+
+    setPasswordBusy(true);
+    try {
+      const { data } = await changeAdminPassword({ currentPassword, newPassword, confirmPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMessage(data?.message || "Password updated successfully");
+    } catch (e: any) {
+      setPasswordMessage(e?.response?.data?.message || "Failed to update password");
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
 
   return (
     <section className="space-y-5">
@@ -246,6 +294,42 @@ const AdminDashboardPage = () => {
           </div>
         </article>
       </div>
+
+      <article className="rounded-2xl border border-cyan-500/20 bg-[linear-gradient(145deg,rgba(15,23,42,0.82),rgba(2,6,23,0.66))] p-4 backdrop-blur">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Admin Password</h3>
+        <p className="mt-1 text-xs text-slate-400">Update your admin password securely.</p>
+        <form className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3" onSubmit={onChangeAdminPassword}>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            className="rounded-xl border border-cyan-800/40 bg-slate-950 p-3 text-sm outline-none focus:border-cyan-500"
+            placeholder="Current password"
+          />
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="rounded-xl border border-cyan-800/40 bg-slate-950 p-3 text-sm outline-none focus:border-cyan-500"
+            placeholder="New password"
+          />
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="rounded-xl border border-cyan-800/40 bg-slate-950 p-3 text-sm outline-none focus:border-cyan-500"
+            placeholder="Confirm new password"
+          />
+          <button
+            type="submit"
+            disabled={passwordBusy}
+            className="md:col-span-3 rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {passwordBusy ? "Updating..." : "Update Admin Password"}
+          </button>
+        </form>
+        {passwordMessage && <p className="mt-3 text-sm text-cyan-200">{passwordMessage}</p>}
+      </article>
     </section>
   );
 };

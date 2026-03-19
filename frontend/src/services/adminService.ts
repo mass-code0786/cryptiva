@@ -238,6 +238,10 @@ export const fetchAdminUsers = (params?: {
 }) => api.get<{ items: AdminUserItem[]; pagination: AdminPagination }>("/admin/users", { params });
 
 export const fetchAdminUserProfile = (id: string) => api.get<AdminUserProfile>(`/admin/users/${id}`);
+export const changeAdminPassword = (payload: { currentPassword: string; newPassword: string; confirmPassword?: string }) =>
+  api.patch("/admin/profile/password", payload);
+export const resetUserPasswordByAdmin = (id: string, payload: { newPassword: string; confirmPassword?: string }) =>
+  api.patch(`/admin/users/${id}/reset-password`, payload);
 export const fetchAdminReferralTree = (params?: { userId?: string; depth?: number }) =>
   api.get<AdminReferralTreeResponse>("/admin/referral-tree", { params });
 

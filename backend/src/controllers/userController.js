@@ -1,6 +1,7 @@
 import WalletBinding from "../models/WalletBinding.js";
 import User from "../models/User.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
+import { validateStrongPassword } from "../services/passwordPolicyService.js";
 
 export const getMe = asyncHandler(async (req, res) => {
   res.json({ user: req.user.toSafeObject() });
@@ -103,4 +104,33 @@ export const lookupUserByUserId = asyncHandler(async (req, res) => {
       name: user.name,
     },
   });
+});
+
+export const changeMyPassword = asyncHandler(async (req, res) => {
+  const currentPassword = String(req.body.currentPassword || "");
+  const newPassword = String(req.body.newPassword || "");
+  const confirmPassword = req.body.confirmPassword === undefined ? null : String(req.body.confirmPassword || "");
+
+  if (!currentPassword || !newPassword) {
+    throw new ApiError(400, "Current password and new password are required");
+  }
+
+  if (confirmPassword !== null && confirmPassword !== newPassword) {
+    throw new ApiError(400, "Confirm password does not match new password");
+  }
+
+  const validCurrent = await req.user.comparePassword(currentPassword);
+  if (!validCurrent) {
+    throw new ApiError(401, "Current password is incorrect");
+  }
+
+  if (currentPassword === newPassword) {
+    throw new ApiError(400, "New password must be different from current password");
+  }
+
+  validateStrongPassword(newPassword, "New password");
+  await req.user.setPassword(newPassword);
+  await req.user.save();
+
+  res.json({ message: "Password updated successfully" });
 });

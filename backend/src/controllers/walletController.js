@@ -5,6 +5,8 @@ import Withdrawal from "../models/Withdrawal.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { startTradeAndActivate } from "../services/tradeActivationService.js";
 
+const WITHDRAWAL_CHARGE_PERCENT = 10;
+
 const ensureWallet = async (userId) => {
   let wallet = await Wallet.findOne({ userId });
   if (!wallet) {
@@ -133,6 +135,10 @@ export const withdrawFromWallet = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Insufficient withdrawal wallet balance");
   }
 
+  const grossAmount = Number(amount.toFixed(6));
+  const feeAmount = Number((grossAmount * (WITHDRAWAL_CHARGE_PERCENT / 100)).toFixed(6));
+  const netAmount = Number((grossAmount - feeAmount).toFixed(6));
+
   wallet.withdrawalWallet -= amount;
   wallet.withdrawTotal += amount;
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
@@ -140,7 +146,11 @@ export const withdrawFromWallet = asyncHandler(async (req, res) => {
 
   const withdrawal = await Withdrawal.create({
     userId: req.user._id,
-    amount,
+    amount: grossAmount,
+    grossAmount,
+    feeAmount,
+    netAmount,
+    chargePercent: WITHDRAWAL_CHARGE_PERCENT,
     destination: req.user.walletAddress,
     network: "BEP20",
     currency: "USDT",
@@ -154,13 +164,25 @@ export const withdrawFromWallet = asyncHandler(async (req, res) => {
     network: "BEP20",
     source: "Wallet withdrawal",
     status: "pending",
-    metadata: { withdrawalId: withdrawal._id },
+    metadata: {
+      withdrawalId: withdrawal._id,
+      grossAmount,
+      feeAmount,
+      netAmount,
+      chargePercent: WITHDRAWAL_CHARGE_PERCENT,
+    },
   });
 
   res.status(201).json({
     message: "Withdrawal submitted",
     wallet,
     withdrawal,
+    withdrawalBreakdown: {
+      grossAmount,
+      feeAmount,
+      netAmount,
+      chargePercent: WITHDRAWAL_CHARGE_PERCENT,
+    },
   });
 });
 

@@ -16,6 +16,7 @@ import { ACTIVATION_MIN_TRADE_AMOUNT, countActivatedUsers } from "../services/ac
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
 import { startTradeAndActivate } from "../services/tradeActivationService.js";
 import { creditDirectReferralCommission } from "../services/referralService.js";
+import { validateStrongPassword } from "../services/passwordPolicyService.js";
 
 const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "LEVEL", "salary", "SALARY"];
 
@@ -735,6 +736,86 @@ export const getUserProfileDetail = asyncHandler(async (req, res) => {
   });
 });
 
+export const changeAdminPassword = asyncHandler(async (req, res) => {
+  const currentPassword = String(req.body.currentPassword || "");
+  const newPassword = String(req.body.newPassword || "");
+  const confirmPassword = req.body.confirmPassword === undefined ? null : String(req.body.confirmPassword || "");
+
+  if (!currentPassword || !newPassword) {
+    throw new ApiError(400, "Current password and new password are required");
+  }
+
+  if (confirmPassword !== null && confirmPassword !== newPassword) {
+    throw new ApiError(400, "Confirm password does not match new password");
+  }
+
+  const validCurrent = await req.user.comparePassword(currentPassword);
+  if (!validCurrent) {
+    throw new ApiError(401, "Current password is incorrect");
+  }
+
+  if (currentPassword === newPassword) {
+    throw new ApiError(400, "New password must be different from current password");
+  }
+
+  validateStrongPassword(newPassword, "New password");
+  await req.user.setPassword(newPassword);
+  await req.user.save();
+
+  await addActivityLog({
+    adminId: req.user._id,
+    type: "admin_password_change",
+    action: "Admin changed own password",
+    metadata: { adminUserId: req.user.userId },
+  });
+
+  res.json({ message: "Password updated successfully" });
+});
+
+export const resetUserPasswordByAdmin = asyncHandler(async (req, res) => {
+  const target = await findUserByParam(req.params.id);
+  if (!target) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (target.isAdmin) {
+    throw new ApiError(400, "Use admin password change for admin accounts");
+  }
+
+  const newPassword = String(req.body.newPassword || "");
+  const confirmPassword = req.body.confirmPassword === undefined ? null : String(req.body.confirmPassword || "");
+
+  if (!newPassword) {
+    throw new ApiError(400, "New password is required");
+  }
+
+  if (confirmPassword !== null && confirmPassword !== newPassword) {
+    throw new ApiError(400, "Confirm password does not match new password");
+  }
+
+  validateStrongPassword(newPassword, "New password");
+  await target.setPassword(newPassword);
+  await target.save();
+
+  await addActivityLog({
+    adminId: req.user._id,
+    type: "admin_password_reset",
+    action: "Admin reset user password",
+    targetUserId: target._id,
+    metadata: { targetUserId: target.userId, adminUserId: req.user.userId },
+  });
+
+  res.json({
+    message: "User password reset successfully",
+    user: {
+      id: target._id,
+      userId: target.userId,
+      name: target.name,
+      email: target.email,
+    },
+  });
+});
+
 export const getReferralTreeAdmin = asyncHandler(async (req, res) => {
   const depth = Math.min(10, Math.max(1, Number.parseInt(req.query.depth, 10) || 5));
 
@@ -1218,6 +1299,10 @@ export const approveWithdrawal = asyncHandler(async (req, res) => {
   const withdrawal = await Withdrawal.findById(req.params.withdrawalId);
   if (!withdrawal) throw new ApiError(404, "Withdrawal request not found");
   if (withdrawal.status !== "pending") throw new ApiError(400, "Withdrawal is already processed");
+  const grossAmount = Number(withdrawal.grossAmount || withdrawal.amount || 0);
+  const feeAmount = Number(withdrawal.feeAmount || 0);
+  const netAmount = Number(withdrawal.netAmount || Math.max(0, grossAmount - feeAmount));
+  const chargePercent = Number(withdrawal.chargePercent || 10);
 
   withdrawal.status = "completed";
   withdrawal.approvedAt = new Date();
@@ -1225,13 +1310,24 @@ export const approveWithdrawal = asyncHandler(async (req, res) => {
   await withdrawal.save();
 
   await Promise.all([
-    Transaction.findOneAndUpdate({ "metadata.withdrawalId": withdrawal._id, type: "withdraw" }, { status: "completed" }, { new: true }),
+    Transaction.findOneAndUpdate(
+      { "metadata.withdrawalId": withdrawal._id, type: "withdraw" },
+      {
+        status: "completed",
+        source: "Withdrawal approved by admin",
+        "metadata.grossAmount": grossAmount,
+        "metadata.feeAmount": feeAmount,
+        "metadata.netAmount": netAmount,
+        "metadata.chargePercent": chargePercent,
+      },
+      { new: true }
+    ),
     addActivityLog({
       adminId: req.user._id,
       action: "Withdrawal approved",
       targetUserId: withdrawal.userId,
-      amount: withdrawal.amount,
-      metadata: { withdrawalId: withdrawal._id },
+      amount: grossAmount,
+      metadata: { withdrawalId: withdrawal._id, grossAmount, feeAmount, netAmount, chargePercent },
     }),
   ]);
 
@@ -1247,12 +1343,16 @@ export const rejectWithdrawal = asyncHandler(async (req, res) => {
   const withdrawal = await Withdrawal.findById(req.params.withdrawalId);
   if (!withdrawal) throw new ApiError(404, "Withdrawal request not found");
   if (withdrawal.status !== "pending") throw new ApiError(400, "Withdrawal is already processed");
+  const grossAmount = Number(withdrawal.grossAmount || withdrawal.amount || 0);
+  const feeAmount = Number(withdrawal.feeAmount || 0);
+  const netAmount = Number(withdrawal.netAmount || Math.max(0, grossAmount - feeAmount));
+  const chargePercent = Number(withdrawal.chargePercent || 10);
 
   const wallet = await Wallet.findOne({ userId: withdrawal.userId });
   if (!wallet) throw new ApiError(404, "Wallet not found for withdrawal user");
 
-  wallet.withdrawalWallet += withdrawal.amount;
-  wallet.withdrawTotal = Math.max(0, wallet.withdrawTotal - withdrawal.amount);
+  wallet.withdrawalWallet += grossAmount;
+  wallet.withdrawTotal = Math.max(0, wallet.withdrawTotal - grossAmount);
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
 
@@ -1264,16 +1364,23 @@ export const rejectWithdrawal = asyncHandler(async (req, res) => {
   await Promise.all([
     Transaction.findOneAndUpdate(
       { "metadata.withdrawalId": withdrawal._id, type: "withdraw" },
-      { status: "failed", source: `Withdrawal rejected: ${reason}` },
+      {
+        status: "failed",
+        source: `Withdrawal rejected: ${reason}`,
+        "metadata.grossAmount": grossAmount,
+        "metadata.feeAmount": feeAmount,
+        "metadata.netAmount": netAmount,
+        "metadata.chargePercent": chargePercent,
+      },
       { new: true }
     ),
     addActivityLog({
       adminId: req.user._id,
       action: "Withdrawal rejected",
       targetUserId: withdrawal.userId,
-      amount: withdrawal.amount,
+      amount: grossAmount,
       reason,
-      metadata: { withdrawalId: withdrawal._id },
+      metadata: { withdrawalId: withdrawal._id, grossAmount, feeAmount, netAmount, chargePercent },
     }),
   ]);
 

@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   bindWalletAddress,
+  changeMyPassword,
   getMe,
   getWalletBinding,
   lookupUserByUserId,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.use(authenticate);
 router.get("/me", getMe);
 router.patch("/me", updateMe);
+router.patch("/change-password", changeMyPassword);
 router.patch("/referral-code", updateMyReferralCode);
 router.post("/wallet-binding", bindWalletAddress);
 router.get("/wallet-binding", getWalletBinding);

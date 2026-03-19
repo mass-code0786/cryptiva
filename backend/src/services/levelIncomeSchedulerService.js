@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import ReferralIncome from "../models/ReferralIncome.js";
 import Transaction from "../models/Transaction.js";
+import Trade from "../models/Trade.js";
 import User from "../models/User.js";
 import { applyIncomeWithCap } from "./incomeCapService.js";
 import { logIncomeEvent } from "./incomeLogService.js";
@@ -16,6 +17,8 @@ const getLevelIncomePercent = (level) => {
 };
 
 const toAmount = (value) => Number(Number(value || 0).toFixed(6));
+const MAX_UNLOCKED_LEVEL = 30;
+const LEVELS_PER_ACTIVE_DIRECT = 3;
 
 const buildUserResolvers = (UserModel = User) => {
   const byIdCache = new Map();
@@ -50,6 +53,44 @@ const buildUserResolvers = (UserModel = User) => {
   return { getById, getByUserId };
 };
 
+const buildActiveDirectCountResolver = ({ UserModel = User, TradeModel = Trade } = {}) => {
+  const countCache = new Map();
+
+  return async (uplineUser) => {
+    const uplineId = String(uplineUser?._id || "");
+    if (!uplineId) return 0;
+    if (countCache.has(uplineId)) return countCache.get(uplineId);
+
+    const directReferrals = await UserModel.find(
+      {
+        $or: [{ referredBy: uplineUser._id }, { referredByUserId: uplineUser.userId }],
+      },
+      "_id"
+    );
+    if (!directReferrals.length) {
+      countCache.set(uplineId, 0);
+      return 0;
+    }
+
+    const referralIds = directReferrals.map((entry) => entry._id);
+    const activeRows = await TradeModel.aggregate([
+      {
+        $match: {
+          userId: { $in: referralIds },
+          amount: { $gte: 5 },
+          status: { $in: ["active", "completed"] },
+        },
+      },
+      { $group: { _id: "$userId" } },
+      { $count: "count" },
+    ]);
+
+    const count = Number(activeRows[0]?.count || 0);
+    countCache.set(uplineId, count);
+    return count;
+  };
+};
+
 const resolveUpline = async (currentUser, resolvers) => {
   if (!currentUser) return null;
   if (currentUser.referredBy) {
@@ -82,6 +123,8 @@ export const distributeLevelIncomeOnTradingCredit = async ({
   const applyIncomeWithCapFn = deps.applyIncomeWithCapFn || applyIncomeWithCap;
   const logIncomeEventFn = deps.logIncomeEventFn || logIncomeEvent;
   const resolvers = deps.resolvers || buildUserResolvers(deps.UserModel || User);
+  const getActiveDirectCountFn =
+    deps.getActiveDirectCountFn || buildActiveDirectCountResolver({ UserModel: deps.UserModel || User, TradeModel: deps.TradeModel || Trade });
   const acquireIdempotencyLockFn = deps.acquireIdempotencyLockFn || acquireIdempotencyLock;
 
   let currentUser = await resolvers.getById(traderUserId);
@@ -95,6 +138,16 @@ export const distributeLevelIncomeOnTradingCredit = async ({
   for (let level = 1; level <= 30; level += 1) {
     const upline = await resolveUpline(currentUser, resolvers);
     if (!upline) break;
+
+    const directCount = Number(await getActiveDirectCountFn(upline)) || 0;
+    const maxUnlockedLevel = Math.min(directCount * LEVELS_PER_ACTIVE_DIRECT, MAX_UNLOCKED_LEVEL);
+    logger.info(
+      `[level-income] unlock check: user=${upline.userId || String(upline._id)} directCount=${directCount} unlockedLevel=${maxUnlockedLevel} targetLevel=${level}`
+    );
+    if (level > maxUnlockedLevel) {
+      currentUser = upline;
+      continue;
+    }
 
     const alreadyCredited = await ReferralIncomeModel.findOne({
       userId: upline._id,

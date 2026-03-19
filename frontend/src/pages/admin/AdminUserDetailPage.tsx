@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { fetchAdminUserProfile, type AdminIncomeHistoryItem, type AdminReferralNode, type AdminUserProfile } from "../../services/adminService";
+import {
+  fetchAdminUserProfile,
+  resetUserPasswordByAdmin,
+  type AdminIncomeHistoryItem,
+  type AdminReferralNode,
+  type AdminUserProfile,
+} from "../../services/adminService";
 
 const money = (value: number) => `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -27,6 +33,10 @@ const AdminUserDetailPage = () => {
   const [profile, setProfile] = useState<AdminUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +58,47 @@ const AdminUserDetailPage = () => {
 
   const incomeItems: AdminIncomeHistoryItem[] = profile?.incomeHistory || [];
   const rootTree: AdminReferralNode[] = profile?.referralTree || [];
+
+  const isStrongPassword = (value: string) =>
+    value.length >= 8 &&
+    value.length <= 128 &&
+    /[A-Z]/.test(value) &&
+    /[a-z]/.test(value) &&
+    /\d/.test(value) &&
+    /[^A-Za-z0-9]/.test(value) &&
+    !/\s/.test(value);
+
+  const onResetPassword = async () => {
+    if (!id) return;
+    setPasswordMessage("");
+
+    if (!newPassword) {
+      setPasswordMessage("New password is required");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("Confirm password does not match new password");
+      return;
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      setPasswordMessage("New password must be 8+ chars with uppercase, lowercase, number, and special character");
+      return;
+    }
+
+    setPasswordBusy(true);
+    try {
+      const { data } = await resetUserPasswordByAdmin(id, { newPassword, confirmPassword });
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMessage(data?.message || "User password reset successfully");
+    } catch (e: any) {
+      setPasswordMessage(e?.response?.data?.message || "Failed to reset user password");
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
 
   return (
     <section className="space-y-4">
@@ -140,6 +191,36 @@ const AdminUserDetailPage = () => {
                 <span className="text-slate-400">Salary:</span> {money(profile.incomeBreakdown.salaryIncome)}
               </p>
             </div>
+          </article>
+
+          <article className="rounded-2xl border border-cyan-700/30 bg-slate-950/55 p-4">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-cyan-200">Reset User Password</h3>
+            <p className="mt-2 text-xs text-slate-400">Admin-only action. This updates the selected user login password immediately.</p>
+            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="rounded-xl border border-cyan-800/40 bg-slate-950 p-3 text-sm outline-none focus:border-cyan-500"
+                placeholder="New password"
+              />
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="rounded-xl border border-cyan-800/40 bg-slate-950 p-3 text-sm outline-none focus:border-cyan-500"
+                placeholder="Confirm new password"
+              />
+              <button
+                type="button"
+                disabled={passwordBusy}
+                onClick={onResetPassword}
+                className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {passwordBusy ? "Resetting..." : "Reset Password"}
+              </button>
+            </div>
+            {passwordMessage && <p className="mt-3 text-sm text-cyan-200">{passwordMessage}</p>}
           </article>
 
           <article className="rounded-2xl border border-cyan-700/30 bg-slate-950/55 p-4">

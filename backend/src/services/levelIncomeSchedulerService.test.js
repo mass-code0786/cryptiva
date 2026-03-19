@@ -56,6 +56,7 @@ const createDeps = () => {
       logIncomeEventFn: async (payload) => {
         incomeLogs.push(payload);
       },
+      getActiveDirectCountFn: async () => 10,
       acquireIdempotencyLockFn: async ({ key }) => {
         const lockKey = String(key || "");
         if (idempotencyLocks.has(lockKey)) return { acquired: false, key: lockKey };
@@ -117,4 +118,29 @@ test("concurrent realtime level distribution creates one payout set only", async
   assert.equal(referralRows.length, 2);
   assert.equal(transactions.length, 2);
   assert.equal(incomeLogs.length, 2);
+});
+
+test("level payout is skipped when target level is beyond unlocked range", async () => {
+  const { deps, referralRows, transactions, incomeLogs } = createDeps();
+  deps.getActiveDirectCountFn = async (upline) => {
+    if (String(upline?._id) === "upline1") return 0; // unlocks 0 levels
+    return 1; // unlocks 3 levels
+  };
+
+  const result = await distributeLevelIncomeOnTradingCredit({
+    traderUserId: USERS.trader._id,
+    traderTradeId: "trade_003",
+    roiAmount: 10,
+    roiEventKey: "trade_003:2026-01-01T09:00:00.000Z",
+    recordedAt: new Date("2026-01-01T09:00:00.000Z"),
+    deps,
+  });
+
+  assert.equal(result.payouts, 1);
+  assert.equal(result.creditedUsers, 1);
+  assert.equal(referralRows.length, 1);
+  assert.equal(Number(referralRows[0].level), 2);
+  assert.equal(String(referralRows[0].userId), "upline2");
+  assert.equal(transactions.length, 1);
+  assert.equal(incomeLogs.length, 1);
 });

@@ -4,6 +4,7 @@ import {
   adjustTradeIncome,
   approveSupportQueryAdmin,
   approveDeposit,
+  changeAdminPassword,
   approveWithdrawal,
   blockUser,
   deductFund,
@@ -23,6 +24,7 @@ import {
   listWithdrawals,
   rejectDeposit,
   rejectSupportQueryAdmin,
+  resetUserPasswordByAdmin,
   rejectWithdrawal,
   replySupportQueryAdmin,
   transferFund,
@@ -42,6 +44,7 @@ router.get("/settings/trading-roi", getTradingRoiSetting);
 router.patch("/settings/trading-roi", updateTradingRoiSetting);
 router.get("/users", listUsers);
 router.get("/users/:id", getUserProfileDetail);
+router.patch("/users/:id/reset-password", resetUserPasswordByAdmin);
 router.get("/referral-tree", getReferralTreeAdmin);
 router.patch("/users/:id/block", blockUser);
 router.patch("/users/:id/unblock", unblockUser);
@@ -64,5 +67,6 @@ router.patch("/support-queries/:queryId/approve", approveSupportQueryAdmin);
 router.patch("/support-queries/:queryId/reject", rejectSupportQueryAdmin);
 router.get("/transactions", listTransactionsAdmin);
 router.get("/team-business", getTeamBusiness);
+router.patch("/profile/password", changeAdminPassword);
 
 export default router;

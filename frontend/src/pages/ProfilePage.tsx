@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { useAuth } from "../hooks/useAuth";
-import { bindWalletAddress, fetchMyProfile, fetchWalletBinding, updateMyProfile, updateMyReferralCode } from "../services/userService";
+import { bindWalletAddress, changeMyPassword, fetchMyProfile, fetchWalletBinding, updateMyProfile, updateMyReferralCode } from "../services/userService";
 
 const ProfilePage = () => {
   const { user, refreshUser } = useAuth();
@@ -11,6 +11,11 @@ const ProfilePage = () => {
   const [message, setMessage] = useState("");
   const [referralMessage, setReferralMessage] = useState("");
   const [copyMessage, setCopyMessage] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
   const [newReferralCode, setNewReferralCode] = useState((user?.referralCode || "").toLowerCase());
   const referralIdentifier = user?.referralCode || user?.userId;
   const referralLink = referralIdentifier
@@ -116,6 +121,48 @@ const ProfilePage = () => {
     }
   };
 
+  const isStrongPassword = (value: string) =>
+    value.length >= 8 &&
+    value.length <= 128 &&
+    /[A-Z]/.test(value) &&
+    /[a-z]/.test(value) &&
+    /\d/.test(value) &&
+    /[^A-Za-z0-9]/.test(value) &&
+    !/\s/.test(value);
+
+  const onChangePassword = async (event: FormEvent) => {
+    event.preventDefault();
+    setPasswordMessage("");
+
+    if (!currentPassword || !newPassword) {
+      setPasswordMessage("Current password and new password are required");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage("Confirm password does not match new password");
+      return;
+    }
+
+    if (!isStrongPassword(newPassword)) {
+      setPasswordMessage("New password must be 8+ chars with uppercase, lowercase, number, and special character");
+      return;
+    }
+
+    setPasswordBusy(true);
+    try {
+      const { data } = await changeMyPassword({ currentPassword, newPassword, confirmPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMessage(data?.message || "Password updated successfully");
+    } catch (error: any) {
+      setPasswordMessage(error?.response?.data?.message || "Password update failed");
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -218,6 +265,41 @@ const ProfilePage = () => {
             </a>
           </div>
           {copyMessage && <p className="mt-2 text-xs text-cyan-300">{copyMessage}</p>}
+        </div>
+        <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
+          <h3 className="text-lg font-semibold">Change Password</h3>
+          <p className="mt-1 text-xs text-slate-400">Use a strong password with uppercase, lowercase, number, and special character.</p>
+          <form className="mt-4 space-y-3" onSubmit={onChangePassword}>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+              placeholder="Current password"
+            />
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+              placeholder="New password"
+            />
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+              placeholder="Confirm new password"
+            />
+            <button
+              type="submit"
+              disabled={passwordBusy}
+              className="w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {passwordBusy ? "Updating..." : "Update Password"}
+            </button>
+          </form>
+          {passwordMessage && <p className="mt-3 text-sm text-cyan-200">{passwordMessage}</p>}
         </div>
       </div>
     </DashboardLayout>

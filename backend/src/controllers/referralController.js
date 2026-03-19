@@ -259,15 +259,49 @@ export const listReferralIncomeHistory = asyncHandler(async (req, res) => {
 
   const [items, total] = await Promise.all([
     ReferralIncome.find(query)
-      .populate("sourceUserId", "name email userId referralCode")
+      .populate("userId", "name userId")
+      .populate("sourceUserId", "name email userId referralCode referredByUserId")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
     ReferralIncome.countDocuments(query),
   ]);
 
+  const formattedItems = items.map((item) => {
+    const metadata = item.metadata && typeof item.metadata === "object" ? item.metadata : {};
+    const eventMeta = metadata.event && typeof metadata.event === "object" ? metadata.event : {};
+    const receiverUser = item.userId && typeof item.userId === "object" ? item.userId : null;
+    const sourceUser = item.sourceUserId && typeof item.sourceUserId === "object" ? item.sourceUserId : null;
+
+    return {
+      id: item._id,
+      incomeType: item.incomeType,
+      level: Number(item.level || 0),
+      amount: Number(item.amount || 0),
+      timestamp: item.createdAt,
+      receiverUserId: receiverUser?.userId || req.user.userId || "",
+      receiverName: receiverUser?.name || req.user.name || "",
+      sourceUserId: sourceUser?.userId || "",
+      sourceUserName: sourceUser?.name || "",
+      sourceUserSponsorId:
+        sourceUser?.referredByUserId ||
+        (typeof metadata.sourceUserSponsorId === "string" ? metadata.sourceUserSponsorId : "") ||
+        "",
+      tradeId: item.tradeId || (typeof metadata.tradeId === "string" ? metadata.tradeId : null),
+      roiEventKey:
+        (typeof metadata.roiEventKey === "string" && metadata.roiEventKey) ||
+        (typeof eventMeta.id === "string" ? eventMeta.id : "") ||
+        "",
+      roiCreditTransactionId:
+        (typeof metadata.roiCreditTransactionId === "string" && metadata.roiCreditTransactionId) ||
+        (typeof metadata.roiTransactionId === "string" ? metadata.roiTransactionId : "") ||
+        "",
+      metadata,
+    };
+  });
+
   res.json({
-    items,
+    items: formattedItems,
     pagination: {
       page,
       limit,

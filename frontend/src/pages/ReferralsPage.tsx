@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
-import { fetchTeamReferrals } from "../services/userService";
+import { fetchReferralIncomeHistory, fetchTeamReferrals, type ReferralIncomeHistoryItem } from "../services/userService";
 
 type TeamItem = {
   _id: string;
@@ -20,22 +20,30 @@ const ReferralsPage = () => {
   const [totalDirectTeam, setTotalDirectTeam] = useState(0);
   const [totalLevelTeam, setTotalLevelTeam] = useState(0);
   const [levelCountRows, setLevelCountRows] = useState<Array<{ level: number; total: number; active: number; inactive: number }>>([]);
+  const [levelIncomeHistory, setLevelIncomeHistory] = useState<ReferralIncomeHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
-    fetchTeamReferrals()
-      .then((res) => {
-        const referrals = res.data.referrals || [];
+    Promise.all([
+      fetchTeamReferrals(),
+      fetchReferralIncomeHistory({ incomeType: "level", page: 1, limit: 100 }),
+    ])
+      .then(([teamRes, historyRes]) => {
+        const referrals = teamRes.data.referrals || [];
         setItems(referrals);
-        setTotalDirectTeam(Number(res.data.totalDirectTeam || referrals.filter((item) => Number(item.level) === 1).length));
-        setTotalLevelTeam(Number(res.data.totalLevelTeam || referrals.length));
-        setLevelCountRows(res.data.levelCounts || []);
+        setTotalDirectTeam(Number(teamRes.data.totalDirectTeam || referrals.filter((item) => Number(item.level) === 1).length));
+        setTotalLevelTeam(Number(teamRes.data.totalLevelTeam || referrals.length));
+        setLevelCountRows(teamRes.data.levelCounts || []);
+        setLevelIncomeHistory(historyRes.data.items || []);
       })
       .catch(() => {
         setItems([]);
         setTotalDirectTeam(0);
         setTotalLevelTeam(0);
         setLevelCountRows([]);
-      });
+        setLevelIncomeHistory([]);
+      })
+      .finally(() => setHistoryLoading(false));
   }, []);
 
   const levelMap = useMemo(() => {
@@ -93,6 +101,50 @@ const ReferralsPage = () => {
               </div>
             ))}
           </div>
+        </div>
+        <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
+          <h3 className="text-base font-semibold text-cyan-200">Level Income History (Audit Trace)</h3>
+          <p className="mt-1 text-xs text-slate-400">
+            Includes level number, source member details, receiver details, ROI/trade reference, and timestamp.
+          </p>
+          {historyLoading ? (
+            <p className="mt-3 text-sm text-slate-400">Loading level income history...</p>
+          ) : levelIncomeHistory.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">No level income records found.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead>
+                  <tr className="text-left text-slate-400">
+                    <th className="px-2 py-1">Time</th>
+                    <th className="px-2 py-1">Level</th>
+                    <th className="px-2 py-1">Amount</th>
+                    <th className="px-2 py-1">Receiver ID</th>
+                    <th className="px-2 py-1">Source User ID</th>
+                    <th className="px-2 py-1">Source Name</th>
+                    <th className="px-2 py-1">Source Sponsor ID</th>
+                    <th className="px-2 py-1">Trade Ref</th>
+                    <th className="px-2 py-1">ROI Ref</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {levelIncomeHistory.map((row) => (
+                    <tr key={row.id} className="border-t border-slate-800">
+                      <td className="px-2 py-2 text-slate-300">{row.timestamp ? new Date(row.timestamp).toLocaleString() : "-"}</td>
+                      <td className="px-2 py-2 text-cyan-300">L{row.level || "-"}</td>
+                      <td className="px-2 py-2 text-slate-100">${Number(row.amount || 0).toFixed(4)}</td>
+                      <td className="px-2 py-2 text-slate-300">{row.receiverUserId || "-"}</td>
+                      <td className="px-2 py-2 text-slate-300">{row.sourceUserId || "-"}</td>
+                      <td className="px-2 py-2 text-slate-300">{row.sourceUserName || "-"}</td>
+                      <td className="px-2 py-2 text-slate-300">{row.sourceUserSponsorId || "-"}</td>
+                      <td className="px-2 py-2 text-slate-300">{row.tradeId || "-"}</td>
+                      <td className="px-2 py-2 text-slate-300">{row.roiEventKey || row.roiCreditTransactionId || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
         <div className="space-y-3">
           {items.length === 0 && (

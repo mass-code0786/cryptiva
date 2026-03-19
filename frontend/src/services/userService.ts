@@ -47,6 +47,36 @@ export type TeamReferralsResponse = {
     inactive: number;
   }>;
 };
+
+export type ReferralIncomeHistoryItem = {
+  id: string;
+  incomeType: "direct" | "level";
+  level: number;
+  amount: number;
+  timestamp: string;
+  receiverUserId: string;
+  receiverName?: string;
+  sourceUserId?: string;
+  sourceUserName?: string;
+  sourceUserSponsorId?: string;
+  tradeId?: string | null;
+  roiEventKey?: string;
+  roiCreditTransactionId?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type ReferralIncomeHistoryResponse = {
+  items: ReferralIncomeHistoryItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+};
+
+export const fetchReferralIncomeHistory = (params?: { incomeType?: "direct" | "level"; page?: number; limit?: number }) =>
+  api.get<ReferralIncomeHistoryResponse>("/referrals/income-history", { params });
 export const bindWalletAddress = (payload: { walletAddress: string; network?: "BEP20" }) =>
   api.post("/users/wallet-binding", payload);
 export const fetchWalletBinding = () => api.get("/users/wallet-binding");

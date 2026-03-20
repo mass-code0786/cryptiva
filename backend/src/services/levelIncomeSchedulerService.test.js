@@ -120,6 +120,21 @@ test("concurrent realtime level distribution creates one payout set only", async
   assert.equal(incomeLogs.length, 2);
 });
 
+test("unlock-check logging does not crash when deps.logger is not provided", async () => {
+  const { deps } = createDeps();
+  const result = await distributeLevelIncomeOnTradingCredit({
+    traderUserId: USERS.trader._id,
+    traderTradeId: "trade_004",
+    roiAmount: 10,
+    roiEventKey: "trade_004:2026-01-01T12:00:00.000Z",
+    recordedAt: new Date("2026-01-01T12:00:00.000Z"),
+    deps,
+  });
+
+  assert.equal(result.payouts, 2);
+  assert.equal(result.creditedUsers, 2);
+});
+
 test("level payout is skipped when target level is beyond unlocked range", async () => {
   const { deps, referralRows, transactions, incomeLogs } = createDeps();
   deps.getActiveDirectCountFn = async (upline) => {

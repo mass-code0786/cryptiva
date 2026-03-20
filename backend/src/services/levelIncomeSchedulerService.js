@@ -112,6 +112,7 @@ export const distributeLevelIncomeOnTradingCredit = async ({
   recordedAt = new Date(),
   deps = {},
 }) => {
+  const logger = deps.logger || console;
   const amount = toAmount(roiAmount);
   const eventKey = String(roiEventKey || "").trim();
   if (!traderUserId || !eventKey || amount <= 0) {

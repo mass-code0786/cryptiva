@@ -1,4 +1,4 @@
-import { Activity, GitBranch, LayoutDashboard, LifeBuoy, LogOut, Menu, ScrollText, TrendingUp, Users, WalletCards, WalletMinimal, X } from "lucide-react";
+import { Activity, Bell, GitBranch, LayoutDashboard, LifeBuoy, LogOut, Menu, ScrollText, TrendingUp, Users, WalletCards, WalletMinimal, X } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
@@ -13,6 +13,7 @@ const navItems = [
   { to: "/admin/income-history", label: "Income History", icon: ScrollText },
   { to: "/admin/referral-tree", label: "Referral Tree", icon: GitBranch },
   { to: "/admin/support-queries", label: "Support Queries", icon: LifeBuoy },
+  { to: "/admin/notifications", label: "Notifications", icon: Bell },
   { to: "/admin/activity-logs", label: "Activity Logs", icon: Activity },
 ];
 

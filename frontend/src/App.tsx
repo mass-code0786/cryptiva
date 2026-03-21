@@ -28,6 +28,7 @@ import TradingPage from "./pages/TradingPage";
 import TransactionsPage from "./pages/TransactionsPage";
 import TransferFundsPage from "./pages/TransferFundsPage";
 import WithdrawalPage from "./pages/WithdrawalPage";
+import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 
 const App = () => {
   const { user } = useAuth();
@@ -73,6 +74,7 @@ const App = () => {
         <Route path="income-history" element={<AdminIncomeHistoryPage />} />
         <Route path="referral-tree" element={<AdminReferralTreePage />} />
         <Route path="support-queries" element={<AdminSupportQueriesPage />} />
+        <Route path="notifications" element={<AdminNotificationsPage />} />
         <Route path="activity-logs" element={<AdminActivityLogsPage />} />
       </Route>
       <Route path="/history" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />

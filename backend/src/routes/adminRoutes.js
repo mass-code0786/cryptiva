@@ -32,6 +32,7 @@ import {
   updateTradingRoiSetting,
   updateTradeProfitRate,
 } from "../controllers/adminController.js";
+import { listAdminNotificationBroadcasts, sendAdminNotification } from "../controllers/notificationController.js";
 import { checkAdmin } from "../middleware/admin.js";
 import { authenticate } from "../middleware/auth.js";
 
@@ -68,5 +69,7 @@ router.patch("/support-queries/:queryId/reject", rejectSupportQueryAdmin);
 router.get("/transactions", listTransactionsAdmin);
 router.get("/team-business", getTeamBusiness);
 router.patch("/profile/password", changeAdminPassword);
+router.post("/notifications/send", sendAdminNotification);
+router.get("/notifications/broadcasts", listAdminNotificationBroadcasts);
 
 export default router;

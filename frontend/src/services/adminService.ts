@@ -208,6 +208,25 @@ export type AdminSupportQueryItem = {
   userId?: AdminEntityUser;
 };
 
+export type AdminNotificationAudienceType = "all" | "selected" | "active" | "inactive";
+export type AdminNotificationType = "announcement" | "system" | "admin";
+
+export type AdminNotificationBroadcastItem = {
+  _id: string;
+  title: string;
+  message: string;
+  type: AdminNotificationType;
+  audienceType: AdminNotificationAudienceType;
+  senderRole: string;
+  senderId?: AdminEntityUser;
+  recipientCount: number;
+  deliveredCount: number;
+  status: "processing" | "completed" | "failed";
+  failureReason?: string;
+  createdAt: string;
+  completedAt?: string | null;
+};
+
 export const fetchAdminDashboardOverview = () =>
   api.get<AdminDashboardOverview>("/admin/dashboard-overview", {
     params: {
@@ -283,3 +302,15 @@ export const fetchAdminSupportQueries = (params?: { search?: string; status?: "p
 export const replyAdminSupportQuery = (queryId: string, adminReply: string) => api.patch(`/admin/support-queries/${queryId}/reply`, { adminReply });
 export const approveAdminSupportQuery = (queryId: string) => api.patch(`/admin/support-queries/${queryId}/approve`);
 export const rejectAdminSupportQuery = (queryId: string) => api.patch(`/admin/support-queries/${queryId}/reject`);
+
+export const sendAdminNotificationBroadcast = (payload: {
+  title: string;
+  message: string;
+  type: AdminNotificationType;
+  audienceType: AdminNotificationAudienceType;
+  selectedUserIds?: string[];
+  idempotencyKey?: string;
+}) => api.post<{ message: string; deduplicated: boolean; insertedCount: number; broadcast: AdminNotificationBroadcastItem }>("/admin/notifications/send", payload);
+
+export const fetchAdminNotificationBroadcasts = (params?: { page?: number; limit?: number }) =>
+  api.get<{ items: AdminNotificationBroadcastItem[]; pagination: AdminPagination }>("/admin/notifications/broadcasts", { params });

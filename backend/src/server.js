@@ -9,6 +9,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import depositRoutes from "./routes/depositRoutes.js";
 import p2pRoutes from "./routes/p2pRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 import referralRoutes from "./routes/referralRoutes.js";
 import salaryRoutes from "./routes/salaryRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
@@ -94,6 +95,7 @@ app.use("/api/support", supportRoutes);
 app.use("/api/trade", tradeRoutes);
 app.use("/api/p2p", p2pRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

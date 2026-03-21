@@ -1,8 +1,9 @@
 import { ReactNode, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Download, Menu, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import BottomNavigation from "../components/BottomNavigation";
 import CryptivaLogo from "../components/CryptivaLogo";
+import { apkDownloadUrl } from "../config/appConfig";
 import { useAuth } from "../hooks/useAuth";
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {
@@ -24,13 +25,26 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <CryptivaLogo variant="icon" className="h-8 w-8 shrink-0" />
             <span className="truncate text-lg font-bold tracking-wide text-slate-100">CRYPTIVA</span>
           </div>
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="rounded-xl border border-cyan-800/60 bg-slate-900 p-2 text-cyan-100 transition hover:border-cyan-600 hover:bg-slate-800"
-            aria-label="Open navigation menu"
-          >
-            <Menu size={18} />
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <a
+              href={apkDownloadUrl}
+              download
+              target="_blank"
+              rel="noreferrer"
+              title="Download App"
+              aria-label="Download App"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-500/40 bg-slate-900 text-cyan-100 shadow-[0_0_16px_rgba(34,211,238,0.12)] transition hover:border-cyan-400 hover:bg-slate-800 hover:text-cyan-50"
+            >
+              <Download size={16} />
+            </a>
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="rounded-xl border border-cyan-800/60 bg-slate-900 p-2 text-cyan-100 transition hover:border-cyan-600 hover:bg-slate-800"
+              aria-label="Open navigation menu"
+            >
+              <Menu size={18} />
+            </button>
+          </div>
         </div>
       </header>
 

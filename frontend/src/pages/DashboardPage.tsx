@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download } from "lucide-react";
 import IncomeCard from "../components/IncomeCard";
 import WalletCard from "../components/WalletCard";
-import { apkDownloadUrl } from "../config/appConfig";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { fetchSalaryProgress, type SalaryProgress } from "../services/userService";
 import { fetchTransactions, fetchWallet, type TransactionItem, type Wallet } from "../services/walletService";
@@ -86,19 +84,6 @@ const DashboardPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div className="flex justify-end">
-          <a
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-cyan-500/40 bg-slate-900/80 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.14)] transition hover:border-cyan-400 hover:bg-slate-800/90 hover:text-cyan-50 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
-            href={apkDownloadUrl}
-            download
-            target="_blank"
-            rel="noreferrer"
-            title="Download App"
-            aria-label="Download App"
-          >
-            <Download className="h-4 w-4" />
-          </a>
-        </div>
         <WalletCard
           depositWallet={wallet?.depositWallet || 0}
           withdrawalWallet={wallet?.withdrawalWallet || 0}

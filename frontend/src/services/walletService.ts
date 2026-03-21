@@ -44,5 +44,18 @@ export type TransactionItem = {
   createdAt: string;
 };
 
+export type TransactionsResponse = {
+  items: TransactionItem[];
+  summary?: {
+    totalWithdrawalCompleted?: number;
+  };
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+};
+
 export const fetchWallet = () => api.get("/wallet");
-export const fetchTransactions = () => api.get("/transactions");
+export const fetchTransactions = () => api.get<TransactionsResponse>("/transactions");

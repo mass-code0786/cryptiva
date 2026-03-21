@@ -1,4 +1,5 @@
 import Transaction from "../models/Transaction.js";
+import Withdrawal from "../models/Withdrawal.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
 export const listTransactions = asyncHandler(async (req, res) => {
@@ -30,7 +31,13 @@ export const listTransactions = asyncHandler(async (req, res) => {
   }
   const hasPaging = req.query.page !== undefined || req.query.limit !== undefined;
 
-  const total = await Transaction.countDocuments(query);
+  const [total, withdrawalSummaryRows] = await Promise.all([
+    Transaction.countDocuments(query),
+    Withdrawal.aggregate([
+      { $match: { userId: req.user._id, status: "completed" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
+  ]);
   const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
   const limit = hasPaging ? Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 20)) : Math.max(1, total);
   const skip = (page - 1) * limit;
@@ -39,6 +46,9 @@ export const listTransactions = asyncHandler(async (req, res) => {
 
   res.json({
     items,
+    summary: {
+      totalWithdrawalCompleted: Number(withdrawalSummaryRows?.[0]?.total || 0),
+    },
     pagination: {
       page,
       limit,

@@ -36,12 +36,19 @@ const tabTypeMap: Partial<Record<HistoryTabKey, TransactionItem["type"]>> = {
 
 const TransactionsPage = () => {
   const [items, setItems] = useState<TransactionItem[]>([]);
+  const [totalWithdrawal, setTotalWithdrawal] = useState(0);
   const [activeTab, setActiveTab] = useState<HistoryTabKey>("all");
 
   useEffect(() => {
     fetchTransactions()
-      .then((res) => setItems(res.data.items || []))
-      .catch(() => setItems([]));
+      .then((res) => {
+        setItems(res.data.items || []);
+        setTotalWithdrawal(Number(res.data.summary?.totalWithdrawalCompleted || 0));
+      })
+      .catch(() => {
+        setItems([]);
+        setTotalWithdrawal(0);
+      });
   }, []);
 
   const filteredItems = useMemo(() => {
@@ -56,6 +63,11 @@ const TransactionsPage = () => {
   return (
     <DashboardLayout>
       <h2 className="mb-3 text-xl font-semibold">{tabHeadingMap[activeTab]}</h2>
+
+      <div className="mb-4 rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Withdrawal</p>
+        <p className="mt-2 text-2xl font-semibold text-cyan-200">${totalWithdrawal.toFixed(2)}</p>
+      </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
         {tabs.map((tab) => {

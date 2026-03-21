@@ -81,6 +81,22 @@ const DashboardPage = () => {
     };
   }, [wallet]);
 
+  const capSummary = useMemo(() => {
+    const isWorkingUser = Boolean(wallet?.isWorkingUser);
+    const capMultiplier = Number(wallet?.capMultiplier ?? (isWorkingUser ? 4 : 2.5));
+    const currentCapAmount = Number(wallet?.currentCapAmount || 0);
+    const totalIncomeCounted = Number(wallet?.totalIncomeCounted || 0);
+    const remainingCap = Number(wallet?.remainingCap || 0);
+
+    return {
+      isWorkingUser,
+      capMultiplier,
+      currentCapAmount,
+      totalIncomeCounted,
+      remainingCap,
+    };
+  }, [wallet]);
+
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -110,6 +126,28 @@ const DashboardPage = () => {
             <div className="min-w-[150px] md:min-w-0">
               <IncomeCard title="Salary Income" amount={incomeSummary.salary} tone="cyan" icon="salary" />
             </div>
+          </div>
+        </section>
+        <section className="rounded-2xl border border-cyan-700/30 bg-slate-950/55 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-cyan-200 sm:text-base">Income Cap Status</h2>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-cyan-300/80">
+              {capSummary.isWorkingUser ? "Working User" : "Non-Working User"}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-2 text-sm text-slate-200 sm:grid-cols-2">
+            <p>
+              <span className="text-slate-400">Cap Multiplier:</span> {capSummary.capMultiplier}x
+            </p>
+            <p>
+              <span className="text-slate-400">Current Cap:</span> {formatCurrency(capSummary.currentCapAmount)}
+            </p>
+            <p>
+              <span className="text-slate-400">Income Counted:</span> {formatCurrency(capSummary.totalIncomeCounted)}
+            </p>
+            <p>
+              <span className="text-slate-400">Remaining Cap:</span> {formatCurrency(capSummary.remainingCap)}
+            </p>
           </div>
         </section>
         <section className="rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-slate-900 via-slate-900/95 to-cyan-950/40 p-4 shadow-[0_0_28px_rgba(34,211,238,0.16)] sm:p-5">

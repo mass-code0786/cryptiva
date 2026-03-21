@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildQualifiedDirectCountResolver,
+  computeUnlockedLevelsFromQualifiedDirects,
   distributeLevelIncomeOnTradingCredit,
   runLevelIncomeDistribution12h,
   startLevelIncomeScheduler,
@@ -56,7 +58,7 @@ const createDeps = () => {
       logIncomeEventFn: async (payload) => {
         incomeLogs.push(payload);
       },
-      getActiveDirectCountFn: async () => 10,
+      getQualifiedDirectCountFn: async () => 10,
       acquireIdempotencyLockFn: async ({ key }) => {
         const lockKey = String(key || "");
         if (idempotencyLocks.has(lockKey)) return { acquired: false, key: lockKey };
@@ -137,9 +139,9 @@ test("unlock-check logging does not crash when deps.logger is not provided", asy
 
 test("level payout is skipped when target level is beyond unlocked range", async () => {
   const { deps, referralRows, transactions, incomeLogs } = createDeps();
-  deps.getActiveDirectCountFn = async (upline) => {
+  deps.getQualifiedDirectCountFn = async (upline) => {
     if (String(upline?._id) === "upline1") return 0; // unlocks 0 levels
-    return 1; // unlocks 3 levels
+    return 1; // unlocks 2 levels
   };
 
   const result = await distributeLevelIncomeOnTradingCredit({
@@ -158,4 +160,58 @@ test("level payout is skipped when target level is beyond unlocked range", async
   assert.equal(String(referralRows[0].userId), "upline2");
   assert.equal(transactions.length, 1);
   assert.equal(incomeLogs.length, 1);
+});
+
+test("no qualified directs unlocks 0 levels", () => {
+  assert.equal(computeUnlockedLevelsFromQualifiedDirects(0), 0);
+});
+
+test("1 qualified direct unlocks 2 levels", () => {
+  assert.equal(computeUnlockedLevelsFromQualifiedDirects(1), 2);
+});
+
+test("2 qualified directs unlock 4 levels", () => {
+  assert.equal(computeUnlockedLevelsFromQualifiedDirects(2), 4);
+});
+
+test("15 qualified directs unlock 30 levels", () => {
+  assert.equal(computeUnlockedLevelsFromQualifiedDirects(15), 30);
+});
+
+test("more than 15 qualified directs stays capped at 30 levels", () => {
+  assert.equal(computeUnlockedLevelsFromQualifiedDirects(16), 30);
+  assert.equal(computeUnlockedLevelsFromQualifiedDirects(999), 30);
+});
+
+test("direct with less than $100 does not count as qualified", async () => {
+  const fakeUserModel = {
+    find: async () => [{ _id: "d1" }],
+  };
+  const resolver = buildQualifiedDirectCountResolver({
+    UserModel: fakeUserModel,
+    getActivationInvestmentByUserIdsFn: async () => new Map([["d1", 99.99]]),
+  });
+
+  const count = await resolver({ _id: "upline-x", userId: "UPX" });
+  assert.equal(count, 0);
+});
+
+test("mixed qualified and unqualified directs counts only directs with >= $100", async () => {
+  const fakeUserModel = {
+    find: async () => [{ _id: "d1" }, { _id: "d2" }, { _id: "d3" }, { _id: "d4" }],
+  };
+  const resolver = buildQualifiedDirectCountResolver({
+    UserModel: fakeUserModel,
+    getActivationInvestmentByUserIdsFn: async () =>
+      new Map([
+        ["d1", 100],
+        ["d2", 150],
+        ["d3", 99.5],
+        ["d4", 0],
+      ]),
+  });
+
+  const count = await resolver({ _id: "upline-y", userId: "UPY" });
+  assert.equal(count, 2);
+  assert.equal(computeUnlockedLevelsFromQualifiedDirects(count), 4);
 });

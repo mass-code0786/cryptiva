@@ -4,6 +4,7 @@ import Deposit from "../models/Deposit.js";
 import Withdrawal from "../models/Withdrawal.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { startTradeAndActivate } from "../services/tradeActivationService.js";
+import { getIncomeCapState } from "../services/incomeCapService.js";
 
 const WITHDRAWAL_CHARGE_PERCENT = 10;
 
@@ -22,6 +23,9 @@ const ensureWallet = async (userId) => {
 
 export const getWallet = asyncHandler(async (req, res) => {
   const wallet = await ensureWallet(req.user._id);
+  const capState = await getIncomeCapState(req.user._id);
+  const capMultiplier = capState.workingUser ? 4 : 2.5;
+
   res.json({
     wallet: {
       ...wallet.toObject(),
@@ -36,6 +40,11 @@ export const getWallet = asyncHandler(async (req, res) => {
           Number(wallet.levelIncomeWallet || 0) +
           Number(wallet.salaryIncomeWallet || 0)).toFixed(6)
       ),
+      isWorkingUser: Boolean(capState.workingUser),
+      capMultiplier,
+      currentCapAmount: Number(capState.maxCap || 0),
+      totalIncomeCounted: Number(capState.totalIncome || 0),
+      remainingCap: Number(capState.remainingCap || 0),
     },
   });
 });

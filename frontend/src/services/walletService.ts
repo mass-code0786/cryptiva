@@ -12,6 +12,11 @@ export type Wallet = {
   levelIncome?: number;
   salaryIncome?: number;
   totalIncome?: number;
+  isWorkingUser?: boolean;
+  capMultiplier?: number;
+  currentCapAmount?: number;
+  totalIncomeCounted?: number;
+  remainingCap?: number;
   depositTotal: number;
   withdrawTotal: number;
   p2pTotal: number;
@@ -57,5 +62,5 @@ export type TransactionsResponse = {
   };
 };
 
-export const fetchWallet = () => api.get("/wallet");
+export const fetchWallet = () => api.get<{ wallet: Wallet }>("/wallet");
 export const fetchTransactions = () => api.get<TransactionsResponse>("/transactions");

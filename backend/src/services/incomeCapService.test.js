@@ -32,6 +32,23 @@ const walletModelFor = (wallet) => ({
   create: async () => wallet,
 });
 
+const createCapLockMocks = () => {
+  let locked = false;
+  return {
+    acquireCapLockFn: async ({ key }) => {
+      if (locked) {
+        return { acquired: false, key, owner: "test-owner" };
+      }
+      locked = true;
+      return { acquired: true, key, owner: "test-owner" };
+    },
+    releaseCapLockFn: async () => {
+      locked = false;
+      return { released: true };
+    },
+  };
+};
+
 test("non-working user cap multiplier is 2.5x", async () => {
   const wallet = createWallet({ tradingWallet: 100, tradingBalance: 100 });
 
@@ -73,6 +90,7 @@ test("income stops after cap is reached", async () => {
     requestedAmount: 10,
     walletField: "tradingIncomeWallet",
     deps: {
+      ...createCapLockMocks(),
       WalletModel: walletModelFor(wallet),
       hasActiveReferralFn: async () => false,
       executeCapitalResetOnCapReachedFn: async () => {
@@ -237,6 +255,7 @@ test("cap reached on credit triggers reset and only credits remaining cap", asyn
     requestedAmount: 10,
     walletField: "tradingIncomeWallet",
     deps: {
+      ...createCapLockMocks(),
       WalletModel: walletModelFor(wallet),
       hasActiveReferralFn: async () => false,
       executeCapitalResetOnCapReachedFn: async () => {
@@ -265,6 +284,7 @@ test("once cap is reached, no income type is credited anymore", async () => {
   let resetCalls = 0;
 
   const baseDeps = {
+    ...createCapLockMocks(),
     WalletModel: walletModelFor(wallet),
     hasActiveReferralFn: async () => true,
     executeCapitalResetOnCapReachedFn: async () => {
@@ -304,4 +324,47 @@ test("once cap is reached, no income type is credited anymore", async () => {
     assert.equal(item.creditedAmount, 0);
     assert.equal(item.capReached, true);
   }
+});
+
+test("concurrent credits do not over-credit beyond cap for same user", async () => {
+  const wallet = createWallet({
+    tradingWallet: 100,
+    tradingBalance: 100,
+    tradingIncomeWallet: 240,
+    withdrawalWallet: 240,
+    balance: 240,
+  });
+  const lockMocks = createCapLockMocks();
+  let resetCalls = 0;
+
+  const deps = {
+    ...lockMocks,
+    WalletModel: walletModelFor(wallet),
+    hasActiveReferralFn: async () => false,
+    executeCapitalResetOnCapReachedFn: async () => {
+      resetCalls += 1;
+      return { executed: true };
+    },
+    logger: { info: () => {}, warn: () => {} },
+  };
+
+  const [first, second] = await Promise.all([
+    applyIncomeWithCap({
+      userId: USER_ID,
+      requestedAmount: 10,
+      walletField: "tradingIncomeWallet",
+      deps,
+    }),
+    applyIncomeWithCap({
+      userId: USER_ID,
+      requestedAmount: 10,
+      walletField: "tradingIncomeWallet",
+      deps,
+    }),
+  ]);
+
+  assert.equal(first.creditedAmount + second.creditedAmount, 10);
+  assert.equal(wallet.tradingIncomeWallet, 250);
+  assert.equal(wallet.withdrawalWallet, 250);
+  assert.equal(resetCalls >= 1, true);
 });

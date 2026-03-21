@@ -3,6 +3,7 @@ import ReferralIncome from "../models/ReferralIncome.js";
 import Transaction from "../models/Transaction.js";
 import Trade from "../models/Trade.js";
 import User from "../models/User.js";
+import { getActivationInvestmentByUserIds } from "./activationService.js";
 import { applyIncomeWithCap } from "./incomeCapService.js";
 import { logIncomeEvent } from "./incomeLogService.js";
 import { acquireIdempotencyLock, generateIdempotencyKey } from "./idempotencyService.js";
@@ -18,7 +19,11 @@ const getLevelIncomePercent = (level) => {
 
 const toAmount = (value) => Number(Number(value || 0).toFixed(6));
 const MAX_UNLOCKED_LEVEL = 30;
-const LEVELS_PER_ACTIVE_DIRECT = 3;
+const LEVELS_PER_QUALIFIED_DIRECT = 2;
+const QUALIFIED_DIRECT_MIN_INVESTMENT = 100;
+
+export const computeUnlockedLevelsFromQualifiedDirects = (qualifiedDirectCount) =>
+  Math.min(Math.max(0, Number(qualifiedDirectCount) || 0) * LEVELS_PER_QUALIFIED_DIRECT, MAX_UNLOCKED_LEVEL);
 
 const buildUserResolvers = (UserModel = User) => {
   const byIdCache = new Map();
@@ -53,7 +58,7 @@ const buildUserResolvers = (UserModel = User) => {
   return { getById, getByUserId };
 };
 
-const buildActiveDirectCountResolver = ({ UserModel = User, TradeModel = Trade } = {}) => {
+export const buildQualifiedDirectCountResolver = ({ UserModel = User, TradeModel = Trade, getActivationInvestmentByUserIdsFn = getActivationInvestmentByUserIds } = {}) => {
   const countCache = new Map();
 
   return async (uplineUser) => {
@@ -73,19 +78,16 @@ const buildActiveDirectCountResolver = ({ UserModel = User, TradeModel = Trade }
     }
 
     const referralIds = directReferrals.map((entry) => entry._id);
-    const activeRows = await TradeModel.aggregate([
-      {
-        $match: {
-          userId: { $in: referralIds },
-          amount: { $gte: 5 },
-          status: { $in: ["active", "completed"] },
-        },
-      },
-      { $group: { _id: "$userId" } },
-      { $count: "count" },
-    ]);
+    const investmentByUserId = await getActivationInvestmentByUserIdsFn(referralIds, { TradeModel });
 
-    const count = Number(activeRows[0]?.count || 0);
+    let count = 0;
+    for (const referralId of referralIds) {
+      const totalInvestment = Number(investmentByUserId.get(String(referralId)) || 0);
+      if (totalInvestment >= QUALIFIED_DIRECT_MIN_INVESTMENT) {
+        count += 1;
+      }
+    }
+
     countCache.set(uplineId, count);
     return count;
   };
@@ -124,8 +126,14 @@ export const distributeLevelIncomeOnTradingCredit = async ({
   const applyIncomeWithCapFn = deps.applyIncomeWithCapFn || applyIncomeWithCap;
   const logIncomeEventFn = deps.logIncomeEventFn || logIncomeEvent;
   const resolvers = deps.resolvers || buildUserResolvers(deps.UserModel || User);
-  const getActiveDirectCountFn =
-    deps.getActiveDirectCountFn || buildActiveDirectCountResolver({ UserModel: deps.UserModel || User, TradeModel: deps.TradeModel || Trade });
+  const getQualifiedDirectCountFn =
+    deps.getQualifiedDirectCountFn ||
+    deps.getActiveDirectCountFn ||
+    buildQualifiedDirectCountResolver({
+      UserModel: deps.UserModel || User,
+      TradeModel: deps.TradeModel || Trade,
+      getActivationInvestmentByUserIdsFn: deps.getActivationInvestmentByUserIdsFn || getActivationInvestmentByUserIds,
+    });
   const acquireIdempotencyLockFn = deps.acquireIdempotencyLockFn || acquireIdempotencyLock;
 
   let currentUser = await resolvers.getById(traderUserId);
@@ -140,10 +148,10 @@ export const distributeLevelIncomeOnTradingCredit = async ({
     const upline = await resolveUpline(currentUser, resolvers);
     if (!upline) break;
 
-    const directCount = Number(await getActiveDirectCountFn(upline)) || 0;
-    const maxUnlockedLevel = Math.min(directCount * LEVELS_PER_ACTIVE_DIRECT, MAX_UNLOCKED_LEVEL);
+    const qualifiedDirectCount = Number(await getQualifiedDirectCountFn(upline)) || 0;
+    const maxUnlockedLevel = computeUnlockedLevelsFromQualifiedDirects(qualifiedDirectCount);
     logger.info(
-      `[level-income] unlock check: user=${upline.userId || String(upline._id)} directCount=${directCount} unlockedLevel=${maxUnlockedLevel} targetLevel=${level}`
+      `[level-income] unlock check: user=${upline.userId || String(upline._id)} qualifiedDirectCount=${qualifiedDirectCount} unlockedLevel=${maxUnlockedLevel} targetLevel=${level}`
     );
     if (level > maxUnlockedLevel) {
       currentUser = upline;

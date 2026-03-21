@@ -38,13 +38,13 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-8">
-      <div className="relative flex w-full items-center justify-center pt-2 sm:pt-4">
+    <div className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-start px-4 pt-14 pb-6 sm:px-6 sm:pt-16 sm:pb-8 md:justify-center md:pt-0 md:pb-0">
+      <div className="relative flex w-full items-center justify-center">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -z-10 h-20 w-44 rounded-full bg-gradient-to-r from-cyan-400/25 via-sky-400/20 to-violet-400/20 blur-2xl sm:h-24 sm:w-52"
         />
-        <CryptivaLogo variant="auth" className="relative mx-auto mb-5 sm:mb-6 drop-shadow-lg" />
+        <CryptivaLogo variant="auth" className="relative mx-auto mb-4 sm:mb-5 drop-shadow-lg" />
       </div>
       <div className="w-full rounded-2xl border border-cyan-800/40 bg-slate-900/80 p-5 sm:p-6">
         <p className="text-xs uppercase tracking-[0.25em] text-cyan-400/80">Cryptiva</p>

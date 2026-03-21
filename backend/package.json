@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "test": "node --test --test-isolation=none src/services/*.test.js",
     "fix:level-income:dry": "node scripts/fixLevelIncomeRecords.js",
     "fix:level-income:apply": "node scripts/fixLevelIncomeRecords.js --apply",
     "fix:referred-by:dry": "node scripts/fixLegacyReferredBy.js",

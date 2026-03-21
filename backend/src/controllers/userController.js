@@ -130,6 +130,7 @@ export const changeMyPassword = asyncHandler(async (req, res) => {
 
   validateStrongPassword(newPassword, "New password");
   await req.user.setPassword(newPassword);
+  req.user.forcePasswordChange = false;
   await req.user.save();
 
   res.json({ message: "Password updated successfully" });

@@ -1,10 +1,15 @@
 import { FormEvent, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { useAuth } from "../hooks/useAuth";
 import { bindWalletAddress, changeMyPassword, fetchMyProfile, fetchWalletBinding, updateMyProfile, updateMyReferralCode } from "../services/userService";
 
 const ProfilePage = () => {
   const { user, refreshUser } = useAuth();
+  const location = useLocation();
+  const showForcePasswordNotice =
+    Boolean((location.state as { forcePasswordChange?: boolean } | null)?.forcePasswordChange) ||
+    Boolean(user?.forcePasswordChange);
   const [name, setName] = useState(user?.name || "");
   const [walletAddress, setWalletAddress] = useState(user?.walletAddress || "");
   const [network, setNetwork] = useState("BEP20");
@@ -42,6 +47,7 @@ const ProfilePage = () => {
           referralCodeChangeCount: me?.referralCodeChangeCount,
           canChangeReferralCode: me?.canChangeReferralCode,
           walletAddress: me?.walletAddress,
+          forcePasswordChange: me?.forcePasswordChange,
         });
       })
       .catch(() => undefined);
@@ -76,6 +82,7 @@ const ProfilePage = () => {
         referralCodeChangeCount: me?.referralCodeChangeCount,
         canChangeReferralCode: me?.canChangeReferralCode,
         walletAddress: me?.walletAddress,
+        forcePasswordChange: me?.forcePasswordChange,
       });
       setMessage("Profile updated");
     } catch (error: any) {
@@ -113,6 +120,7 @@ const ProfilePage = () => {
         referralCodeChangeCount: me?.referralCodeChangeCount,
         canChangeReferralCode: me?.canChangeReferralCode,
         walletAddress: me?.walletAddress || user?.walletAddress,
+        forcePasswordChange: me?.forcePasswordChange,
       });
       setNewReferralCode((me?.referralCode || "").toLowerCase());
       setReferralMessage(data?.message || "Referral code updated");
@@ -156,6 +164,12 @@ const ProfilePage = () => {
       setNewPassword("");
       setConfirmPassword("");
       setPasswordMessage(data?.message || "Password updated successfully");
+      if (user) {
+        refreshUser({
+          ...user,
+          forcePasswordChange: false,
+        });
+      }
     } catch (error: any) {
       setPasswordMessage(error?.response?.data?.message || "Password update failed");
     } finally {
@@ -166,6 +180,11 @@ const ProfilePage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-4">
+        {showForcePasswordNotice && (
+          <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+            Your password was reset by admin. Please set a new password now.
+          </div>
+        )}
         <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
           <h2 className="text-xl font-semibold">Profile Settings</h2>
           <p className="mt-1 text-sm text-slate-400">Bind your USDT BEP20 wallet address before deposit/withdraw.</p>

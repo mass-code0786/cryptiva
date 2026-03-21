@@ -16,6 +16,7 @@ import { ACTIVATION_MIN_TRADE_AMOUNT, countActivatedUsers } from "../services/ac
 import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingSettingsService.js";
 import { startTradeAndActivate } from "../services/tradeActivationService.js";
 import { validateStrongPassword } from "../services/passwordPolicyService.js";
+import { resetUserPasswordByAdminAction } from "../services/adminPasswordService.js";
 
 const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "LEVEL", "salary", "SALARY"];
 
@@ -773,46 +774,15 @@ export const changeAdminPassword = asyncHandler(async (req, res) => {
 
 export const resetUserPasswordByAdmin = asyncHandler(async (req, res) => {
   const target = await findUserByParam(req.params.id);
-  if (!target) {
-    throw new ApiError(404, "User not found");
-  }
-
-  if (target.isAdmin) {
-    throw new ApiError(400, "Use admin password change for admin accounts");
-  }
-
-  const newPassword = String(req.body.newPassword || "");
-  const confirmPassword = req.body.confirmPassword === undefined ? null : String(req.body.confirmPassword || "");
-
-  if (!newPassword) {
-    throw new ApiError(400, "New password is required");
-  }
-
-  if (confirmPassword !== null && confirmPassword !== newPassword) {
-    throw new ApiError(400, "Confirm password does not match new password");
-  }
-
-  validateStrongPassword(newPassword, "New password");
-  await target.setPassword(newPassword);
-  await target.save();
-
-  await addActivityLog({
-    adminId: req.user._id,
-    type: "admin_password_reset",
-    action: "Admin reset user password",
-    targetUserId: target._id,
-    metadata: { targetUserId: target.userId, adminUserId: req.user.userId },
+  const result = await resetUserPasswordByAdminAction({
+    actor: req.user,
+    target,
+    newPassword: req.body.newPassword,
+    confirmPassword: req.body.confirmPassword,
+    createActivityLogFn: addActivityLog,
   });
 
-  res.json({
-    message: "User password reset successfully",
-    user: {
-      id: target._id,
-      userId: target.userId,
-      name: target.name,
-      email: target.email,
-    },
-  });
+  res.json(result);
 });
 
 export const getReferralTreeAdmin = asyncHandler(async (req, res) => {

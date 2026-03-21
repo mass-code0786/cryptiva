@@ -87,6 +87,13 @@ const AdminUserDetailPage = () => {
       return;
     }
 
+    const confirmed = window.confirm(
+      `Reset password for ${profile?.user?.name || "this user"} (${profile?.user?.userId || id})? The old password will stop working immediately.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
     setPasswordBusy(true);
     try {
       const { data } = await resetUserPasswordByAdmin(id, { newPassword, confirmPassword });

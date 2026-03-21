@@ -84,6 +84,11 @@ const userSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    forcePasswordChange: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     isActive: {
       type: Boolean,
       default: false,
@@ -206,6 +211,7 @@ userSchema.methods.toSafeObject = function toSafeObject() {
     role: this.isAdmin ? "admin" : "user",
     isAdmin: this.isAdmin,
     isBlocked: this.isBlocked,
+    forcePasswordChange: this.forcePasswordChange,
     isActive: this.isActive,
     packageActive: this.packageActive,
     packageStatus: this.packageStatus || "inactive",

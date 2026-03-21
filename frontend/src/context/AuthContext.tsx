@@ -13,6 +13,7 @@ type AuthUser = {
   referralCodeChangeCount?: number;
   canChangeReferralCode?: boolean;
   walletAddress?: string;
+  forcePasswordChange?: boolean;
 };
 
 type RegisterPayload = {

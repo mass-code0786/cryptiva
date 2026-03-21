@@ -78,16 +78,14 @@ const ReferralsPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Direct Team</p>
             <p className="mt-2 text-2xl font-semibold text-cyan-200">{totalDirectTeam}</p>
-            <p className="mt-1 text-xs text-slate-500">Direct referrals only (Level 1)</p>
           </div>
           <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Level Team</p>
             <p className="mt-2 text-2xl font-semibold text-cyan-200">{totalLevelTeam}</p>
-            <p className="mt-1 text-xs text-slate-500">All downline members across 30 levels</p>
           </div>
         </div>
         <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">

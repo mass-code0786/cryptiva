@@ -23,6 +23,7 @@ const AdminNotificationsPage = () => {
   const [type, setType] = useState<AdminNotificationType>("announcement");
   const [audienceType, setAudienceType] = useState<AdminNotificationAudienceType>("all");
   const [idempotencyKey, setIdempotencyKey] = useState(buildIdempotencyKey());
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
@@ -204,13 +205,25 @@ const AdminNotificationsPage = () => {
             <option value="active">All Active Users</option>
             <option value="inactive">All Inactive Users</option>
           </select>
+          <div className="md:col-span-2">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((prev) => !prev)}
+              className="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-500/60"
+            >
+              {showAdvanced ? "Hide advanced options" : "Show advanced options"}
+            </button>
+          </div>
+        </div>
+
+        {showAdvanced && (
           <input
             value={idempotencyKey}
             onChange={(event) => setIdempotencyKey(event.target.value)}
             placeholder="Retry key (idempotency)"
-            className="rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500 md:col-span-2"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
           />
-        </div>
+        )}
 
         {audienceType === "selected" && (
           <div className="space-y-2 rounded-xl border border-slate-700/70 bg-slate-900/40 p-3">

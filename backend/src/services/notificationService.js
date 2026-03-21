@@ -59,9 +59,9 @@ const activationStatusPipeline = (isActive = true) => [
   { $project: { _id: 1 } },
 ];
 
-const getRecipientIdsByAudience = async ({ audienceType, selectedUserIds = [] }) => {
+const getRecipientIdsByAudience = async ({ audienceType, selectedUserIds = [], UserModel = User }) => {
   if (audienceType === "all") {
-    const users = await User.find({ isAdmin: { $ne: true } }).select("_id").lean();
+    const users = await UserModel.find({ isAdmin: { $ne: true } }).select("_id").lean();
     return users.map((row) => String(row._id));
   }
 
@@ -70,12 +70,12 @@ const getRecipientIdsByAudience = async ({ audienceType, selectedUserIds = [] })
     if (!normalized.length) {
       return [];
     }
-    const users = await User.find({ _id: { $in: normalized }, isAdmin: { $ne: true } }).select("_id").lean();
+    const users = await UserModel.find({ _id: { $in: normalized }, isAdmin: { $ne: true } }).select("_id").lean();
     return users.map((row) => String(row._id));
   }
 
   if (audienceType === "active" || audienceType === "inactive") {
-    const rows = await User.aggregate(activationStatusPipeline(audienceType === "active"));
+    const rows = await UserModel.aggregate(activationStatusPipeline(audienceType === "active"));
     return rows.map((row) => String(row._id));
   }
 
@@ -113,7 +113,13 @@ export const sendNotificationBroadcast = async ({
   selectedUserIds = [],
   metadata = {},
   idempotencyKey = "",
+  deps = {},
 } = {}) => {
+  const UserModel = deps.UserModel || User;
+  const NotificationModel = deps.NotificationModel || Notification;
+  const NotificationBroadcastModel = deps.NotificationBroadcastModel || NotificationBroadcast;
+  const createActivityLogFn = deps.createActivityLogFn || createActivityLog;
+
   const normalizedTitle = String(title || "").trim();
   const normalizedMessage = String(message || "").trim();
   const normalizedType = String(type || "announcement").trim().toLowerCase();
@@ -141,7 +147,7 @@ export const sendNotificationBroadcast = async ({
   }
 
   if (normalizedIdempotencyKey) {
-    const existing = await NotificationBroadcast.findOne({
+    const existing = await NotificationBroadcastModel.findOne({
       senderId,
       idempotencyKey: normalizedIdempotencyKey,
     });
@@ -153,12 +159,13 @@ export const sendNotificationBroadcast = async ({
   const recipientIds = await getRecipientIdsByAudience({
     audienceType: normalizedAudienceType,
     selectedUserIds: normalizedSelectedIds,
+    UserModel,
   });
   if (!recipientIds.length) {
     throw new Error("No matching users found for selected audience");
   }
 
-  const broadcast = await NotificationBroadcast.create({
+  const broadcast = await NotificationBroadcastModel.create({
     title: normalizedTitle,
     message: normalizedMessage,
     type: normalizedType,
@@ -176,7 +183,7 @@ export const sendNotificationBroadcast = async ({
   let insertedCount = 0;
   try {
     for (const part of chunk(recipientIds, BROADCAST_INSERT_CHUNK_SIZE)) {
-      const result = await Notification.bulkWrite(
+      const result = await NotificationModel.bulkWrite(
         part.map((userId) => ({
           updateOne: {
             filter: { broadcastId: broadcast._id, userId },
@@ -193,8 +200,6 @@ export const sendNotificationBroadcast = async ({
                 isRead: false,
                 readAt: null,
                 metadata,
-                createdAt: new Date(),
-                updatedAt: new Date(),
               },
             },
             upsert: true,
@@ -211,7 +216,7 @@ export const sendNotificationBroadcast = async ({
     broadcast.completedAt = new Date();
     await broadcast.save();
 
-    await createActivityLog({
+    await createActivityLogFn({
       adminId: senderId,
       action: "Notification broadcast sent",
       reason: `${normalizedAudienceType} audience`,

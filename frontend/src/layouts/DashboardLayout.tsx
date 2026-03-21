@@ -183,7 +183,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                       </div>
                       <p className="mt-1 text-xs leading-relaxed">{item.message}</p>
                       <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-400">
-                        {item.isRead ? "Read" : "Unread"} • {item.type}
+                        {item.isRead ? "Read" : "Unread"} {"\u2022"} {item.type}
                       </p>
                     </button>
                   ))}
@@ -267,3 +267,4 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 };
 
 export default DashboardLayout;
+

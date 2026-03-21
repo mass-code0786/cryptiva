@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
+import { Download, X } from "lucide-react";
 import IncomeCard from "../components/IncomeCard";
 import WalletCard from "../components/WalletCard";
 import DashboardLayout from "../layouts/DashboardLayout";
+import { downloadPopupBannerImage, fetchActivePopupBanner, type PopupBannerItem } from "../services/popupBannerService";
 import { fetchSalaryProgress, type SalaryProgress } from "../services/userService";
 import { fetchTransactions, fetchWallet, type TransactionItem, type Wallet } from "../services/walletService";
 
 const formatCurrency = (value: number) =>
   `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const popupDismissKey = (bannerId: string) => `dashboard_popup_banner_dismissed_${bannerId}`;
+
 const DashboardPage = () => {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [recent, setRecent] = useState<TransactionItem[]>([]);
+  const [popupBanner, setPopupBanner] = useState<PopupBannerItem | null>(null);
+  const [showPopupBanner, setShowPopupBanner] = useState(false);
+  const [downloadingBanner, setDownloadingBanner] = useState(false);
   const [salaryRankProgress, setSalaryRankProgress] = useState<SalaryProgress>({
     currentRank: "Rank 0",
     nextRank: "Rank 1",
@@ -60,6 +67,21 @@ const DashboardPage = () => {
         setTransactions([]);
         setRecent([]);
       });
+    fetchActivePopupBanner()
+      .then((res) => {
+        const item = res.data?.item || null;
+        setPopupBanner(item);
+        if (!item?._id) {
+          setShowPopupBanner(false);
+          return;
+        }
+        const dismissed = sessionStorage.getItem(popupDismissKey(item._id)) === "1";
+        setShowPopupBanner(!dismissed);
+      })
+      .catch(() => {
+        setPopupBanner(null);
+        setShowPopupBanner(false);
+      });
     loadSalary();
     const timer = window.setInterval(loadSalary, 20000);
     return () => window.clearInterval(timer);
@@ -99,6 +121,61 @@ const DashboardPage = () => {
 
   return (
     <DashboardLayout>
+      {showPopupBanner && popupBanner && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-cyan-700/40 bg-slate-950 shadow-[0_30px_70px_rgba(0,0,0,0.6)]">
+            <button
+              type="button"
+              onClick={() => {
+                sessionStorage.setItem(popupDismissKey(popupBanner._id), "1");
+                setShowPopupBanner(false);
+              }}
+              className="absolute right-2 top-2 z-10 rounded-full border border-slate-700/80 bg-slate-900/90 p-1.5 text-slate-200 hover:border-cyan-500/50 hover:text-cyan-100"
+              aria-label="Close popup banner"
+            >
+              <X size={16} />
+            </button>
+
+            <div className="p-3 sm:p-4">
+              {popupBanner.title && <p className="mb-2 text-sm font-semibold text-cyan-100">{popupBanner.title}</p>}
+              {popupBanner.targetUrl ? (
+                <a href={popupBanner.targetUrl} target="_blank" rel="noreferrer">
+                  <img
+                    src={popupBanner.imageUrl}
+                    alt={popupBanner.title || "Dashboard popup banner"}
+                    className="max-h-[70vh] w-full rounded-xl object-contain"
+                  />
+                </a>
+              ) : (
+                <img
+                  src={popupBanner.imageUrl}
+                  alt={popupBanner.title || "Dashboard popup banner"}
+                  className="max-h-[70vh] w-full rounded-xl object-contain"
+                />
+              )}
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <a
+                  href="#"
+                  onClick={async (event) => {
+                    event.preventDefault();
+                    if (!popupBanner?._id || downloadingBanner) return;
+                    setDownloadingBanner(true);
+                    try {
+                      await downloadPopupBannerImage(popupBanner);
+                    } finally {
+                      setDownloadingBanner(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20"
+                >
+                  <Download size={16} />
+                  {downloadingBanner ? "Downloading..." : "Download"}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="space-y-4">
         <WalletCard
           depositWallet={wallet?.depositWallet || 0}

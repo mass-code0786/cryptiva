@@ -33,6 +33,12 @@ import {
   updateTradeProfitRate,
 } from "../controllers/adminController.js";
 import { listAdminNotificationBroadcasts, sendAdminNotification } from "../controllers/notificationController.js";
+import {
+  createPopupBanner,
+  deletePopupBanner,
+  listPopupBannersAdmin,
+  updatePopupBannerStatus,
+} from "../controllers/popupBannerController.js";
 import { checkAdmin } from "../middleware/admin.js";
 import { authenticate } from "../middleware/auth.js";
 
@@ -71,5 +77,9 @@ router.get("/team-business", getTeamBusiness);
 router.patch("/profile/password", changeAdminPassword);
 router.post("/notifications/send", sendAdminNotification);
 router.get("/notifications/broadcasts", listAdminNotificationBroadcasts);
+router.post("/popup-banners", createPopupBanner);
+router.get("/popup-banners", listPopupBannersAdmin);
+router.patch("/popup-banners/:bannerId/status", updatePopupBannerStatus);
+router.delete("/popup-banners/:bannerId", deletePopupBanner);
 
 export default router;

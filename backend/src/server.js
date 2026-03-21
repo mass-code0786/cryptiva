@@ -1,5 +1,7 @@
 import cors from "cors";
 import express from "express";
+import fs from "node:fs";
+import path from "node:path";
 import mongoose from "mongoose";
 import morgan from "morgan";
 
@@ -10,6 +12,7 @@ import authRoutes from "./routes/authRoutes.js";
 import depositRoutes from "./routes/depositRoutes.js";
 import p2pRoutes from "./routes/p2pRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import popupBannerRoutes from "./routes/popupBannerRoutes.js";
 import referralRoutes from "./routes/referralRoutes.js";
 import salaryRoutes from "./routes/salaryRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
@@ -23,6 +26,8 @@ import { startSalaryScheduler } from "./services/salarySchedulerService.js";
 import { startKeepAliveScheduler, stopKeepAliveScheduler } from "./services/keepAliveService.js";
 
 const app = express();
+const uploadsRoot = path.join(process.cwd(), "uploads");
+fs.mkdirSync(uploadsRoot, { recursive: true });
 
 const toOriginList = (value) =>
   String(value || "")
@@ -54,8 +59,9 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 app.use(morgan("dev"));
+app.use("/uploads", express.static(uploadsRoot));
 
 /* -------- ROOT ROUTE ADD KIYA HAI -------- */
 app.get("/", (_req, res) => {
@@ -96,6 +102,7 @@ app.use("/api/trade", tradeRoutes);
 app.use("/api/p2p", p2pRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/popup-banners", popupBannerRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -16,6 +16,7 @@ import AdminUserDetailPage from "./pages/admin/AdminUserDetailPage";
 import AdminUsersPage from "./pages/admin/AdminUsersPage";
 import AdminWithdrawalsPage from "./pages/admin/AdminWithdrawalsPage";
 import AdminSupportQueriesPage from "./pages/admin/AdminSupportQueriesPage";
+import AdminPopupBannersPage from "./pages/admin/AdminPopupBannersPage";
 import DashboardPage from "./pages/DashboardPage";
 import DepositPage from "./pages/DepositPage";
 import LoginPage from "./pages/LoginPage";
@@ -75,6 +76,7 @@ const App = () => {
         <Route path="referral-tree" element={<AdminReferralTreePage />} />
         <Route path="support-queries" element={<AdminSupportQueriesPage />} />
         <Route path="notifications" element={<AdminNotificationsPage />} />
+        <Route path="popup-banners" element={<AdminPopupBannersPage />} />
         <Route path="activity-logs" element={<AdminActivityLogsPage />} />
       </Route>
       <Route path="/history" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />

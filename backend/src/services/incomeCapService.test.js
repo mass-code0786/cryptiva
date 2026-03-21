@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { applyIncomeWithCap, executeCapitalResetOnCapReached, getIncomeCapState } from "./incomeCapService.js";
+import { applyIncomeWithCap, executeCapitalResetOnCapReached, getIncomeCapState, getQualifiedDirectCountForWorkingUser } from "./incomeCapService.js";
 
 const USER_ID = "507f191e810c19729de860eb";
 
@@ -73,6 +73,87 @@ test("working user cap multiplier is 4x", async () => {
   assert.equal(state.workingUser, true);
   assert.equal(state.investmentBase, 100);
   assert.equal(state.maxCap, 400);
+});
+
+test("0 qualified directs -> non-working", async () => {
+  const UserModel = {
+    findById: () => ({ select: async () => ({ _id: USER_ID, userId: "CTV-U1" }) }),
+    find: async () => [],
+  };
+  const qualifiedDirectCount = await getQualifiedDirectCountForWorkingUser(USER_ID, {
+    UserModel,
+    getActivationInvestmentByUserIdsFn: async () => new Map(),
+  });
+  assert.equal(qualifiedDirectCount, 0);
+});
+
+test("4 qualified directs -> non-working (2.5x)", async () => {
+  const wallet = createWallet({ tradingWallet: 100, tradingBalance: 100 });
+  const state = await getIncomeCapState(USER_ID, {
+    WalletModel: walletModelFor(wallet),
+    getQualifiedDirectCountFn: async () => 4,
+    logger: { info: () => {}, warn: () => {} },
+  });
+
+  assert.equal(state.qualifiedDirectCount, 4);
+  assert.equal(state.workingUser, false);
+  assert.equal(state.capMultiplier, 2.5);
+  assert.equal(state.maxCap, 250);
+});
+
+test("5 qualified directs -> working (4x)", async () => {
+  const wallet = createWallet({ tradingWallet: 100, tradingBalance: 100 });
+  const state = await getIncomeCapState(USER_ID, {
+    WalletModel: walletModelFor(wallet),
+    getQualifiedDirectCountFn: async () => 5,
+    logger: { info: () => {}, warn: () => {} },
+  });
+
+  assert.equal(state.qualifiedDirectCount, 5);
+  assert.equal(state.workingUser, true);
+  assert.equal(state.capMultiplier, 4);
+  assert.equal(state.maxCap, 400);
+});
+
+test("mixed directs with less than $100 are not counted", async () => {
+  const directUsers = [{ _id: "d1" }, { _id: "d2" }, { _id: "d3" }, { _id: "d4" }, { _id: "d5" }];
+  const UserModel = {
+    findById: () => ({ select: async () => ({ _id: USER_ID, userId: "CTV-U2" }) }),
+    find: async () => directUsers,
+  };
+  const qualifiedDirectCount = await getQualifiedDirectCountForWorkingUser(USER_ID, {
+    UserModel,
+    getActivationInvestmentByUserIdsFn: async () =>
+      new Map([
+        ["d1", 150],
+        ["d2", 100],
+        ["d3", 99.99],
+        ["d4", 20],
+        ["d5", 0],
+      ]),
+  });
+
+  assert.equal(qualifiedDirectCount, 2);
+});
+
+test("cap multiplier switches to 4x only at 5 qualified directs", async () => {
+  const wallet = createWallet({ tradingWallet: 200, tradingBalance: 200 });
+
+  const fourQualified = await getIncomeCapState(USER_ID, {
+    WalletModel: walletModelFor(wallet),
+    getQualifiedDirectCountFn: async () => 4,
+    logger: { info: () => {}, warn: () => {} },
+  });
+  const fiveQualified = await getIncomeCapState(USER_ID, {
+    WalletModel: walletModelFor(wallet),
+    getQualifiedDirectCountFn: async () => 5,
+    logger: { info: () => {}, warn: () => {} },
+  });
+
+  assert.equal(fourQualified.capMultiplier, 2.5);
+  assert.equal(fiveQualified.capMultiplier, 4);
+  assert.equal(fourQualified.maxCap, 500);
+  assert.equal(fiveQualified.maxCap, 800);
 });
 
 test("income stops after cap is reached", async () => {

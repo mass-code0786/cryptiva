@@ -24,7 +24,7 @@ const ensureWallet = async (userId) => {
 export const getWallet = asyncHandler(async (req, res) => {
   const wallet = await ensureWallet(req.user._id);
   const capState = await getIncomeCapState(req.user._id);
-  const capMultiplier = capState.workingUser ? 4 : 2.5;
+  const capMultiplier = Number(capState.capMultiplier || (capState.workingUser ? 4 : 2.5));
 
   res.json({
     wallet: {

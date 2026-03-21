@@ -4,9 +4,12 @@ import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
 import Setting from "../models/Setting.js";
 import { acquireDistributedLock, releaseDistributedLock } from "./distributedLockService.js";
+import { getActivationInvestmentByUserIds } from "./activationService.js";
 
 const NON_WORKING_CAP_MULTIPLIER = 2.5;
 const WORKING_CAP_MULTIPLIER = 4;
+const MIN_WORKING_QUALIFIED_DIRECTS = 5;
+const QUALIFIED_DIRECT_MIN_INVESTMENT = 100;
 const CAP_RESET_SETTING_PREFIX = "income_cap_reset_v2:";
 const CAP_APPLY_LOCK_PREFIX = "income_cap_apply_v1:";
 const CAP_APPLY_LOCK_TTL_MS = Number(process.env.INCOME_CAP_APPLY_LOCK_TTL_MS || 5000);
@@ -47,17 +50,17 @@ const acquireCapApplyLockWithRetry = async ({ userId, deps = {}, logger = consol
   return null;
 };
 
-export const hasActiveReferral = async (userId, deps = {}) => {
+export const getQualifiedDirectCountForWorkingUser = async (userId, deps = {}) => {
   const UserModel = deps.UserModel || User;
-  const TradeModel = deps.TradeModel || Trade;
+  const getActivationInvestmentByUserIdsFn = deps.getActivationInvestmentByUserIdsFn || getActivationInvestmentByUserIds;
 
   if (!mongoose.isValidObjectId(userId)) {
-    return false;
+    return 0;
   }
 
   const baseUser = await UserModel.findById(userId).select("_id userId");
   if (!baseUser) {
-    return false;
+    return 0;
   }
 
   const directReferrals = await UserModel.find(
@@ -70,17 +73,20 @@ export const hasActiveReferral = async (userId, deps = {}) => {
     "_id"
   );
   if (!directReferrals.length) {
-    return false;
+    return 0;
   }
 
   const referralIds = directReferrals.map((entry) => entry._id);
-  const activeTrade = await TradeModel.findOne({
-    userId: { $in: referralIds },
-    amount: { $gte: 5 },
-    status: { $in: ["active", "completed"] },
-  }).select("_id");
+  const investmentByUserId = await getActivationInvestmentByUserIdsFn(referralIds, { TradeModel: deps.TradeModel || Trade });
+  let qualifiedDirectCount = 0;
+  for (const referralId of referralIds) {
+    const totalInvestment = Number(investmentByUserId.get(String(referralId)) || 0);
+    if (totalInvestment >= QUALIFIED_DIRECT_MIN_INVESTMENT) {
+      qualifiedDirectCount += 1;
+    }
+  }
 
-  return Boolean(activeTrade);
+  return qualifiedDirectCount;
 };
 
 const getCapMultiplier = (workingUser) => (workingUser ? WORKING_CAP_MULTIPLIER : NON_WORKING_CAP_MULTIPLIER);
@@ -157,11 +163,18 @@ export const executeCapitalResetOnCapReached = async ({ userId, reason = "income
 
 export const getIncomeCapState = async (userId, deps = {}) => {
   const WalletModel = deps.WalletModel || Wallet;
-  const hasActiveReferralFn = deps.hasActiveReferralFn || hasActiveReferral;
+  const logger = deps.logger || console;
+  const getQualifiedDirectCountFn =
+    deps.getQualifiedDirectCountFn || deps.getQualifiedDirectCountForWorkingUserFn || getQualifiedDirectCountForWorkingUser;
 
   const wallet = await ensureWallet(userId, WalletModel);
   const investmentBase = toAmount(wallet.tradingWallet || wallet.tradingBalance || 0);
-  const workingUser = await hasActiveReferralFn(userId, deps);
+  const qualifiedDirectCount = Number(
+    deps.hasActiveReferralFn
+      ? (await deps.hasActiveReferralFn(userId, deps)) ? MIN_WORKING_QUALIFIED_DIRECTS : 0
+      : await getQualifiedDirectCountFn(userId, deps)
+  );
+  const workingUser = qualifiedDirectCount >= MIN_WORKING_QUALIFIED_DIRECTS;
   const multiplier = getCapMultiplier(workingUser);
   const maxCap = toAmount(investmentBase * multiplier);
 
@@ -172,10 +185,16 @@ export const getIncomeCapState = async (userId, deps = {}) => {
   const totalIncome = toAmount(tradingIncome + referralIncome + levelIncome + salaryIncome);
   const remainingCap = toAmount(Math.max(0, maxCap - totalIncome));
 
+  logger.info(
+    `[income-cap] working-user check: user=${String(userId)} qualifiedDirectCount=${qualifiedDirectCount} isWorkingUser=${workingUser} capMultiplier=${multiplier}`
+  );
+
   return {
     wallet,
     investmentBase,
+    qualifiedDirectCount,
     workingUser,
+    capMultiplier: multiplier,
     maxCap,
     totalIncome,
     remainingCap,

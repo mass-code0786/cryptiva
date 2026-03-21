@@ -5,6 +5,7 @@ import {
   buildQualifiedDirectCountResolver,
   computeUnlockedLevelsFromQualifiedDirects,
   distributeLevelIncomeOnTradingCredit,
+  getLevelIncomePercent,
   runLevelIncomeDistribution12h,
   startLevelIncomeScheduler,
 } from "./levelIncomeSchedulerService.js";
@@ -214,4 +215,32 @@ test("mixed qualified and unqualified directs counts only directs with >= $100",
   const count = await resolver({ _id: "upline-y", userId: "UPY" });
   assert.equal(count, 2);
   assert.equal(computeUnlockedLevelsFromQualifiedDirects(count), 4);
+});
+
+test("level 1 percentage is 12%", () => {
+  assert.equal(getLevelIncomePercent(1), 12);
+});
+
+test("level 2 percentage is 8%", () => {
+  assert.equal(getLevelIncomePercent(2), 8);
+});
+
+test("level 3 percentage is 5%", () => {
+  assert.equal(getLevelIncomePercent(3), 5);
+});
+
+test("level 4 percentage is 4%", () => {
+  assert.equal(getLevelIncomePercent(4), 4);
+});
+
+test("level 20 percentage is 4%", () => {
+  assert.equal(getLevelIncomePercent(20), 4);
+});
+
+test("level 21 percentage is 2%", () => {
+  assert.equal(getLevelIncomePercent(21), 2);
+});
+
+test("level 30 percentage is 2%", () => {
+  assert.equal(getLevelIncomePercent(30), 2);
 });

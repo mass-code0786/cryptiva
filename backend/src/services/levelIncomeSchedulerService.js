@@ -8,9 +8,9 @@ import { applyIncomeWithCap } from "./incomeCapService.js";
 import { logIncomeEvent } from "./incomeLogService.js";
 import { acquireIdempotencyLock, generateIdempotencyKey } from "./idempotencyService.js";
 
-const getLevelIncomePercent = (level) => {
-  if (level === 1) return 20;
-  if (level === 2) return 10;
+export const getLevelIncomePercent = (level) => {
+  if (level === 1) return 12;
+  if (level === 2) return 8;
   if (level === 3) return 5;
   if (level >= 4 && level <= 20) return 4;
   if (level >= 21 && level <= 30) return 2;

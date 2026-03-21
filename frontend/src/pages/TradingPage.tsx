@@ -101,6 +101,9 @@ const TradingPage = () => {
 
         <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
           <h3 className="text-sm font-semibold text-cyan-200">Active Trade Status</h3>
+          <p className="mt-1 text-xs text-slate-400">
+            Trade cards below show per-trade progress only, not your overall income cap.
+          </p>
           <div className="mt-3 space-y-2">
             {activeTrades.length === 0 && (
               <p className="text-sm text-slate-400">No active trades.</p>
@@ -112,7 +115,7 @@ const TradingPage = () => {
                   <span className="font-semibold">${trade.amount.toFixed(2)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-slate-400">Income</span>
+                  <span className="text-slate-400">Trade Income Progress</span>
                   <span className="font-semibold text-cyan-300">
                     ${trade.totalIncome.toFixed(4)} / ${trade.capping.toFixed(2)}
                   </span>

@@ -19,7 +19,7 @@ const ProfilePage = () => {
   const [newReferralCode, setNewReferralCode] = useState((user?.referralCode || "").toLowerCase());
   const referralIdentifier = user?.referralCode || user?.userId;
   const referralLink = referralIdentifier
-    ? `https://cryptiva-frontend.onrender.com/register?ref=${encodeURIComponent(referralIdentifier)}`
+    ? `https://cryptiva.world/register?ref=${encodeURIComponent(referralIdentifier)}`
     : "";
   const encodedLink = encodeURIComponent(referralLink);
 

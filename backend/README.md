@@ -14,6 +14,11 @@ CLIENT_URL=http://localhost:5173
 ADMIN_EMAILS=
 ```
 
+Production example:
+```env
+CLIENT_URL=https://cryptiva.world,https://www.cryptiva.world
+```
+
 2. Install dependencies:
 
 ```bash

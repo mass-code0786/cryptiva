@@ -23,12 +23,18 @@ import { startKeepAliveScheduler, stopKeepAliveScheduler } from "./services/keep
 
 const app = express();
 
-const allowedOrigins = new Set(
-  (CLIENT_URL || "")
+const toOriginList = (value) =>
+  String(value || "")
     .split(",")
     .map((item) => item.trim())
-    .filter(Boolean)
-);
+    .filter(Boolean);
+
+const allowedOrigins = new Set([
+  ...toOriginList(CLIENT_URL),
+  ...toOriginList(process.env.ADDITIONAL_CLIENT_URLS),
+  "https://cryptiva.world",
+  "https://www.cryptiva.world",
+]);
 allowedOrigins.add("http://localhost:5173");
 allowedOrigins.add("http://localhost");
 allowedOrigins.add("https://localhost");

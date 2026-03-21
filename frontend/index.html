@@ -3,6 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="canonical" href="https://cryptiva.world" />
+    <meta property="og:url" content="https://cryptiva.world" />
+    <meta name="twitter:url" content="https://cryptiva.world" />
+    <script>
+      (function () {
+        var host = window.location.hostname.toLowerCase();
+        if (host !== "cryptiva-frontend.onrender.com") return;
+
+        var destination =
+          "https://cryptiva.world" +
+          window.location.pathname +
+          window.location.search +
+          window.location.hash;
+
+        if (window.location.href !== destination) {
+          window.location.replace(destination);
+        }
+      })();
+    </script>
+    <noscript>
+      <meta http-equiv="refresh" content="0;url=https://cryptiva.world" />
+    </noscript>
     <title>Cryptiva</title>
   </head>
   <body>

@@ -63,7 +63,7 @@ DNS records (at your domain provider):
 - `CNAME` record for `api` -> Render backend target
 
 Then set:
-- `CLIENT_URL=https://cryptiva.world`
+- `CLIENT_URL=https://cryptiva.world,https://www.cryptiva.world`
 - `NOWPAYMENTS_IPN_URL=https://api.cryptiva.world/api/deposit/webhook`
 - `VITE_API_URL=https://api.cryptiva.world/api`
 

@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import CryptivaLogo from "../components/CryptivaLogo";
 import { useAuth } from "../hooks/useAuth";
 import { isAdminUser } from "../utils/isAdminUser";
@@ -21,8 +22,18 @@ const LoginPage = () => {
       } else {
         navigate("/dashboard", { replace: true });
       }
-    } catch {
-      setError("Invalid credentials");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.data?.message) {
+          setError(String(error.response.data.message));
+          return;
+        }
+        if (error.request) {
+          setError("Unable to reach login API. Check API URL and backend CORS CLIENT_URL.");
+          return;
+        }
+      }
+      setError("Login failed");
     }
   };
 

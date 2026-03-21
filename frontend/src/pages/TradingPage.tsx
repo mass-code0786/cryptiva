@@ -115,11 +115,10 @@ const TradingPage = () => {
                   <span className="font-semibold">${trade.amount.toFixed(2)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-slate-400">Trade Income Progress</span>
-                  <span className="font-semibold text-cyan-300">
-                    ${trade.totalIncome.toFixed(4)} / ${trade.capping.toFixed(2)}
-                  </span>
+                  <span className="text-slate-400">Trade Earnings</span>
+                  <span className="font-semibold text-cyan-300">${trade.totalIncome.toFixed(4)}</span>
                 </div>
+                <p className="mt-1 text-xs text-slate-500">Total earnings from this trade</p>
                 <div className="mt-1 flex items-center justify-between">
                   <span className="text-slate-400">Status</span>
                   <span className="uppercase">{trade.status}</span>

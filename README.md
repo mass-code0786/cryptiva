@@ -86,3 +86,27 @@ What it does:
 - On push to `main`, optionally triggers Render deploy hooks via GitHub Secrets:
   - `RENDER_BACKEND_DEPLOY_HOOK`
   - `RENDER_FRONTEND_DEPLOY_HOOK`
+
+## Live Deposit Gateway Fix Summary
+
+- Root cause: deposits were created before validating NOWPayments payment id, allowing empty `gatewayPaymentId` values and triggering duplicate-key conflicts.
+- Fix: backend now creates gateway order first, validates payment id, then inserts deposit.
+- Missing payment id now returns: `Gateway did not return a valid payment ID` (HTTP 502), with no deposit insert.
+- Supported NOWPayments id fields: `payment_id`, `id`, `paymentId`, `data.payment_id`, `data.id`.
+- Unique indexes are partial so missing/empty placeholders are not indexed as duplicates.
+
+### Cleanup existing bad records
+```bash
+cd backend
+node scripts/cleanupNowpaymentsEmptyGatewayPaymentId.js
+```
+
+### Verify in production
+1. Create live deposit and confirm `gatewayPaymentId` is non-empty in API response.
+2. Confirm deposit row is saved with that id.
+3. Complete payment and verify single credit + updated status in history.
+
+### Troubleshooting
+- Missing payment id: check gateway/API response and backend logs; request is rejected safely.
+- Duplicate key errors: run cleanup script and verify partial unique indexes are active.
+- Deposit not appearing in dashboard: check create-live response, deposit status endpoint, and webhook delivery/signature logs.

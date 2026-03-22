@@ -95,6 +95,10 @@ export const createDeposit = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Only USDT BEP20 live deposits are currently supported");
   }
 
+  // Reliability fix:
+  // We create the gateway order first and only persist a local deposit after
+  // a valid gatewayPaymentId is present. This prevents empty-string ids from
+  // ever entering the unique (gateway, gatewayPaymentId) index.
   const provisionalOrderId = crypto.randomUUID();
   let invoice;
   try {
@@ -111,6 +115,7 @@ export const createDeposit = asyncHandler(async (req, res) => {
 
   const gatewayPaymentId = depositControllerDeps.extractNowPaymentsPaymentId(invoice);
   if (!gatewayPaymentId) {
+    // Safe, explicit upstream-failure contract used by ops/support.
     throw new ApiError(502, "Gateway did not return a valid payment ID");
   }
 

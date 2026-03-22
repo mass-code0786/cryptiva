@@ -86,6 +86,8 @@ export const createGatewayInvoice = async ({ gateway, amount, orderId, descripti
 };
 
 export const extractNowPaymentsPaymentId = (payload = {}) => {
+  // NOWPayments payloads vary across endpoints/releases; keep extraction tolerant.
+  // Returning "" here intentionally fails create-live before any DB insert.
   const candidates = [payload?.payment_id, payload?.id, payload?.paymentId, payload?.data?.payment_id, payload?.data?.id];
   const resolved = candidates.map((entry) => normalizeText(entry)).find((entry) => Boolean(entry));
   if (!resolved || ["null", "undefined"].includes(resolved.toLowerCase())) {

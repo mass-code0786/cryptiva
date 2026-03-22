@@ -110,6 +110,56 @@ Base URL: `/api`
   - amount mismatch sets deposit `pending_review`
   - credits wallet exactly once on final success
 
+## Live Deposit Reliability Notes
+
+### Root cause (fixed)
+- Duplicate key errors were caused by creating deposits before validating gateway response, which allowed `gatewayPaymentId=""` for `gateway="nowpayments"`.
+
+### Current create flow (safe)
+- Backend now calls NOWPayments first.
+- Deposit is inserted only after a valid gateway payment id is extracted.
+- If payment id is missing, API returns `502` with: `Gateway did not return a valid payment ID`.
+
+### Accepted NOWPayments payment id fields
+- `payment_id` (primary)
+- `id`
+- `paymentId`
+- `data.payment_id`
+- `data.id`
+
+### Why partial unique indexes
+- Unique indexes on `(gateway, gatewayPaymentId)` and `(gateway, gatewayOrderId)` now use partial filters.
+- Records with missing/empty values are excluded from uniqueness checks, preventing empty-placeholder collisions.
+
+### Safe cleanup for old bad rows
+1. Run in maintenance/off-peak window.
+2. Backup database.
+3. Run:
+```bash
+cd backend
+node scripts/cleanupNowpaymentsEmptyGatewayPaymentId.js
+```
+4. Script only unsets invalid ids (`""`, `"null"`, `"undefined"`), then prints matched/modified/remaining.
+
+### Production verification checklist
+1. Create test live deposit via `/api/deposits/create-live`.
+2. Confirm response contains non-empty `deposit.gatewayPaymentId`.
+3. Confirm DB record has `gatewayPaymentId` and no duplicate-key error.
+4. Complete a test payment and verify webhook updates status and credits once.
+5. Check admin deposits and transaction history for that deposit id.
+
+### Troubleshooting
+- Missing `payment_id`:
+  - Cause: gateway response shape changed or invalid upstream response.
+  - Behavior: API returns `502` and does not insert deposit.
+- Duplicate key errors:
+  - Check if old bad records exist; run cleanup script.
+  - Confirm partial unique indexes are present and old conflicting index definitions are dropped/rebuilt if needed.
+- Dashboard order not appearing:
+  - Verify create-live returned success.
+  - Check deposit status endpoint for saved record.
+  - Check API logs for `Gateway did not return a valid payment ID` or webhook signature failures.
+
 ### Withdrawals (JWT Required)
 
 - `POST /withdrawals`

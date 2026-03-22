@@ -6,19 +6,19 @@ export type CreateDepositResponse = {
   paymentUrl?: string;
   payAddress?: string;
   qrData?: string;
-  requestedCreditAmount?: number;
-  expectedPayAmount?: number;
+  requestedCreditAmount?: number | null;
+  expectedPayAmount?: number | null;
   expectedPayCurrency?: string;
-  gatewayFeeAmount?: number;
+  gatewayFeeAmount?: number | null;
   gatewayFeeCurrency?: string;
   feeHandlingMode?: string;
   deposit?: {
     _id: string;
     amount: number;
-    requestedCreditAmount?: number;
-    expectedPayAmount?: number;
+    requestedCreditAmount?: number | null;
+    expectedPayAmount?: number | null;
     expectedPayCurrency?: string;
-    gatewayFeeAmount?: number;
+    gatewayFeeAmount?: number | null;
     gatewayFeeCurrency?: string;
     paymentUrl?: string;
     payAddress?: string;

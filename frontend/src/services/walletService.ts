@@ -46,7 +46,7 @@ export type TransactionItem = {
     | "TRADE_START"
     | "trade_close"
     | "TRADE_CLOSE";
-  amount: number;
+  amount: number | null;
   network: "BEP20" | "INTERNAL";
   source: string;
   status: "pending" | "confirmed" | "completed" | "failed" | "success";

@@ -6,6 +6,7 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import { downloadPopupBannerImage, fetchActivePopupBanner, type PopupBannerItem } from "../services/popupBannerService";
 import { fetchSalaryProgress, type SalaryProgress } from "../services/userService";
 import { fetchTransactions, fetchWallet, type TransactionItem, type Wallet } from "../services/walletService";
+import { formatFixedSafe } from "../utils/numberFormat";
 
 const formatCurrency = (value: number) =>
   `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -292,7 +293,7 @@ const DashboardPage = () => {
             {recent.map((item) => (
               <div key={item._id} className="flex items-center justify-between rounded-xl bg-slate-800/60 px-3 py-2">
                 <span className="uppercase text-xs text-slate-300">{item.type}</span>
-                <span className="font-semibold">${item.amount.toFixed(2)}</span>
+                <span className="font-semibold">${formatFixedSafe(item.amount, 2, "0.00")}</span>
               </div>
             ))}
           </div>

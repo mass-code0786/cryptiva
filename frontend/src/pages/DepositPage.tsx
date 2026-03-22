@@ -1,8 +1,8 @@
 import { FormEvent, useState } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { createDepositRequest } from "../services/financeService";
-
-const money = (value: number) => value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+import { formatLocaleSafe, toFiniteNumberOrNull } from "../utils/numberFormat";
+const money = (value: unknown) => formatLocaleSafe(value, { minimumFractionDigits: 2, maximumFractionDigits: 8 }, "0.00");
 
 const DepositPage = () => {
   const [amount, setAmount] = useState("50");
@@ -32,17 +32,21 @@ const DepositPage = () => {
       setPaymentUrl(data?.paymentUrl || data?.deposit?.payment?.payment_url || "");
       setPayAddress(data?.payAddress || data?.deposit?.payment?.pay_address || "");
       setQrCodeUrl(data?.qrData || data?.deposit?.payment?.qr_code_url || "");
-      const requested = Number(data?.requestedCreditAmount ?? data?.deposit?.requestedCreditAmount ?? data?.deposit?.amount ?? amount);
-      const expectedPay = Number(data?.expectedPayAmount ?? data?.deposit?.expectedPayAmount ?? requested);
+      const requested =
+        toFiniteNumberOrNull(data?.requestedCreditAmount) ??
+        toFiniteNumberOrNull(data?.deposit?.requestedCreditAmount) ??
+        toFiniteNumberOrNull(data?.deposit?.amount) ??
+        toFiniteNumberOrNull(amount);
+      const expectedPay = toFiniteNumberOrNull(data?.expectedPayAmount) ?? toFiniteNumberOrNull(data?.deposit?.expectedPayAmount);
       const expectedCurrency = String(data?.expectedPayCurrency || data?.deposit?.expectedPayCurrency || "USDT").toUpperCase();
-      const feeFromApi = Number(data?.gatewayFeeAmount ?? data?.deposit?.gatewayFeeAmount);
-      const canDeriveFee = Number.isFinite(expectedPay) && Number.isFinite(requested) && expectedCurrency.includes("USDT");
-      const derivedFee = canDeriveFee ? Number((expectedPay - requested).toFixed(8)) : 0;
+      const feeFromApi = toFiniteNumberOrNull(data?.gatewayFeeAmount) ?? toFiniteNumberOrNull(data?.deposit?.gatewayFeeAmount);
+      const canDeriveFee = expectedPay !== null && requested !== null && expectedCurrency.includes("USDT");
+      const derivedFee = canDeriveFee ? Math.max(0, Number((expectedPay - requested).toFixed(8))) : null;
 
-      setRequestedCreditAmount(Number.isFinite(requested) ? requested : null);
-      setExpectedPayAmount(Number.isFinite(expectedPay) ? expectedPay : null);
+      setRequestedCreditAmount(requested);
+      setExpectedPayAmount(expectedPay);
       setExpectedPayCurrency(expectedCurrency || "USDT");
-      setGatewayFeeAmount(Number.isFinite(feeFromApi) ? feeFromApi : canDeriveFee ? Math.max(0, derivedFee) : null);
+      setGatewayFeeAmount(feeFromApi ?? derivedFee);
       setGatewayFeeCurrency(String(data?.gatewayFeeCurrency || data?.deposit?.gatewayFeeCurrency || expectedCurrency || "USDT").toUpperCase());
       setMessage("Live payment order created");
     } catch (error: any) {
@@ -74,24 +78,28 @@ const DepositPage = () => {
           </button>
         </form>
         {message && <p className="mt-3 text-sm text-cyan-200">{message}</p>}
-        {requestedCreditAmount !== null && expectedPayAmount !== null && (
+        {requestedCreditAmount !== null && (
           <div className="mt-3 rounded-xl border border-cyan-800/40 bg-slate-950/70 p-3 text-sm text-slate-200">
             <p>
               Deposit Amount (credited in Cryptiva):{" "}
               <span className="font-semibold text-cyan-300">{money(requestedCreditAmount)} USDT</span>
             </p>
-            <p className="mt-1">
-              Gateway / Network Fee:{" "}
-              <span className="font-semibold text-amber-200">
-                {money(Math.max(0, Number(gatewayFeeAmount || 0)))} {gatewayFeeCurrency || expectedPayCurrency}
-              </span>
-            </p>
-            <p className="mt-1">
-              Total You Need to Pay:{" "}
-              <span className="font-semibold text-emerald-300">
-                {money(expectedPayAmount)} {expectedPayCurrency || "USDT"}
-              </span>
-            </p>
+            {gatewayFeeAmount !== null && (
+              <p className="mt-1">
+                Gateway / Network Fee:{" "}
+                <span className="font-semibold text-amber-200">
+                  {money(Math.max(0, gatewayFeeAmount))} {gatewayFeeCurrency || expectedPayCurrency}
+                </span>
+              </p>
+            )}
+            {expectedPayAmount !== null && (
+              <p className="mt-1">
+                Total You Need to Pay:{" "}
+                <span className="font-semibold text-emerald-300">
+                  {money(expectedPayAmount)} {expectedPayCurrency || "USDT"}
+                </span>
+              </p>
+            )}
           </div>
         )}
         {paymentUrl && (

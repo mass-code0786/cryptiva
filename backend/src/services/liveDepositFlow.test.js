@@ -131,6 +131,88 @@ test("USDT + BSC maps to usdtbsc for gateway pay_currency", async () => {
   }
 });
 
+test("create live deposit returns null payable/fee fields when gateway omits them", async () => {
+  const originalDepositCreate = Deposit.create;
+  const originalTxFindOneAndUpdate = Transaction.findOneAndUpdate;
+
+  try {
+    Deposit.create = async (payload) => ({
+      _id: "dep_live_null_fee_1",
+      ...payload,
+      save: async function save() {
+        return this;
+      },
+    });
+    Transaction.findOneAndUpdate = async () => ({});
+    __setDepositControllerDeps({
+      createGatewayInvoice: async () => ({
+        payment_id: "np_null_fee_1",
+        payment_status: "waiting",
+        order_id: "dep_live_null_fee_1",
+        invoice_url: "https://pay.example/invoice/np_null_fee_1",
+        pay_address: "0xnofee",
+        pay_currency: "usdtbsc",
+      }),
+    });
+
+    const { statusCode, body } = await runHandler(createLiveDeposit, {
+      user: { _id: "user_1" },
+      body: { amount: 50, currency: "USDT", network: "BEP20" },
+    });
+
+    assert.equal(statusCode, 201);
+    assert.equal(body.requestedCreditAmount, 50);
+    assert.equal(body.expectedPayAmount, null);
+    assert.equal(body.gatewayFeeAmount, null);
+  } finally {
+    __resetDepositControllerDeps();
+    Deposit.create = originalDepositCreate;
+    Transaction.findOneAndUpdate = originalTxFindOneAndUpdate;
+  }
+});
+
+test("create live deposit can return null gateway fee when fee cannot be derived", async () => {
+  const originalDepositCreate = Deposit.create;
+  const originalTxFindOneAndUpdate = Transaction.findOneAndUpdate;
+
+  try {
+    Deposit.create = async (payload) => ({
+      _id: "dep_live_null_fee_2",
+      ...payload,
+      save: async function save() {
+        return this;
+      },
+    });
+    Transaction.findOneAndUpdate = async () => ({});
+    __setDepositControllerDeps({
+      createGatewayInvoice: async () => ({
+        payment_id: "np_null_fee_2",
+        payment_status: "waiting",
+        order_id: "dep_live_null_fee_2",
+        invoice_url: "https://pay.example/invoice/np_null_fee_2",
+        pay_address: "bc1example",
+        pay_currency: "btc",
+        pay_amount: 0.00062,
+      }),
+    });
+
+    const { statusCode, body } = await runHandler(createLiveDeposit, {
+      user: { _id: "user_1" },
+      body: { amount: 50, currency: "USDT", network: "BEP20" },
+    });
+
+    assert.equal(statusCode, 201);
+    assert.equal(body.requestedCreditAmount, 50);
+    assert.equal(body.expectedPayAmount, 0.00062);
+    assert.equal(body.gatewayFeeAmount, null);
+    assert.equal(body.expectedPayCurrency, "btc");
+  } finally {
+    __resetDepositControllerDeps();
+    Deposit.create = originalDepositCreate;
+    Transaction.findOneAndUpdate = originalTxFindOneAndUpdate;
+  }
+});
+
 test("gateway response missing payment_id fails gracefully and does not save deposit", async () => {
   const originalDepositCreate = Deposit.create;
   const originalTxFindOneAndUpdate = Transaction.findOneAndUpdate;

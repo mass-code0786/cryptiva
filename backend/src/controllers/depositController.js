@@ -20,6 +20,14 @@ import {
 } from "../services/liveDepositGatewayService.js";
 
 const normalizeGateway = (value = "") => String(value || "").trim().toLowerCase() || CRYPTO_GATEWAY_DEFAULT;
+const toFiniteNumberOrNull = (value) => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+const toPositiveNumberOrNull = (value) => {
+  const parsed = toFiniteNumberOrNull(value);
+  return parsed !== null && parsed >= 0 ? parsed : null;
+};
 const depositControllerDeps = {
   createGatewayInvoice,
   extractGatewayExpectedPaymentFields,
@@ -58,9 +66,9 @@ const upsertDepositTransaction = async ({ deposit, status, source, metadata = {}
     depositId: deposit._id,
     requestedCreditAmount: creditedAmount,
     creditedAmount,
-    expectedPayAmount: Number(deposit.expectedPayAmount || 0),
+    expectedPayAmount: toPositiveNumberOrNull(deposit.expectedPayAmount),
     expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
-    gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+    gatewayFeeAmount: toPositiveNumberOrNull(deposit.gatewayFeeAmount),
     gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
     feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
     currency: deposit.currency,
@@ -141,8 +149,7 @@ export const createDeposit = asyncHandler(async (req, res) => {
     requestedCreditAmount: amount,
   });
   const requestedCreditAmount = Number(amount);
-  const expectedPayAmount =
-    Number(gatewayAmountFields.expectedPayAmount || 0) > 0 ? Number(gatewayAmountFields.expectedPayAmount) : requestedCreditAmount;
+  const expectedPayAmount = toPositiveNumberOrNull(gatewayAmountFields.expectedPayAmount);
   const expectedPayCurrency = String(gatewayAmountFields.expectedPayCurrency || invoice?.pay_currency || asset.payCurrency || "").toLowerCase();
 
   const deposit = await Deposit.create({
@@ -183,7 +190,7 @@ export const createDeposit = asyncHandler(async (req, res) => {
       requestedCreditAmount,
       expectedPayAmount,
       expectedPayCurrency,
-      gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+      gatewayFeeAmount: toPositiveNumberOrNull(deposit.gatewayFeeAmount),
       gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
     },
   });
@@ -194,10 +201,10 @@ export const createDeposit = asyncHandler(async (req, res) => {
     paymentUrl: deposit.paymentUrl,
     payAddress: deposit.payAddress,
     qrData: deposit.qrData,
-    requestedCreditAmount: Number(deposit.requestedCreditAmount || deposit.amount || 0),
-    expectedPayAmount: Number(deposit.expectedPayAmount || 0),
+    requestedCreditAmount: toPositiveNumberOrNull(deposit.requestedCreditAmount) ?? Number(deposit.amount || 0),
+    expectedPayAmount: toPositiveNumberOrNull(deposit.expectedPayAmount),
     expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
-    gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+    gatewayFeeAmount: toPositiveNumberOrNull(deposit.gatewayFeeAmount),
     gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
     feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
     status: deposit.status,
@@ -247,10 +254,10 @@ export const getDepositStatus = asyncHandler(async (req, res) => {
   res.json({
     depositId: deposit._id,
     amount: deposit.amount,
-    requestedCreditAmount: Number(deposit.requestedCreditAmount || deposit.amount || 0),
-    expectedPayAmount: Number(deposit.expectedPayAmount || 0),
+    requestedCreditAmount: toPositiveNumberOrNull(deposit.requestedCreditAmount) ?? Number(deposit.amount || 0),
+    expectedPayAmount: toPositiveNumberOrNull(deposit.expectedPayAmount),
     expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
-    gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+    gatewayFeeAmount: toPositiveNumberOrNull(deposit.gatewayFeeAmount),
     gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
     payableAmountDisplay: String(deposit.payableAmountDisplay || "").trim(),
     feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),

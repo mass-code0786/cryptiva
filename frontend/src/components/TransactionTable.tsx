@@ -1,7 +1,9 @@
+import { formatFixedSafe, toFiniteNumberOrNull } from "../utils/numberFormat";
+
 type Transaction = {
   _id: string;
   type: string;
-  amount: number;
+  amount: number | null;
   network: string;
   status: string;
   metadata?: {
@@ -44,14 +46,28 @@ const TransactionTable = ({ items }: { items: Transaction[] }) => {
               <td className="p-3">{new Date(tx.createdAt).toLocaleString()}</td>
               <td className="p-3">{resolveTypeLabel(tx.type)}</td>
               <td className={`p-3 font-semibold ${Number(tx.amount || 0) < 0 ? "text-rose-300" : "text-emerald-300"}`}>
-                ${tx.amount.toFixed(2)}
+                ${formatFixedSafe(tx.amount, 2, "0.00")}
                 {String(tx.type || "").toLowerCase() === "deposit" && (
                   <div className="mt-1 text-xs font-normal text-slate-300">
-                    Requested: {Number(tx.metadata?.requestedCreditAmount || tx.amount || 0).toFixed(2)} USDT | Payable:{" "}
-                    {Number(tx.metadata?.expectedPayAmount || tx.amount || 0).toFixed(2)}{" "}
-                    {String(tx.metadata?.expectedPayCurrency || "USDT").toUpperCase()} | Fee:{" "}
-                    {Math.max(0, Number(tx.metadata?.gatewayFeeAmount || 0)).toFixed(2)}{" "}
-                    {String(tx.metadata?.gatewayFeeCurrency || tx.metadata?.expectedPayCurrency || "USDT").toUpperCase()}
+                    Requested:{" "}
+                    {formatFixedSafe(
+                      toFiniteNumberOrNull(tx.metadata?.requestedCreditAmount) ?? toFiniteNumberOrNull(tx.amount),
+                      2,
+                      "0.00"
+                    )}{" "}
+                    USDT
+                    {toFiniteNumberOrNull(tx.metadata?.expectedPayAmount) !== null && (
+                      <>
+                        {" | "}Payable: {formatFixedSafe(tx.metadata?.expectedPayAmount, 2, "0.00")}{" "}
+                        {String(tx.metadata?.expectedPayCurrency || "USDT").toUpperCase()}
+                      </>
+                    )}
+                    {toFiniteNumberOrNull(tx.metadata?.gatewayFeeAmount) !== null && (
+                      <>
+                        {" | "}Fee: {formatFixedSafe(Math.max(0, Number(tx.metadata?.gatewayFeeAmount)), 2, "0.00")}{" "}
+                        {String(tx.metadata?.gatewayFeeCurrency || tx.metadata?.expectedPayCurrency || "USDT").toUpperCase()}
+                      </>
+                    )}
                   </div>
                 )}
               </td>

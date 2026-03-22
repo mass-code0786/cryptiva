@@ -4,6 +4,13 @@ type Transaction = {
   amount: number;
   network: string;
   status: string;
+  metadata?: {
+    requestedCreditAmount?: number;
+    expectedPayAmount?: number;
+    expectedPayCurrency?: string;
+    gatewayFeeAmount?: number;
+    gatewayFeeCurrency?: string;
+  };
   createdAt: string;
 };
 
@@ -38,6 +45,15 @@ const TransactionTable = ({ items }: { items: Transaction[] }) => {
               <td className="p-3">{resolveTypeLabel(tx.type)}</td>
               <td className={`p-3 font-semibold ${Number(tx.amount || 0) < 0 ? "text-rose-300" : "text-emerald-300"}`}>
                 ${tx.amount.toFixed(2)}
+                {String(tx.type || "").toLowerCase() === "deposit" && (
+                  <div className="mt-1 text-xs font-normal text-slate-300">
+                    Requested: {Number(tx.metadata?.requestedCreditAmount || tx.amount || 0).toFixed(2)} USDT | Payable:{" "}
+                    {Number(tx.metadata?.expectedPayAmount || tx.amount || 0).toFixed(2)}{" "}
+                    {String(tx.metadata?.expectedPayCurrency || "USDT").toUpperCase()} | Fee:{" "}
+                    {Math.max(0, Number(tx.metadata?.gatewayFeeAmount || 0)).toFixed(2)}{" "}
+                    {String(tx.metadata?.gatewayFeeCurrency || tx.metadata?.expectedPayCurrency || "USDT").toUpperCase()}
+                  </div>
+                )}
               </td>
               <td className="p-3">{tx.network || "INTERNAL"}</td>
               <td className="p-3">{tx.status}</td>

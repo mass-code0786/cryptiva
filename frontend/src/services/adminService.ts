@@ -147,9 +147,15 @@ export type AdminIncomeHistoryItem = {
 export type AdminDepositItem = {
   _id: string;
   amount: number;
+  requestedCreditAmount?: number;
+  expectedPayAmount?: number;
+  expectedPayCurrency?: string;
+  gatewayFeeAmount?: number;
+  gatewayFeeCurrency?: string;
+  feeHandlingMode?: string;
   currency: string;
   network: string;
-  status: "pending" | "approved" | "rejected" | "confirmed" | "failed";
+  status: "pending" | "pending_review" | "approved" | "rejected" | "confirmed" | "completed" | "failed" | "expired";
   createdAt: string;
   txHash?: string;
   userId?: AdminEntityUser;

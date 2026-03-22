@@ -16,6 +16,11 @@ const toNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 };
+const normalizeAmount = (value) => {
+  const num = toNumber(value);
+  if (!(num >= 0)) return null;
+  return Number(num.toFixed(8));
+};
 const normalizeNetwork = (value = "") => {
   const normalized = normalizeText(value).toUpperCase();
   if (normalized === "BEP20") return "BSC";
@@ -218,37 +223,136 @@ export const extractGatewayWebhookData = ({ gateway, payload = {} } = {}) => {
   };
 };
 
-export const validateReceivedAmountAgainstExpected = ({ expectedUsdAmount, payload = {}, tolerancePercent = DEPOSIT_AMOUNT_TOLERANCE_PERCENT } = {}) => {
-  const expected = toNumber(expectedUsdAmount);
+const normalizeCurrencyKey = (value = "") => normalizeText(value).toLowerCase();
+
+const isSameCurrencyFamily = (left = "", right = "") => {
+  const a = normalizeCurrencyKey(left);
+  const b = normalizeCurrencyKey(right);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const usdLike = ["usd", "usdt", "usdtbsc"];
+  return usdLike.includes(a) && usdLike.includes(b);
+};
+
+const pickFirstFinite = (values = []) => values.map(toNumber).find((entry) => Number.isFinite(entry));
+
+const toDisplayAmount = (value) => {
+  const numberValue = toNumber(value);
+  if (!Number.isFinite(numberValue)) return "";
+  return Number(numberValue.toFixed(8)).toString();
+};
+
+export const extractGatewayExpectedPaymentFields = ({ gateway, payload = {}, requestedCreditAmount = null } = {}) => {
+  const normalizedGateway = normalizeText(gateway).toLowerCase();
+  if (normalizedGateway !== "nowpayments") {
+    return {
+      expectedPayAmount: null,
+      expectedPayCurrency: "",
+      gatewayFeeAmount: null,
+      gatewayFeeCurrency: "",
+      payableAmountDisplay: "",
+      feeHandlingMode: "credit_exact_pay_fee_extra",
+    };
+  }
+
+  const expectedPayAmount = normalizeAmount(
+    pickFirstFinite([payload?.pay_amount, payload?.outcome_amount, payload?.payin_amount, payload?.pay_amount_usd])
+  );
+  const expectedPayCurrency = normalizeCurrencyKey(payload?.pay_currency || payload?.outcome_currency || payload?.payin_currency);
+  const requested = normalizeAmount(requestedCreditAmount ?? payload?.price_amount);
+  const priceCurrency = normalizeCurrencyKey(payload?.price_currency || "usd");
+
+  let gatewayFeeAmount = normalizeAmount(
+    pickFirstFinite([
+      payload?.network_fee,
+      payload?.gateway_fee,
+      payload?.fee_amount,
+      payload?.fee?.amount,
+      payload?.fee?.value,
+    ])
+  );
+  let gatewayFeeCurrency = normalizeCurrencyKey(
+    payload?.network_fee_currency || payload?.gateway_fee_currency || payload?.fee_currency || payload?.fee?.currency
+  );
+
+  if (!(gatewayFeeAmount >= 0) && Number.isFinite(expectedPayAmount) && Number.isFinite(requested)) {
+    if (priceCurrency === "usd" && isSameCurrencyFamily(expectedPayCurrency || "usdtbsc", "usdtbsc")) {
+      gatewayFeeAmount = normalizeAmount(expectedPayAmount - requested);
+      if (!(gatewayFeeAmount >= 0)) {
+        gatewayFeeAmount = null;
+      } else {
+        gatewayFeeCurrency = expectedPayCurrency || "usdtbsc";
+      }
+    }
+  }
+
+  const payableAmountDisplay =
+    Number.isFinite(expectedPayAmount) && expectedPayCurrency
+      ? `${toDisplayAmount(expectedPayAmount)} ${String(expectedPayCurrency).toUpperCase()}`
+      : "";
+
+  return {
+    expectedPayAmount,
+    expectedPayCurrency,
+    gatewayFeeAmount,
+    gatewayFeeCurrency,
+    payableAmountDisplay,
+    feeHandlingMode: "credit_exact_pay_fee_extra",
+  };
+};
+
+export const validateReceivedAmountAgainstExpected = ({
+  expectedPayAmount,
+  expectedPayCurrency = "",
+  expectedUsdAmount,
+  payload = {},
+  tolerancePercent = DEPOSIT_AMOUNT_TOLERANCE_PERCENT,
+} = {}) => {
+  const expected = toNumber(expectedPayAmount ?? expectedUsdAmount);
+  const expectedCurrency = normalizeCurrencyKey(expectedPayCurrency || payload?.pay_currency || "usd");
   const tolerance = Math.max(0, toNumber(tolerancePercent) ?? DEPOSIT_AMOUNT_TOLERANCE_PERCENT);
   if (!(expected > 0)) {
-    return { isWithinTolerance: false, reason: "invalid_expected_amount", expectedUsd: expected, receivedUsd: null };
+    return {
+      isWithinTolerance: false,
+      reason: "invalid_expected_amount",
+      expectedAmount: expected,
+      expectedCurrency,
+      receivedAmount: null,
+      receivedCurrency: expectedCurrency || "",
+      expectedUsd: expected,
+      receivedUsd: null,
+    };
   }
 
-  const receivedCandidates = [
-    payload?.actually_paid_at_fiat,
-    payload?.pay_amount_usd,
-    payload?.outcome_amount_usd,
-    payload?.received_amount_usd,
-  ];
+  const priceCurrency = normalizeCurrencyKey(payload?.price_currency);
+  const outcomeCurrency = normalizeCurrencyKey(payload?.outcome_currency);
+  const payCurrency = normalizeCurrencyKey(payload?.pay_currency);
 
-  const priceCurrency = normalizeText(payload?.price_currency).toLowerCase();
-  const outcomeCurrency = normalizeText(payload?.outcome_currency).toLowerCase();
-  const payCurrency = normalizeText(payload?.pay_currency).toLowerCase();
+  const receivedCandidates = [];
+  const expectedIsUsdLike = isSameCurrencyFamily(expectedCurrency, "usd");
+  const expectedIsPayCurrency = isSameCurrencyFamily(expectedCurrency, payCurrency);
+  const expectedIsOutcomeCurrency = isSameCurrencyFamily(expectedCurrency, outcomeCurrency);
+  const expectedIsPriceCurrency = isSameCurrencyFamily(expectedCurrency, priceCurrency);
 
-  if (priceCurrency === "usd") {
-    receivedCandidates.push(payload?.outcome_amount, payload?.actually_paid, payload?.pay_amount);
-  } else if (outcomeCurrency === "usd") {
-    receivedCandidates.push(payload?.outcome_amount);
-  } else if (payCurrency === "usd" || payCurrency === "usdt" || payCurrency === "usdtbsc") {
-    receivedCandidates.push(payload?.actually_paid, payload?.pay_amount);
+  if (expectedIsPayCurrency || !expectedCurrency) {
+    receivedCandidates.push(payload?.actually_paid, payload?.pay_amount, payload?.payin_amount);
+  }
+  if (expectedIsOutcomeCurrency || !expectedCurrency) {
+    receivedCandidates.push(payload?.outcome_amount, payload?.outcome_amount_usd);
+  }
+  if (expectedIsPriceCurrency || expectedIsUsdLike || !expectedCurrency) {
+    receivedCandidates.push(payload?.actually_paid_at_fiat, payload?.pay_amount_usd, payload?.received_amount_usd);
   }
 
-  const received = receivedCandidates.map(toNumber).find((entry) => Number.isFinite(entry));
+  const received = pickFirstFinite(receivedCandidates);
   if (!(received > 0)) {
     return {
       isWithinTolerance: false,
       reason: "missing_received_amount_usd",
+      expectedAmount: expected,
+      expectedCurrency,
+      receivedAmount: null,
+      receivedCurrency: expectedCurrency || "",
       expectedUsd: expected,
       receivedUsd: null,
       tolerancePercent: tolerance,
@@ -264,6 +368,11 @@ export const validateReceivedAmountAgainstExpected = ({ expectedUsdAmount, paylo
   const isWithinTolerance = !isUnderpaid && !isOverpaid;
 
   return {
+    expectedAmount: expected,
+    expectedCurrency,
+    receivedAmount: received,
+    receivedCurrency: expectedCurrency || payCurrency || outcomeCurrency || priceCurrency || "",
+    deltaAmount: delta,
     expectedUsd: expected,
     receivedUsd: received,
     deltaUsd: delta,

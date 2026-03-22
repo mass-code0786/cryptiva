@@ -33,8 +33,16 @@ const ensureWalletForSession = async (userId, session) => {
 };
 
 const upsertDepositTransaction = async ({ session, deposit, source, status, metadata = {} }) => {
+  const creditedAmount = Number(deposit.requestedCreditAmount || deposit.amount || 0);
   const baseMetadata = {
     depositId: deposit._id,
+    requestedCreditAmount: creditedAmount,
+    creditedAmount,
+    expectedPayAmount: Number(deposit.expectedPayAmount || 0),
+    expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
+    gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+    gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
+    feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
     currency: deposit.currency,
     network: deposit.network,
     gateway: deposit.gateway,
@@ -54,7 +62,7 @@ const upsertDepositTransaction = async ({ session, deposit, source, status, meta
       $set: {
         userId: deposit.userId,
         type: "deposit",
-        amount: Number(deposit.amount || 0),
+        amount: creditedAmount,
         network: deposit.network || "BEP20",
         source,
         status,
@@ -146,9 +154,10 @@ export const creditDepositOnce = async ({
         return;
       }
 
+      const creditedAmount = Number(updated.requestedCreditAmount || updated.amount || 0);
       const wallet = await ensureWalletForSession(updated.userId, session);
-      wallet.depositWallet = Number(wallet.depositWallet || 0) + Number(updated.amount || 0);
-      wallet.depositTotal = Number(wallet.depositTotal || 0) + Number(updated.amount || 0);
+      wallet.depositWallet = Number(wallet.depositWallet || 0) + creditedAmount;
+      wallet.depositTotal = Number(wallet.depositTotal || 0) + creditedAmount;
       wallet.balance = Number(wallet.depositWallet || 0) + Number(wallet.withdrawalWallet || 0);
       await wallet.save({ session });
 
@@ -172,7 +181,7 @@ export const creditDepositOnce = async ({
       depositCreditDeps.syncTeamBusinessForUserAndUplines(deposit.userId),
       depositCreditDeps.sendDepositSuccessNotification({
         userId: deposit.userId,
-        amount: deposit.amount,
+        amount: Number(deposit.requestedCreditAmount || deposit.amount || 0),
         depositId: deposit._id,
         gateway: deposit.gateway,
       }),

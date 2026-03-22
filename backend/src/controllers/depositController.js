@@ -9,6 +9,7 @@ import { creditDepositOnce, markDepositFailedOrExpired } from "../services/depos
 import {
   LIVE_DEPOSIT_GATEWAYS,
   createGatewayInvoice,
+  extractGatewayExpectedPaymentFields,
   extractNowPaymentsPaymentId,
   extractGatewayWebhookData,
   isGatewaySuccessFinalStatus,
@@ -21,6 +22,7 @@ import {
 const normalizeGateway = (value = "") => String(value || "").trim().toLowerCase() || CRYPTO_GATEWAY_DEFAULT;
 const depositControllerDeps = {
   createGatewayInvoice,
+  extractGatewayExpectedPaymentFields,
   extractNowPaymentsPaymentId,
   verifyGatewayWebhookSignature,
   extractGatewayWebhookData,
@@ -38,6 +40,7 @@ export const __setDepositControllerDeps = (overrides = {}) => {
 export const __resetDepositControllerDeps = () => {
   Object.assign(depositControllerDeps, {
     createGatewayInvoice,
+    extractGatewayExpectedPaymentFields,
     extractNowPaymentsPaymentId,
     verifyGatewayWebhookSignature,
     extractGatewayWebhookData,
@@ -50,8 +53,16 @@ export const __resetDepositControllerDeps = () => {
 };
 
 const upsertDepositTransaction = async ({ deposit, status, source, metadata = {} }) => {
+  const creditedAmount = Number(deposit.requestedCreditAmount || deposit.amount || 0);
   const txMetadata = {
     depositId: deposit._id,
+    requestedCreditAmount: creditedAmount,
+    creditedAmount,
+    expectedPayAmount: Number(deposit.expectedPayAmount || 0),
+    expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
+    gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+    gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
+    feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
     currency: deposit.currency,
     network: deposit.network,
     gateway: deposit.gateway,
@@ -66,7 +77,7 @@ const upsertDepositTransaction = async ({ deposit, status, source, metadata = {}
       $set: {
         userId: deposit.userId,
         type: "deposit",
-        amount: Number(deposit.amount || 0),
+        amount: creditedAmount,
         network: deposit.network || "BEP20",
         source,
         status,
@@ -124,10 +135,26 @@ export const createDeposit = asyncHandler(async (req, res) => {
   const qrData = paymentUrl || payAddress || "";
   const gatewayStatus = String(invoice?.payment_status || invoice?.status || "waiting").toLowerCase();
   const gatewayOrderId = String(invoice?.order_id || provisionalOrderId).trim();
+  const gatewayAmountFields = depositControllerDeps.extractGatewayExpectedPaymentFields({
+    gateway,
+    payload: invoice,
+    requestedCreditAmount: amount,
+  });
+  const requestedCreditAmount = Number(amount);
+  const expectedPayAmount =
+    Number(gatewayAmountFields.expectedPayAmount || 0) > 0 ? Number(gatewayAmountFields.expectedPayAmount) : requestedCreditAmount;
+  const expectedPayCurrency = String(gatewayAmountFields.expectedPayCurrency || invoice?.pay_currency || asset.payCurrency || "").toLowerCase();
 
   const deposit = await Deposit.create({
     userId: req.user._id,
     amount,
+    requestedCreditAmount,
+    expectedPayAmount,
+    expectedPayCurrency,
+    gatewayFeeAmount: gatewayAmountFields.gatewayFeeAmount,
+    gatewayFeeCurrency: String(gatewayAmountFields.gatewayFeeCurrency || "").toLowerCase(),
+    payableAmountDisplay: String(gatewayAmountFields.payableAmountDisplay || "").trim(),
+    feeHandlingMode: String(gatewayAmountFields.feeHandlingMode || "credit_exact_pay_fee_extra"),
     currency,
     network,
     status: "pending",
@@ -153,6 +180,11 @@ export const createDeposit = asyncHandler(async (req, res) => {
     source: "Awaiting live crypto payment",
     metadata: {
       gatewayStatus,
+      requestedCreditAmount,
+      expectedPayAmount,
+      expectedPayCurrency,
+      gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+      gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
     },
   });
 
@@ -162,6 +194,12 @@ export const createDeposit = asyncHandler(async (req, res) => {
     paymentUrl: deposit.paymentUrl,
     payAddress: deposit.payAddress,
     qrData: deposit.qrData,
+    requestedCreditAmount: Number(deposit.requestedCreditAmount || deposit.amount || 0),
+    expectedPayAmount: Number(deposit.expectedPayAmount || 0),
+    expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
+    gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+    gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
+    feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
     status: deposit.status,
   });
 });
@@ -209,6 +247,13 @@ export const getDepositStatus = asyncHandler(async (req, res) => {
   res.json({
     depositId: deposit._id,
     amount: deposit.amount,
+    requestedCreditAmount: Number(deposit.requestedCreditAmount || deposit.amount || 0),
+    expectedPayAmount: Number(deposit.expectedPayAmount || 0),
+    expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
+    gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+    gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
+    payableAmountDisplay: String(deposit.payableAmountDisplay || "").trim(),
+    feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
     currency: deposit.currency,
     network: deposit.network,
     gateway: deposit.gateway,
@@ -266,7 +311,8 @@ export const handleDepositWebhook = asyncHandler(async (req, res) => {
   const mappedStatus = depositControllerDeps.mapGatewayStatusToDepositStatus(data.gatewayStatus);
   if (depositControllerDeps.isGatewaySuccessFinalStatus(data.gatewayStatus)) {
     const amountValidation = depositControllerDeps.validateReceivedAmountAgainstExpected({
-      expectedUsdAmount: deposit.amount,
+      expectedPayAmount: Number(deposit.expectedPayAmount || deposit.amount || 0),
+      expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "usd"),
       payload: req.body || {},
       tolerancePercent: DEPOSIT_AMOUNT_TOLERANCE_PERCENT,
     });
@@ -354,6 +400,9 @@ export const handleDepositWebhook = asyncHandler(async (req, res) => {
   }
   if (data.payCurrency) {
     deposit.payCurrency = String(data.payCurrency || "").toLowerCase();
+    if (!String(deposit.expectedPayCurrency || "").trim()) {
+      deposit.expectedPayCurrency = String(data.payCurrency || "").toLowerCase();
+    }
   }
   await deposit.save();
 

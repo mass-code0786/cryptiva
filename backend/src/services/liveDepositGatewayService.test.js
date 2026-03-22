@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createNowPaymentsInvoice, resolveSupportedAsset } from "./liveDepositGatewayService.js";
+import {
+  createNowPaymentsInvoice,
+  extractGatewayExpectedPaymentFields,
+  resolveSupportedAsset,
+  validateReceivedAmountAgainstExpected,
+} from "./liveDepositGatewayService.js";
 
 test("USDT + BEP20 resolves to BSC and pay_currency usdtbsc", () => {
   const resolved = resolveSupportedAsset({ currency: "USDT", network: "BEP20" });
@@ -31,4 +36,39 @@ test("invalid mapping usdtbep20 is never sent in gateway payload", async () => {
   });
   assert.equal(capturedBody.includes('"pay_currency":"usdtbep20"'), false);
   assert.equal(capturedBody.includes('"pay_currency":"usdtbsc"'), true);
+});
+
+test("extracts expected pay amount and fee for nowpayments invoice", () => {
+  const result = extractGatewayExpectedPaymentFields({
+    gateway: "nowpayments",
+    requestedCreditAmount: 50,
+    payload: {
+      pay_amount: 50.8,
+      pay_currency: "usdtbsc",
+      price_amount: 50,
+      price_currency: "usd",
+    },
+  });
+
+  assert.equal(result.expectedPayAmount, 50.8);
+  assert.equal(result.expectedPayCurrency, "usdtbsc");
+  assert.equal(result.gatewayFeeAmount, 0.8);
+});
+
+test("validates actually paid amount against expected payable amount", () => {
+  const result = validateReceivedAmountAgainstExpected({
+    expectedPayAmount: 50.8,
+    expectedPayCurrency: "usdtbsc",
+    payload: {
+      pay_currency: "usdtbsc",
+      pay_amount: 50.8,
+      actually_paid: 50.8,
+    },
+    tolerancePercent: 0.1,
+  });
+
+  assert.equal(result.isWithinTolerance, true);
+  assert.equal(result.reason, "within_tolerance");
+  assert.equal(result.expectedAmount, 50.8);
+  assert.equal(result.receivedAmount, 50.8);
 });

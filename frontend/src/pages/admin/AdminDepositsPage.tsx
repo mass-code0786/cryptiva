@@ -83,7 +83,9 @@ const AdminDepositsPage = () => {
           <thead className="bg-slate-950/70 text-left text-slate-300">
             <tr>
               <th className="px-4 py-3">User ID</th>
-              <th className="px-4 py-3">Amount</th>
+              <th className="px-4 py-3">Requested Credit</th>
+              <th className="px-4 py-3">Payable</th>
+              <th className="px-4 py-3">Fee</th>
               <th className="px-4 py-3">Wallet Address</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Status</th>
@@ -93,14 +95,14 @@ const AdminDepositsPage = () => {
           <tbody className="divide-y divide-slate-800 bg-slate-900/60">
             {!loading && items.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-4 text-slate-300">
+                <td colSpan={8} className="px-4 py-4 text-slate-300">
                   No deposits found.
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-4 text-slate-300">
+                <td colSpan={8} className="px-4 py-4 text-slate-300">
                   Loading deposits...
                 </td>
               </tr>
@@ -110,10 +112,21 @@ const AdminDepositsPage = () => {
                 const isPending = item.status === "pending";
                 const busy = submittingId === item._id;
                 const walletAddress = item.payment?.pay_address || "-";
+                const requestedCredit = Number(item.requestedCreditAmount ?? item.amount ?? 0);
+                const payable = Number(item.expectedPayAmount ?? item.amount ?? 0);
+                const payableCurrency = String(item.expectedPayCurrency || "USDT").toUpperCase();
+                const fee = Number(item.gatewayFeeAmount ?? Math.max(0, payable - requestedCredit));
+                const feeCurrency = String(item.gatewayFeeCurrency || payableCurrency || "USDT").toUpperCase();
                 return (
                   <tr key={item._id}>
                     <td className="px-4 py-3 text-cyan-100">{item.userId?.userId || "-"}</td>
-                    <td className="px-4 py-3 text-slate-200">{money(item.amount)}</td>
+                    <td className="px-4 py-3 text-slate-200">{money(requestedCredit)}</td>
+                    <td className="px-4 py-3 text-emerald-200">
+                      {money(payable)} {payableCurrency}
+                    </td>
+                    <td className="px-4 py-3 text-amber-200">
+                      {money(Math.max(0, fee))} {feeCurrency}
+                    </td>
                     <td className="px-4 py-3 text-slate-300">{walletAddress}</td>
                     <td className="px-4 py-3 text-slate-300">{new Date(item.createdAt).toLocaleString()}</td>
                     <td className="px-4 py-3">

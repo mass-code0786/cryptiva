@@ -78,6 +78,8 @@ const ensureWallet = async (userId) => {
   return wallet;
 };
 
+const getDepositCreditAmount = (deposit) => Number(deposit?.requestedCreditAmount || deposit?.amount || 0);
+
 const upsertDepositTransaction = async ({ deposit, status, source, metadata = {} }) =>
   Transaction.findOneAndUpdate(
     { userId: deposit.userId, type: "deposit", "metadata.depositId": deposit._id },
@@ -85,12 +87,19 @@ const upsertDepositTransaction = async ({ deposit, status, source, metadata = {}
       $set: {
         userId: deposit.userId,
         type: "deposit",
-        amount: Number(deposit.amount || 0),
+        amount: getDepositCreditAmount(deposit),
         network: deposit.network || "BEP20",
         source,
         status,
         metadata: {
           depositId: deposit._id,
+          requestedCreditAmount: getDepositCreditAmount(deposit),
+          creditedAmount: getDepositCreditAmount(deposit),
+          expectedPayAmount: Number(deposit.expectedPayAmount || 0),
+          expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
+          gatewayFeeAmount: Number(deposit.gatewayFeeAmount || 0),
+          gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
+          feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
           currency: deposit.currency,
           network: deposit.network,
           gateway: deposit.gateway,
@@ -1053,9 +1062,10 @@ export const approveDeposit = asyncHandler(async (req, res) => {
   const user = await User.findById(deposit.userId);
   if (!user) throw new ApiError(404, "User not found for deposit");
 
+  const creditAmount = getDepositCreditAmount(deposit);
   const wallet = await ensureWallet(user._id);
-  wallet.depositWallet += deposit.amount;
-  wallet.depositTotal += deposit.amount;
+  wallet.depositWallet += creditAmount;
+  wallet.depositTotal += creditAmount;
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
 
@@ -1073,7 +1083,7 @@ export const approveDeposit = asyncHandler(async (req, res) => {
       type: "deposit_approval",
       action: "Deposit approved",
       targetUserId: user._id,
-      amount: deposit.amount,
+      amount: creditAmount,
       metadata: { depositId: deposit._id },
     }),
   ]);
@@ -1106,7 +1116,7 @@ export const rejectDeposit = asyncHandler(async (req, res) => {
     type: "deposit_rejection",
     action: "Deposit rejected",
     targetUserId: deposit.userId,
-    amount: deposit.amount,
+    amount: getDepositCreditAmount(deposit),
     reason,
     metadata: { depositId: deposit._id },
   });
@@ -1141,18 +1151,26 @@ export const recheckDepositPaymentStatus = asyncHandler(async (req, res) => {
       gatewayOrderId: String(payload.order_id || deposit.gatewayOrderId || "").trim(),
       gatewayStatus: String(payload.payment_status || payload.status || "").toLowerCase(),
       txHash: String(payload.payin_hash || payload.txhash || payload.txHash || "").trim(),
+      payCurrency: String(payload.pay_currency || payload.outcome_currency || "").toLowerCase(),
     });
 
   if (data.gatewayPaymentId) deposit.gatewayPaymentId = data.gatewayPaymentId;
   if (data.gatewayOrderId) deposit.gatewayOrderId = data.gatewayOrderId;
   if (data.txHash) deposit.txHash = data.txHash;
+  if (data.payCurrency) {
+    deposit.payCurrency = String(data.payCurrency || "").toLowerCase();
+    if (!String(deposit.expectedPayCurrency || "").trim()) {
+      deposit.expectedPayCurrency = String(data.payCurrency || "").toLowerCase();
+    }
+  }
   deposit.gatewayStatus = String(data.gatewayStatus || deposit.gatewayStatus || "").toLowerCase();
   deposit.webhookPayload = payload;
 
   const mappedStatus = adminDepositDeps.mapGatewayStatusToDepositStatus(data.gatewayStatus);
   if (adminDepositDeps.isGatewaySuccessFinalStatus(data.gatewayStatus)) {
     const amountValidation = adminDepositDeps.validateReceivedAmountAgainstExpected({
-      expectedUsdAmount: deposit.amount,
+      expectedPayAmount: Number(deposit.expectedPayAmount || deposit.amount || 0),
+      expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "usd"),
       payload,
       tolerancePercent: DEPOSIT_AMOUNT_TOLERANCE_PERCENT,
     });
@@ -1175,7 +1193,7 @@ export const recheckDepositPaymentStatus = asyncHandler(async (req, res) => {
         action: "Deposit moved to pending review after gateway recheck",
         type: "deposit_recheck",
         targetUserId: deposit.userId,
-        amount: deposit.amount,
+        amount: getDepositCreditAmount(deposit),
         metadata: { depositId: deposit._id, gatewayStatus: deposit.gatewayStatus, amountValidation },
       });
       return res.json({ message: "Deposit moved to pending_review due to amount mismatch", deposit, amountValidation });
@@ -1194,7 +1212,7 @@ export const recheckDepositPaymentStatus = asyncHandler(async (req, res) => {
       action: "Deposit rechecked and credited",
       type: "deposit_recheck",
       targetUserId: deposit.userId,
-      amount: deposit.amount,
+      amount: getDepositCreditAmount(deposit),
       metadata: { depositId: deposit._id, gatewayStatus: data.gatewayStatus, credited: result.credited },
     });
     return res.json({ message: "Deposit rechecked", deposit: result.deposit || deposit, credited: result.credited });
@@ -1234,7 +1252,7 @@ export const recheckDepositPaymentStatus = asyncHandler(async (req, res) => {
     action: "Deposit rechecked - still pending",
     type: "deposit_recheck",
     targetUserId: deposit.userId,
-    amount: deposit.amount,
+    amount: getDepositCreditAmount(deposit),
     metadata: { depositId: deposit._id, gatewayStatus: deposit.gatewayStatus },
   });
 
@@ -1262,7 +1280,7 @@ export const manualCreditDeposit = asyncHandler(async (req, res) => {
     action: "Deposit manually credited",
     type: "deposit_manual_credit",
     targetUserId: deposit.userId,
-    amount: deposit.amount,
+    amount: getDepositCreditAmount(deposit),
     reason,
     metadata: { depositId: deposit._id, credited: result.credited },
   });

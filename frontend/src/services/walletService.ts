@@ -50,6 +50,16 @@ export type TransactionItem = {
   network: "BEP20" | "INTERNAL";
   source: string;
   status: "pending" | "confirmed" | "completed" | "failed" | "success";
+  metadata?: {
+    depositId?: string;
+    requestedCreditAmount?: number;
+    creditedAmount?: number;
+    expectedPayAmount?: number;
+    expectedPayCurrency?: string;
+    gatewayFeeAmount?: number;
+    gatewayFeeCurrency?: string;
+    [key: string]: unknown;
+  };
   createdAt: string;
 };
 

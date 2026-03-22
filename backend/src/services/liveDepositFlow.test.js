@@ -61,6 +61,7 @@ test("create live deposit order returns payment URL/address and pending status",
         payment_id: "np_1001",
         payment_status: "waiting",
         order_id: "dep_live_1",
+        pay_amount: 50.8,
         invoice_url: "https://pay.example/invoice/np_1001",
         pay_address: "0xabc123",
         pay_currency: "usdtbsc",
@@ -79,6 +80,10 @@ test("create live deposit order returns payment URL/address and pending status",
     assert.equal(body.payAddress, "0xabc123");
     assert.equal(body.deposit.gatewayPaymentId, "np_1001");
     assert.equal(body.deposit.gateway, "nowpayments");
+    assert.equal(body.requestedCreditAmount, 50);
+    assert.equal(body.expectedPayAmount, 50.8);
+    assert.equal(body.expectedPayCurrency, "usdtbsc");
+    assert.equal(body.gatewayFeeAmount, 0.8);
     assert.equal(txCalls.length >= 1, true);
   } finally {
     __resetDepositControllerDeps();
@@ -492,6 +497,11 @@ test("deposit status endpoint exposes completed transaction entry after success"
       gatewayPaymentId: "np_status_1",
       gatewayStatus: "finished",
       payCurrency: "usdtbsc",
+      requestedCreditAmount: 75,
+      expectedPayAmount: 75.6,
+      expectedPayCurrency: "usdtbsc",
+      gatewayFeeAmount: 0.6,
+      gatewayFeeCurrency: "usdtbsc",
       paymentUrl: "https://pay.example/invoice/np_status_1",
       payAddress: "0xstatusaddr",
       qrData: "https://pay.example/invoice/np_status_1",
@@ -512,6 +522,9 @@ test("deposit status endpoint exposes completed transaction entry after success"
     assert.equal(body.transactionStatus, "completed");
     assert.equal(body.gatewayStatus, "finished");
     assert.equal(body.paymentUrl, "https://pay.example/invoice/np_status_1");
+    assert.equal(body.requestedCreditAmount, 75);
+    assert.equal(body.expectedPayAmount, 75.6);
+    assert.equal(body.gatewayFeeAmount, 0.6);
   } finally {
     Deposit.findOne = originalDepositFindOne;
     Transaction.findOne = originalTxFindOne;

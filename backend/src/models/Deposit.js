@@ -13,6 +13,41 @@ const depositSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    requestedCreditAmount: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    expectedPayAmount: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    expectedPayCurrency: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    gatewayFeeAmount: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    gatewayFeeCurrency: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    payableAmountDisplay: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    feeHandlingMode: {
+      type: String,
+      default: "credit_exact_pay_fee_extra",
+      trim: true,
+    },
     currency: {
       type: String,
       default: "USDT",
@@ -117,6 +152,17 @@ depositSchema.pre("validate", function validateGatewayPaymentId(next) {
   if (gateway === "nowpayments" && !paymentId) {
     return next(new Error("gatewayPaymentId is required for nowpayments deposits"));
   }
+
+  const amount = Number(this.amount || 0);
+  if (amount > 0 && !(Number(this.requestedCreditAmount) > 0)) {
+    this.requestedCreditAmount = amount;
+  }
+
+  const payCurrency = String(this.expectedPayCurrency || this.payCurrency || "").trim().toLowerCase();
+  if (payCurrency) {
+    this.expectedPayCurrency = payCurrency;
+  }
+
   return next();
 });
 

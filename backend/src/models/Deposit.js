@@ -40,7 +40,7 @@ const depositSchema = new mongoose.Schema(
     },
     payableAmountDisplay: {
       type: String,
-      default: "",
+      default: null,
       trim: true,
     },
     feeHandlingMode: {

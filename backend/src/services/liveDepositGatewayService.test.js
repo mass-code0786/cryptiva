@@ -53,6 +53,25 @@ test("extracts expected pay amount and fee for nowpayments invoice", () => {
   assert.equal(result.expectedPayAmount, 50.8);
   assert.equal(result.expectedPayCurrency, "usdtbsc");
   assert.equal(result.gatewayFeeAmount, 0.8);
+  assert.equal(result.payableAmountDisplay, "50.8 USDTBSC");
+});
+
+test("null pay_amount does not crash and returns nullable fee/payable fields", () => {
+  const result = extractGatewayExpectedPaymentFields({
+    gateway: "nowpayments",
+    requestedCreditAmount: 50,
+    payload: {
+      pay_amount: null,
+      pay_currency: "usdtbsc",
+      price_amount: 50,
+      price_currency: "usd",
+      fee_amount: null,
+    },
+  });
+
+  assert.equal(result.expectedPayAmount, null);
+  assert.equal(result.gatewayFeeAmount, null);
+  assert.equal(result.payableAmountDisplay, null);
 });
 
 test("validates actually paid amount against expected payable amount", () => {

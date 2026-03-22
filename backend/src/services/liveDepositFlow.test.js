@@ -171,6 +171,49 @@ test("create live deposit returns null payable/fee fields when gateway omits the
   }
 });
 
+test("create live deposit does not crash when gateway returns null numeric fee/payable fields", async () => {
+  const originalDepositCreate = Deposit.create;
+  const originalTxFindOneAndUpdate = Transaction.findOneAndUpdate;
+
+  try {
+    Deposit.create = async (payload) => ({
+      _id: "dep_live_null_values_1",
+      ...payload,
+      save: async function save() {
+        return this;
+      },
+    });
+    Transaction.findOneAndUpdate = async () => ({});
+    __setDepositControllerDeps({
+      createGatewayInvoice: async () => ({
+        payment_id: "np_null_values_1",
+        payment_status: "waiting",
+        order_id: "dep_live_null_values_1",
+        invoice_url: "https://pay.example/invoice/np_null_values_1",
+        pay_address: "0xnullvalues",
+        pay_currency: "usdtbsc",
+        pay_amount: null,
+        fee_amount: null,
+      }),
+    });
+
+    const { statusCode, body } = await runHandler(createLiveDeposit, {
+      user: { _id: "user_1" },
+      body: { amount: 50, currency: "USDT", network: "BEP20" },
+    });
+
+    assert.equal(statusCode, 201);
+    assert.equal(body.requestedCreditAmount, 50);
+    assert.equal(body.expectedPayAmount, null);
+    assert.equal(body.gatewayFeeAmount, null);
+    assert.equal(body.deposit.payableAmountDisplay, null);
+  } finally {
+    __resetDepositControllerDeps();
+    Deposit.create = originalDepositCreate;
+    Transaction.findOneAndUpdate = originalTxFindOneAndUpdate;
+  }
+});
+
 test("create live deposit can return null gateway fee when fee cannot be derived", async () => {
   const originalDepositCreate = Deposit.create;
   const originalTxFindOneAndUpdate = Transaction.findOneAndUpdate;

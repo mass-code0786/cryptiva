@@ -18,7 +18,7 @@ const toNumber = (value) => {
 };
 const normalizeAmount = (value) => {
   const num = toNumber(value);
-  if (!(num >= 0)) return null;
+  if (num === null || num < 0) return null;
   return Number(num.toFixed(8));
 };
 const normalizeNetwork = (value = "") => {
@@ -250,7 +250,7 @@ export const extractGatewayExpectedPaymentFields = ({ gateway, payload = {}, req
       expectedPayCurrency: "",
       gatewayFeeAmount: null,
       gatewayFeeCurrency: "",
-      payableAmountDisplay: "",
+      payableAmountDisplay: null,
       feeHandlingMode: "credit_exact_pay_fee_extra",
     };
   }
@@ -289,7 +289,7 @@ export const extractGatewayExpectedPaymentFields = ({ gateway, payload = {}, req
   const payableAmountDisplay =
     Number.isFinite(expectedPayAmount) && expectedPayCurrency
       ? `${toDisplayAmount(expectedPayAmount)} ${String(expectedPayCurrency).toUpperCase()}`
-      : "";
+      : null;
 
   return {
     expectedPayAmount,

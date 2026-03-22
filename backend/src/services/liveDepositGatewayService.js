@@ -9,12 +9,17 @@ import {
 } from "../config/env.js";
 
 export const LIVE_DEPOSIT_GATEWAYS = ["nowpayments"];
-export const SUPPORTED_LIVE_ASSETS = [{ currency: "USDT", network: "BEP20", payCurrency: "usdtbep20" }];
+export const SUPPORTED_LIVE_ASSETS = [{ currency: "USDT", network: "BSC", payCurrency: "usdtbsc" }];
 
 const normalizeText = (value = "") => String(value || "").trim();
 const toNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
+};
+const normalizeNetwork = (value = "") => {
+  const normalized = normalizeText(value).toUpperCase();
+  if (normalized === "BEP20") return "BSC";
+  return normalized;
 };
 
 const safeJsonParse = (value) => {
@@ -32,7 +37,7 @@ const getHeader = (headers = {}, key = "") => {
 
 export const resolveSupportedAsset = ({ currency = "USDT", network = "BEP20" } = {}) => {
   const normalizedCurrency = normalizeText(currency).toUpperCase();
-  const normalizedNetwork = normalizeText(network).toUpperCase();
+  const normalizedNetwork = normalizeNetwork(network);
   const asset = SUPPORTED_LIVE_ASSETS.find(
     (entry) => entry.currency === normalizedCurrency && entry.network === normalizedNetwork
   );
@@ -43,7 +48,7 @@ export const resolveSupportedAsset = ({ currency = "USDT", network = "BEP20" } =
   };
 };
 
-const toNowPaymentsInvoicePayload = ({ amount, orderId, description, payCurrency = "usdtbep20" }) => ({
+const toNowPaymentsInvoicePayload = ({ amount, orderId, description, payCurrency = "usdtbsc" }) => ({
   price_amount: Number(amount),
   price_currency: "usd",
   pay_currency: payCurrency,
@@ -52,17 +57,23 @@ const toNowPaymentsInvoicePayload = ({ amount, orderId, description, payCurrency
   ipn_callback_url: NOWPAYMENTS_IPN_URL || undefined,
 });
 
-export const createNowPaymentsInvoice = async ({ amount, orderId, description, payCurrency = "usdtbep20", deps = {} } = {}) => {
-  if (!NOWPAYMENTS_API_KEY) {
+export const createNowPaymentsInvoice = async ({ amount, orderId, description, payCurrency = "usdtbsc", deps = {} } = {}) => {
+  const apiKey = String(deps.apiKey || NOWPAYMENTS_API_KEY || "").trim();
+  if (!apiKey) {
     throw new Error("NOWPAYMENTS_API_KEY is not configured");
   }
 
   const fetchImpl = deps.fetchImpl || fetch;
+  console.log(
+    `[live-deposit] creating nowpayments invoice: order_id=${String(orderId)} price_amount=${Number(amount)} pay_currency=${String(
+      payCurrency
+    )}`
+  );
   const response = await fetchImpl(`${NOWPAYMENTS_API_BASE_URL.replace(/\/+$/, "")}/v1/payment`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": NOWPAYMENTS_API_KEY,
+      "x-api-key": apiKey,
     },
     body: JSON.stringify(toNowPaymentsInvoicePayload({ amount, orderId, description, payCurrency })),
   });
@@ -229,7 +240,7 @@ export const validateReceivedAmountAgainstExpected = ({ expectedUsdAmount, paylo
     receivedCandidates.push(payload?.outcome_amount, payload?.actually_paid, payload?.pay_amount);
   } else if (outcomeCurrency === "usd") {
     receivedCandidates.push(payload?.outcome_amount);
-  } else if (payCurrency === "usd" || payCurrency === "usdt" || payCurrency === "usdtbep20") {
+  } else if (payCurrency === "usd" || payCurrency === "usdt" || payCurrency === "usdtbsc") {
     receivedCandidates.push(payload?.actually_paid, payload?.pay_amount);
   }
 

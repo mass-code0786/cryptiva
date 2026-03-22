@@ -55,14 +55,17 @@ test("create live deposit order returns payment URL/address and pending status",
       return {};
     };
     __setDepositControllerDeps({
-      createGatewayInvoice: async () => ({
+      createGatewayInvoice: async (params) => {
+        assert.equal(params.payCurrency, "usdtbsc");
+        return {
         payment_id: "np_1001",
         payment_status: "waiting",
         order_id: "dep_live_1",
         invoice_url: "https://pay.example/invoice/np_1001",
         pay_address: "0xabc123",
-        pay_currency: "usdtbep20",
-      }),
+        pay_currency: "usdtbsc",
+      };
+      },
     });
 
     const { statusCode, body } = await runHandler(createLiveDeposit, {
@@ -77,6 +80,45 @@ test("create live deposit order returns payment URL/address and pending status",
     assert.equal(body.deposit.gatewayPaymentId, "np_1001");
     assert.equal(body.deposit.gateway, "nowpayments");
     assert.equal(txCalls.length >= 1, true);
+  } finally {
+    __resetDepositControllerDeps();
+    Deposit.create = originalDepositCreate;
+    Transaction.findOneAndUpdate = originalTxFindOneAndUpdate;
+  }
+});
+
+test("USDT + BSC maps to usdtbsc for gateway pay_currency", async () => {
+  const originalDepositCreate = Deposit.create;
+  const originalTxFindOneAndUpdate = Transaction.findOneAndUpdate;
+  let observedPayCurrency = "";
+
+  try {
+    Deposit.create = async (payload) => ({
+      _id: "dep_live_bsc_1",
+      ...payload,
+    });
+    Transaction.findOneAndUpdate = async () => ({});
+    __setDepositControllerDeps({
+      createGatewayInvoice: async (params) => {
+        observedPayCurrency = String(params.payCurrency || "");
+        return {
+          payment_id: "np_bsc_1",
+          payment_status: "waiting",
+          order_id: "dep_live_bsc_1",
+          invoice_url: "https://pay.example/invoice/np_bsc_1",
+          pay_address: "0xbsc123",
+          pay_currency: "usdtbsc",
+        };
+      },
+    });
+
+    const { statusCode } = await runHandler(createLiveDeposit, {
+      user: { _id: "user_1" },
+      body: { amount: 50, currency: "USDT", network: "BSC" },
+    });
+
+    assert.equal(statusCode, 201);
+    assert.equal(observedPayCurrency, "usdtbsc");
   } finally {
     __resetDepositControllerDeps();
     Deposit.create = originalDepositCreate;
@@ -449,7 +491,7 @@ test("deposit status endpoint exposes completed transaction entry after success"
       gatewayOrderId: "dep_status_1",
       gatewayPaymentId: "np_status_1",
       gatewayStatus: "finished",
-      payCurrency: "usdtbep20",
+      payCurrency: "usdtbsc",
       paymentUrl: "https://pay.example/invoice/np_status_1",
       payAddress: "0xstatusaddr",
       qrData: "https://pay.example/invoice/np_status_1",

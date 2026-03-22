@@ -92,7 +92,7 @@ export const createDeposit = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Unsupported gateway. Allowed: ${LIVE_DEPOSIT_GATEWAYS.join(", ")}`);
   }
   if (!asset) {
-    throw new ApiError(400, "Only USDT BEP20 live deposits are currently supported");
+    throw new ApiError(400, `Unsupported live deposit combination: ${currency} ${network}. Supported: USDT BSC (BEP20)`);
   }
 
   // Reliability fix:

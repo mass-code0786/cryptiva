@@ -40,7 +40,7 @@ const transactionSchema = new mongoose.Schema(
     },
     network: {
       type: String,
-      enum: ["BEP20", "INTERNAL"],
+      enum: ["BEP20", "BSC", "INTERNAL"],
       default: "INTERNAL",
     },
     source: {

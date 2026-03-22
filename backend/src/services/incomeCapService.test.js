@@ -679,3 +679,27 @@ test("reset does not close or zero trades created after reset boundary", async (
   assert.equal(wallet.tradingWallet, 5);
   assert.equal(wallet.tradingBalance, 5);
 });
+
+test("legacy wallet without cap-cycle fields initializes safely on first cap-state read", async () => {
+  const wallet = createWallet({
+    tradingWallet: 5,
+    tradingBalance: 5,
+    referralIncomeWallet: 2,
+  });
+  delete wallet.capCycleVersion;
+  delete wallet.capCycleStartedAt;
+  delete wallet.capCycleIncomeOffset;
+
+  const state = await getIncomeCapState(USER_ID, {
+    WalletModel: walletModelFor(wallet),
+    hasActiveReferralFn: async () => false,
+    logger: { info: () => {}, warn: () => {} },
+  });
+
+  assert.equal(Number(wallet.capCycleVersion), 0);
+  assert.equal(Number(wallet.capCycleIncomeOffset.referralIncomeWallet), 0);
+  assert.equal(state.totalIncome, 2);
+  assert.equal(state.maxCap, 12.5);
+  assert.equal(state.remainingCap, 10.5);
+  assert.equal(wallet.saveCalls > 0, true);
+});

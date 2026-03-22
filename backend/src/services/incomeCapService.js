@@ -196,6 +196,7 @@ export const executeCapitalResetOnCapReached = async ({
           cycleId: resolvedCycleId,
           userId: String(userId),
           resetAt: now.toISOString(),
+          boundaryAt: resetBoundaryAt.toISOString(),
         },
       },
     },
@@ -209,6 +210,9 @@ export const executeCapitalResetOnCapReached = async ({
   }
 
   const tradeBoundaryId = parseCycleTradeId(resolvedCycleId);
+  logger.info(
+    `[income-cap] reset boundary detected: user=${String(userId)} cycle=${resolvedCycleId} boundaryAt=${resetBoundaryAt.toISOString()} tradeBoundaryId=${tradeBoundaryId || "none"}`
+  );
   const closeTradesQuery = {
     userId,
     status: "active",
@@ -231,6 +235,8 @@ export const executeCapitalResetOnCapReached = async ({
   const activePrincipal = toAmount(
     (Array.isArray(activeTrades) ? activeTrades : []).reduce((sum, trade) => sum + Number(trade?.amount || 0), 0)
   );
+  const previousCycleVersion = Number(wallet.capCycleVersion || 0);
+  const previousTradingPrincipal = toAmount(wallet.tradingWallet || wallet.tradingBalance || 0);
   ensureCapCycleMetadata(wallet, now);
   wallet.capCycleVersion = Number(wallet.capCycleVersion || 0) + 1;
   wallet.capCycleStartedAt = now;
@@ -244,6 +250,12 @@ export const executeCapitalResetOnCapReached = async ({
   wallet.tradingBalance = activePrincipal;
   wallet.balance = toAmount((wallet.depositWallet || 0) + (wallet.withdrawalWallet || 0));
   await wallet.save();
+  logger.info(
+    `[income-cap] new cycle created: user=${String(userId)} cycle=${resolvedCycleId} previousCycleVersion=${previousCycleVersion} newCycleVersion=${wallet.capCycleVersion} startedAt=${now.toISOString()}`
+  );
+  logger.info(
+    `[income-cap] principal recomputed after reset: user=${String(userId)} previousTradingPrincipal=${previousTradingPrincipal} activePrincipal=${activePrincipal}`
+  );
 
   const activeTradesClosed = Number(tradeUpdateResult?.modifiedCount || 0);
   logger.warn(
@@ -322,7 +334,9 @@ export const applyIncomeWithCap = async ({ userId, requestedAmount, walletField,
     const capReachedBeforeCredit = state.remainingCap <= 0 || (state.maxCap > 0 && state.totalIncome >= state.maxCap);
     if (capReachedBeforeCredit) {
       const capDetectedAt = new Date();
-      logger.warn(`[income-cap] cap reached: user=${String(userId)} maxCap=${state.maxCap} totalIncome=${state.totalIncome}`);
+      logger.warn(
+        `[income-cap] cap boundary detected before credit: user=${String(userId)} maxCap=${state.maxCap} totalIncome=${state.totalIncome} remainingCap=${state.remainingCap} boundaryAt=${capDetectedAt.toISOString()} cycleVersion=${state.capCycleVersion}`
+      );
       capitalReset = await executeCapitalResetOnCapReachedFn({
         userId,
         reason: "cap_reached_no_credit",
@@ -354,7 +368,7 @@ export const applyIncomeWithCap = async ({ userId, requestedAmount, walletField,
     if (capReachedAfterCredit) {
       const capDetectedAt = new Date();
       logger.warn(
-        `[income-cap] cap reached on credit: user=${String(userId)} maxCap=${state.maxCap} totalBefore=${state.totalIncome} credited=${creditedAmount}`
+        `[income-cap] cap boundary detected after credit: user=${String(userId)} maxCap=${state.maxCap} totalBefore=${state.totalIncome} credited=${creditedAmount} totalAfter=${totalAfterCredit} boundaryAt=${capDetectedAt.toISOString()} cycleVersion=${state.capCycleVersion}`
       );
       capitalReset = await executeCapitalResetOnCapReachedFn({
         userId,

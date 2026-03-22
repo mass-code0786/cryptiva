@@ -14,6 +14,7 @@ import {
   getReferralTreeAdmin,
   getTradingRoiSetting,
   getUserProfileDetail,
+  getUserCapCycleDebug,
   getTeamBusiness,
   listActivityLogs,
   listDeposits,
@@ -51,6 +52,8 @@ router.get("/settings/trading-roi", getTradingRoiSetting);
 router.patch("/settings/trading-roi", updateTradingRoiSetting);
 router.get("/users", listUsers);
 router.get("/users/:id", getUserProfileDetail);
+router.get("/users/:id/cap-cycle-debug", getUserCapCycleDebug);
+router.get("/users/cap-cycle-debug", getUserCapCycleDebug);
 router.patch("/users/:id/reset-password", resetUserPasswordByAdmin);
 router.get("/referral-tree", getReferralTreeAdmin);
 router.patch("/users/:id/block", blockUser);

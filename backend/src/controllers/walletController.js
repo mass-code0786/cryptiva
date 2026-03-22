@@ -21,31 +21,35 @@ const ensureWallet = async (userId) => {
   return wallet;
 };
 
+export const buildWalletSummary = (wallet, capState) => {
+  const capMultiplier = Number(capState?.capMultiplier || (capState?.workingUser ? 4 : 2.5));
+  return {
+    ...wallet.toObject(),
+    tradingWallet: Number(wallet.tradingWallet || wallet.tradingBalance || 0),
+    tradingIncome: Number(wallet.tradingIncomeWallet || 0),
+    referralIncome: Number(wallet.referralIncomeWallet || 0),
+    levelIncome: Number(wallet.levelIncomeWallet || 0),
+    salaryIncome: Number(wallet.salaryIncomeWallet || 0),
+    totalIncome: Number(
+      (Number(wallet.tradingIncomeWallet || 0) +
+        Number(wallet.referralIncomeWallet || 0) +
+        Number(wallet.levelIncomeWallet || 0) +
+        Number(wallet.salaryIncomeWallet || 0)).toFixed(6)
+    ),
+    isWorkingUser: Boolean(capState?.workingUser),
+    capMultiplier,
+    currentCapAmount: Number(capState?.maxCap || 0),
+    totalIncomeCounted: Number(capState?.totalIncome || 0),
+    remainingCap: Number(capState?.remainingCap || 0),
+  };
+};
+
 export const getWallet = asyncHandler(async (req, res) => {
   const wallet = await ensureWallet(req.user._id);
   const capState = await getIncomeCapState(req.user._id);
-  const capMultiplier = Number(capState.capMultiplier || (capState.workingUser ? 4 : 2.5));
 
   res.json({
-    wallet: {
-      ...wallet.toObject(),
-      tradingWallet: Number(wallet.tradingWallet || wallet.tradingBalance || 0),
-      tradingIncome: Number(wallet.tradingIncomeWallet || 0),
-      referralIncome: Number(wallet.referralIncomeWallet || 0),
-      levelIncome: Number(wallet.levelIncomeWallet || 0),
-      salaryIncome: Number(wallet.salaryIncomeWallet || 0),
-      totalIncome: Number(
-        (Number(wallet.tradingIncomeWallet || 0) +
-          Number(wallet.referralIncomeWallet || 0) +
-          Number(wallet.levelIncomeWallet || 0) +
-          Number(wallet.salaryIncomeWallet || 0)).toFixed(6)
-      ),
-      isWorkingUser: Boolean(capState.workingUser),
-      capMultiplier,
-      currentCapAmount: Number(capState.maxCap || 0),
-      totalIncomeCounted: Number(capState.totalIncome || 0),
-      remainingCap: Number(capState.remainingCap || 0),
-    },
+    wallet: buildWalletSummary(wallet, capState),
   });
 });
 

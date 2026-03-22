@@ -15,6 +15,15 @@ const ensureWallet = async (userId) => {
   return wallet;
 };
 
+const getActiveTradingPrincipal = async (userId) => {
+  const activeTrades = await Trade.find({ userId, status: "active" }).select("amount");
+  return Number(
+    activeTrades
+      .reduce((sum, trade) => sum + Number(trade?.amount || 0), 0)
+      .toFixed(6)
+  );
+};
+
 export const startTradeAndActivate = async ({ user, amount, activationSource = "trade_start" }) => {
   const amountValue = Number(amount);
   if (!Number.isFinite(amountValue) || amountValue <= 0) {
@@ -22,17 +31,24 @@ export const startTradeAndActivate = async ({ user, amount, activationSource = "
   }
 
   const wallet = await ensureWallet(user._id);
+  const activePrincipal = await getActiveTradingPrincipal(user._id);
 
   if (wallet.depositWallet < amountValue) {
     throw new Error("Insufficient deposit wallet balance");
   }
 
   wallet.depositWallet -= amountValue;
-  wallet.tradingWallet = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
-  wallet.tradingWallet += amountValue;
+  const walletPrincipal = Number(wallet.tradingWallet || wallet.tradingBalance || 0);
+  const reconciledPrincipal = Number(Math.max(walletPrincipal, activePrincipal).toFixed(6));
+  wallet.tradingWallet = Number((reconciledPrincipal + amountValue).toFixed(6));
   wallet.tradingBalance = wallet.tradingWallet;
   wallet.balance = wallet.depositWallet + wallet.withdrawalWallet;
   await wallet.save();
+  if (reconciledPrincipal !== walletPrincipal) {
+    console.info(
+      `[trade-activation] principal reconciled before trade start: user=${String(user._id)} walletPrincipal=${walletPrincipal} activePrincipal=${activePrincipal} reconciledPrincipal=${reconciledPrincipal}`
+    );
+  }
 
   const trade = await Trade.create({
     userId: user._id,

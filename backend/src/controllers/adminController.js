@@ -17,6 +17,7 @@ import { getTradingRoiPercent, setTradingRoiPercent } from "../services/tradingS
 import { startTradeAndActivate } from "../services/tradeActivationService.js";
 import { validateStrongPassword } from "../services/passwordPolicyService.js";
 import { resetUserPasswordByAdminAction } from "../services/adminPasswordService.js";
+import { getUserCapCycleDiagnostics } from "../services/adminDiagnosticsService.js";
 
 const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "LEVEL", "salary", "SALARY"];
 
@@ -1665,6 +1666,23 @@ export const getTeamBusiness = asyncHandler(async (req, res) => {
   res.json({
     items,
     pagination: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) },
+  });
+});
+
+export const getUserCapCycleDebug = asyncHandler(async (req, res) => {
+  const userRef = String(req.query.userId || req.params.id || "").trim();
+  if (!userRef) {
+    throw new ApiError(400, "userId is required");
+  }
+
+  const diagnostics = await getUserCapCycleDiagnostics({ userRef });
+  if (!diagnostics) {
+    throw new ApiError(404, "User not found");
+  }
+
+  res.json({
+    message: "Cap-cycle diagnostics generated",
+    diagnostics,
   });
 });
 

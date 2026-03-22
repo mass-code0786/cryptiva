@@ -25,6 +25,8 @@ export const listTransactions = asyncHandler(async (req, res) => {
       query.type = { $in: ["level", "LEVEL"] };
     } else if (type === "salary") {
       query.type = { $in: ["salary", "SALARY"] };
+    } else if (type === "trading") {
+      query.type = { $in: ["trading", "trade_start", "TRADE_START", "trade_close", "TRADE_CLOSE"] };
     } else {
       query.type = String(req.query.type);
     }

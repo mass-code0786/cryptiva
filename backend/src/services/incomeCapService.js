@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
 import Setting from "../models/Setting.js";
+import Transaction from "../models/Transaction.js";
 import { acquireDistributedLock, releaseDistributedLock } from "./distributedLockService.js";
 import { getActivationInvestmentByUserIds } from "./activationService.js";
 
@@ -175,6 +176,7 @@ export const executeCapitalResetOnCapReached = async ({
   const SettingModel = deps.SettingModel || Setting;
   const TradeModel = deps.TradeModel || Trade;
   const WalletModel = deps.WalletModel || Wallet;
+  const TransactionModel = deps.TransactionModel || Transaction;
   const now = new Date();
   const resetBoundaryAt =
     boundaryAt instanceof Date && !Number.isNaN(boundaryAt.getTime()) ? boundaryAt : now;
@@ -222,6 +224,11 @@ export const executeCapitalResetOnCapReached = async ({
     closeTradesQuery._id = { $lte: new mongoose.Types.ObjectId(tradeBoundaryId) };
   }
 
+  const tradesToCloseQuery = TradeModel.find(closeTradesQuery);
+  const tradesToClose =
+    tradesToCloseQuery && typeof tradesToCloseQuery.select === "function"
+      ? await tradesToCloseQuery.select("_id")
+      : await tradesToCloseQuery;
   const [tradeUpdateResult, wallet] = await Promise.all([
     TradeModel.updateMany(closeTradesQuery, { $set: { status: "completed", amount: 0, closedAt: now, lastSettledAt: now } }),
     ensureWallet(userId, WalletModel),
@@ -258,6 +265,27 @@ export const executeCapitalResetOnCapReached = async ({
   );
 
   const activeTradesClosed = Number(tradeUpdateResult?.modifiedCount || 0);
+  if (Array.isArray(tradesToClose) && tradesToClose.length > 0) {
+    await TransactionModel.insertMany(
+      tradesToClose.map((tradeRow) => ({
+        userId,
+        type: "trade_close",
+        amount: 0,
+        network: "INTERNAL",
+        source: "Trade Closed",
+        status: "completed",
+        metadata: {
+          tradeId: tradeRow._id,
+          reason: "cap_reset",
+          cycleId: resolvedCycleId,
+        },
+      }))
+    ).catch((error) => {
+      logger.warn(
+        `[income-cap] failed to record trade_close transactions: user=${String(userId)} cycle=${resolvedCycleId} error=${error?.message || error}`
+      );
+    });
+  }
   logger.warn(
     `[income-cap] capital reset executed: user=${String(userId)} cycle=${resolvedCycleId} activeTradesClosed=${activeTradesClosed} tradingCapitalAfterReset=${activePrincipal}`
   );

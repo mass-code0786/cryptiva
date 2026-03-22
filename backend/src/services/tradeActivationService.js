@@ -7,16 +7,16 @@ import { distributeUnilevelIncomeOnTradeStart } from "./referralService.js";
 import { getDefaultTradeLimit } from "./tradeEngineService.js";
 import { syncTeamBusinessForUserAndUplines } from "../controllers/referralController.js";
 
-const ensureWallet = async (userId) => {
-  let wallet = await Wallet.findOne({ userId });
+const ensureWallet = async (userId, WalletModel = Wallet) => {
+  let wallet = await WalletModel.findOne({ userId });
   if (!wallet) {
-    wallet = await Wallet.create({ userId });
+    wallet = await WalletModel.create({ userId });
   }
   return wallet;
 };
 
-const getActiveTradingPrincipal = async (userId) => {
-  const activeTrades = await Trade.find({ userId, status: "active" }).select("amount");
+const getActiveTradingPrincipal = async (userId, TradeModel = Trade) => {
+  const activeTrades = await TradeModel.find({ userId, status: "active" }).select("amount");
   return Number(
     activeTrades
       .reduce((sum, trade) => sum + Number(trade?.amount || 0), 0)
@@ -24,14 +24,23 @@ const getActiveTradingPrincipal = async (userId) => {
   );
 };
 
-export const startTradeAndActivate = async ({ user, amount, activationSource = "trade_start" }) => {
+export const startTradeAndActivate = async ({ user, amount, activationSource = "trade_start", deps = {} }) => {
   const amountValue = Number(amount);
   if (!Number.isFinite(amountValue) || amountValue <= 0) {
     throw new Error("Invalid activation amount");
   }
 
-  const wallet = await ensureWallet(user._id);
-  const activePrincipal = await getActiveTradingPrincipal(user._id);
+  const WalletModel = deps.WalletModel || Wallet;
+  const TradeModel = deps.TradeModel || Trade;
+  const TransactionModel = deps.TransactionModel || Transaction;
+  const PackagePurchaseModel = deps.PackagePurchaseModel || PackagePurchase;
+  const activateUserByIdFn = deps.activateUserByIdFn || activateUserById;
+  const distributeUnilevelIncomeOnTradeStartFn = deps.distributeUnilevelIncomeOnTradeStartFn || distributeUnilevelIncomeOnTradeStart;
+  const syncTeamBusinessForUserAndUplinesFn = deps.syncTeamBusinessForUserAndUplinesFn || syncTeamBusinessForUserAndUplines;
+  const logger = deps.logger || console;
+
+  const wallet = await ensureWallet(user._id, WalletModel);
+  const activePrincipal = await getActiveTradingPrincipal(user._id, TradeModel);
 
   if (wallet.depositWallet < amountValue) {
     throw new Error("Insufficient deposit wallet balance");
@@ -50,7 +59,7 @@ export const startTradeAndActivate = async ({ user, amount, activationSource = "
     );
   }
 
-  const trade = await Trade.create({
+  const trade = await TradeModel.create({
     userId: user._id,
     amount: amountValue,
     capping: getDefaultTradeLimit(amountValue),
@@ -58,7 +67,7 @@ export const startTradeAndActivate = async ({ user, amount, activationSource = "
     status: "active",
   });
 
-  await Transaction.create({
+  await TransactionModel.create({
     userId: user._id,
     type: "wallet_transfer",
     amount: amountValue,
@@ -67,8 +76,23 @@ export const startTradeAndActivate = async ({ user, amount, activationSource = "
     status: "completed",
     metadata: { tradeId: trade._id, action: "trade_open", fundingSource: "wallet_balance_any_source" },
   });
+  await TransactionModel.create({
+    userId: user._id,
+    type: "trade_start",
+    amount: Number((-amountValue).toFixed(6)),
+    network: "INTERNAL",
+    source: "Trading Started",
+    status: "completed",
+    metadata: {
+      tradeId: trade._id,
+      source: "trading_funding",
+    },
+  });
+  logger.info(
+    `[trade-activation] trade_start transaction created: user=${String(user._id)} tradeId=${String(trade._id)} amount=${Number((-amountValue).toFixed(6))}`
+  );
 
-  await PackagePurchase.create({
+  await PackagePurchaseModel.create({
     userId: user._id,
     tradeId: trade._id,
     packageName: "wallet_activation",
@@ -83,13 +107,13 @@ export const startTradeAndActivate = async ({ user, amount, activationSource = "
     },
   });
 
-  await activateUserById({ userId: user._id, source: activationSource });
-  await distributeUnilevelIncomeOnTradeStart({
+  await activateUserByIdFn({ userId: user._id, source: activationSource });
+  await distributeUnilevelIncomeOnTradeStartFn({
     traderUser: user,
     tradeAmount: amountValue,
     tradeId: trade._id,
   });
-  await syncTeamBusinessForUserAndUplines(user._id);
+  await syncTeamBusinessForUserAndUplinesFn(user._id);
 
   return { wallet, trade };
 };

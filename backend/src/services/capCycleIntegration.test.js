@@ -95,6 +95,9 @@ const createCapDeps = ({ wallet, trades }) => {
         return { modifiedCount };
       },
     },
+    TransactionModel: {
+      insertMany: async () => [],
+    },
     hasActiveReferralFn: async () => false,
     acquireCapLockFn: async ({ key }) => ({ acquired: true, key, owner: "test-owner" }),
     releaseCapLockFn: async () => ({ released: true }),

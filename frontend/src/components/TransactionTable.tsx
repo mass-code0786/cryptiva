@@ -7,6 +7,17 @@ type Transaction = {
   createdAt: string;
 };
 
+const resolveTypeLabel = (type: string) => {
+  const normalized = String(type || "").toLowerCase();
+  if (normalized === "trade_start") return "Trading Started";
+  if (normalized === "trade_close") return "Trade Closed";
+  if (normalized === "referral") return "Direct Income";
+  if (normalized === "level") return "Level Income";
+  if (normalized === "salary") return "Salary Income";
+  if (normalized === "trading") return "Trading Income";
+  return String(type || "").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 const TransactionTable = ({ items }: { items: Transaction[] }) => {
   return (
     <div className="overflow-x-auto rounded-2xl border border-cyan-800/40 bg-slate-900/80">
@@ -24,8 +35,10 @@ const TransactionTable = ({ items }: { items: Transaction[] }) => {
           {items.map((tx) => (
             <tr key={tx._id} className="border-t border-slate-800 text-slate-200">
               <td className="p-3">{new Date(tx.createdAt).toLocaleString()}</td>
-              <td className="p-3 uppercase">{tx.type}</td>
-              <td className="p-3">${tx.amount.toFixed(2)}</td>
+              <td className="p-3">{resolveTypeLabel(tx.type)}</td>
+              <td className={`p-3 font-semibold ${Number(tx.amount || 0) < 0 ? "text-rose-300" : "text-emerald-300"}`}>
+                ${tx.amount.toFixed(2)}
+              </td>
               <td className="p-3">{tx.network || "INTERNAL"}</td>
               <td className="p-3">{tx.status}</td>
             </tr>

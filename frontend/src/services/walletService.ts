@@ -41,7 +41,11 @@ export type TransactionItem = {
     | "P2P_TRANSFER"
     | "P2P_RECEIVE"
     | "wallet_transfer"
-    | "admin_transfer";
+    | "admin_transfer"
+    | "trade_start"
+    | "TRADE_START"
+    | "trade_close"
+    | "TRADE_CLOSE";
   amount: number;
   network: "BEP20" | "INTERNAL";
   source: string;

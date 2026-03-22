@@ -25,13 +25,13 @@ const tabHeadingMap: Record<HistoryTabKey, string> = {
   withdraw: "Withdrawal History",
 };
 
-const tabTypeMap: Partial<Record<HistoryTabKey, TransactionItem["type"]>> = {
-  trading: "trading",
-  direct: "referral",
-  level: "level",
-  salary: "salary",
-  deposit: "deposit",
-  withdraw: "withdraw",
+const tabTypeMap: Partial<Record<HistoryTabKey, string[]>> = {
+  trading: ["trading", "trade_start", "TRADE_START", "trade_close", "TRADE_CLOSE"],
+  direct: ["referral", "REFERRAL"],
+  level: ["level", "LEVEL"],
+  salary: ["salary", "SALARY"],
+  deposit: ["deposit"],
+  withdraw: ["withdraw"],
 };
 
 const TransactionsPage = () => {
@@ -56,8 +56,8 @@ const TransactionsPage = () => {
       return items;
     }
 
-    const selectedType = tabTypeMap[activeTab];
-    return items.filter((item) => String(item.type || "").toLowerCase() === String(selectedType || "").toLowerCase());
+    const selectedTypes = tabTypeMap[activeTab] || [];
+    return items.filter((item) => selectedTypes.some((type) => String(item.type || "").toLowerCase() === String(type).toLowerCase()));
   }, [activeTab, items]);
 
   return (

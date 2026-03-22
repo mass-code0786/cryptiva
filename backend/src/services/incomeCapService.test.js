@@ -213,6 +213,7 @@ test("capital reset closes active trades, zeroes trading capital, and prevents d
 
   const deps = {
     logger: { info: () => {}, warn: () => {} },
+    TransactionModel: { insertMany: async () => [] },
     SettingModel: {
       updateOne: async (query, update, options) => {
         const key = String(query.key);
@@ -288,6 +289,7 @@ test("capital reset runs again for a new trading cycle", async () => {
 
   const deps = {
     logger: { info: () => {}, warn: () => {} },
+    TransactionModel: { insertMany: async () => [] },
     SettingModel: {
       updateOne: async (query, update, options) => {
         const key = String(query.key);
@@ -482,6 +484,7 @@ test("exact-cap hit then fresh restart uses new cap cycle and credits referral a
   const deps = {
     ...createCapLockMocks(),
     logger: { info: () => {}, warn: () => {} },
+    TransactionModel: { insertMany: async () => [] },
     WalletModel: walletModelFor(wallet),
     hasActiveReferralFn: async () => false,
     SettingModel: {
@@ -616,6 +619,7 @@ test("reset does not close or zero trades created after reset boundary", async (
 
   const deps = {
     logger: { info: () => {}, warn: () => {} },
+    TransactionModel: { insertMany: async () => [] },
     WalletModel: walletModelFor(wallet),
     SettingModel: {
       updateOne: async (query, update, options) => {

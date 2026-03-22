@@ -50,7 +50,9 @@ const DepositPage = () => {
       setGatewayFeeCurrency(String(data?.gatewayFeeCurrency || data?.deposit?.gatewayFeeCurrency || expectedCurrency || "USDT").toUpperCase());
       setMessage("Live payment order created");
     } catch (error: any) {
-      setMessage(error?.response?.data?.message || "Deposit request failed");
+      const backendMessage = String(error?.response?.data?.message || "Deposit request failed");
+      const backendDetail = String(error?.response?.data?.detail || "").trim();
+      setMessage(backendDetail ? `${backendMessage}: ${backendDetail}` : backendMessage);
     }
   };
 

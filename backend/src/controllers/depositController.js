@@ -20,6 +20,12 @@ import {
 } from "../services/liveDepositGatewayService.js";
 
 const normalizeGateway = (value = "") => String(value || "").trim().toLowerCase() || CRYPTO_GATEWAY_DEFAULT;
+const maskValue = (value = "") => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.length <= 6) return `${raw.slice(0, 1)}***${raw.slice(-1)}`;
+  return `${raw.slice(0, 3)}***${raw.slice(-3)}`;
+};
 const toFiniteNumberOrNull = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
@@ -99,116 +105,158 @@ const upsertDepositTransaction = async ({ deposit, status, source, metadata = {}
 export const createDeposit = asyncHandler(async (req, res) => {
   const gateway = normalizeGateway(req.body.gateway || CRYPTO_GATEWAY_DEFAULT);
   const amount = Number(req.body.amount);
+  const requestedCurrencyInput = req.body.currency || "USDT";
+  const requestedNetworkInput = req.body.network || "BEP20";
   const { asset, currency, network } = resolveSupportedAsset({
-    currency: req.body.currency || "USDT",
-    network: req.body.network || "BEP20",
+    currency: requestedCurrencyInput,
+    network: requestedNetworkInput,
   });
 
-  if (!Number.isFinite(amount) || amount < DEPOSIT_MIN_AMOUNT) {
-    throw new ApiError(400, `Minimum deposit is $${DEPOSIT_MIN_AMOUNT}`);
-  }
-  if (!LIVE_DEPOSIT_GATEWAYS.includes(gateway)) {
-    throw new ApiError(400, `Unsupported gateway. Allowed: ${LIVE_DEPOSIT_GATEWAYS.join(", ")}`);
-  }
-  if (!asset) {
-    throw new ApiError(400, `Unsupported live deposit combination: ${currency} ${network}. Supported: USDT BSC (BEP20)`);
-  }
+  console.log(
+    `[deposit:create-live] request hit user=${String(req.user?._id || "unknown")} gateway=${gateway} amount=${String(
+      req.body.amount
+    )} currency=${String(requestedCurrencyInput)} network=${String(requestedNetworkInput)}`
+  );
 
-  // Reliability fix:
-  // We create the gateway order first and only persist a local deposit after
-  // a valid gatewayPaymentId is present. This prevents empty-string ids from
-  // ever entering the unique (gateway, gatewayPaymentId) index.
-  const provisionalOrderId = crypto.randomUUID();
-  let invoice;
   try {
-    invoice = await depositControllerDeps.createGatewayInvoice({
+    const isAmountValid = Number.isFinite(amount) && amount >= DEPOSIT_MIN_AMOUNT;
+    const isGatewayValid = LIVE_DEPOSIT_GATEWAYS.includes(gateway);
+    const isAssetValid = Boolean(asset);
+    console.log(
+      `[deposit:create-live] validation result amountValid=${isAmountValid} gatewayValid=${isGatewayValid} assetValid=${isAssetValid}`
+    );
+
+    if (!isAmountValid) {
+      throw new ApiError(400, `Minimum deposit is $${DEPOSIT_MIN_AMOUNT}`);
+    }
+    if (!isGatewayValid) {
+      throw new ApiError(400, `Unsupported gateway. Allowed: ${LIVE_DEPOSIT_GATEWAYS.join(", ")}`);
+    }
+    if (!isAssetValid) {
+      throw new ApiError(400, `Unsupported live deposit combination: ${currency} ${network}. Supported: USDT BSC (BEP20)`);
+    }
+
+    // Reliability fix:
+    // We create the gateway order first and only persist a local deposit after
+    // a valid gatewayPaymentId is present. This prevents empty-string ids from
+    // ever entering the unique (gateway, gatewayPaymentId) index.
+    const provisionalOrderId = crypto.randomUUID();
+    console.log(`[deposit:create-live] mapped pay_currency=${String(asset.payCurrency || "")} order=${maskValue(provisionalOrderId)}`);
+
+    const invoice = await depositControllerDeps.createGatewayInvoice({
       gateway,
       amount,
       orderId: provisionalOrderId,
       description: `Cryptiva deposit ${provisionalOrderId}`,
       payCurrency: asset.payCurrency,
     });
-  } catch (error) {
-    throw new ApiError(502, `Unable to create live payment order: ${String(error?.message || "Gateway error")}`);
-  }
 
-  const gatewayPaymentId = depositControllerDeps.extractNowPaymentsPaymentId(invoice);
-  if (!gatewayPaymentId) {
-    // Safe, explicit upstream-failure contract used by ops/support.
-    throw new ApiError(502, "Gateway did not return a valid payment ID");
-  }
+    const gatewayPaymentId = depositControllerDeps.extractNowPaymentsPaymentId(invoice);
+    const gatewayStatus = String(invoice?.payment_status || invoice?.status || "waiting").toLowerCase();
+    const gatewayOrderId = String(invoice?.order_id || provisionalOrderId).trim();
+    console.log(
+      `[deposit:create-live] gateway response paymentId=${maskValue(gatewayPaymentId)} orderId=${maskValue(
+        gatewayOrderId
+      )} status=${gatewayStatus} payCurrency=${String(invoice?.pay_currency || "")} hasPaymentUrl=${Boolean(
+        invoice?.invoice_url || invoice?.payment_url
+      )} hasPayAddress=${Boolean(invoice?.pay_address || invoice?.payin_address)}`
+    );
 
-  const paymentUrl = String(invoice?.invoice_url || invoice?.payment_url || "").trim();
-  const payAddress = String(invoice?.pay_address || invoice?.payin_address || "").trim();
-  const qrData = paymentUrl || payAddress || "";
-  const gatewayStatus = String(invoice?.payment_status || invoice?.status || "waiting").toLowerCase();
-  const gatewayOrderId = String(invoice?.order_id || provisionalOrderId).trim();
-  const gatewayAmountFields = depositControllerDeps.extractGatewayExpectedPaymentFields({
-    gateway,
-    payload: invoice,
-    requestedCreditAmount: amount,
-  });
-  const requestedCreditAmount = Number(amount);
-  const expectedPayAmount = toPositiveNumberOrNull(gatewayAmountFields.expectedPayAmount);
-  const expectedPayCurrency = String(gatewayAmountFields.expectedPayCurrency || invoice?.pay_currency || asset.payCurrency || "").toLowerCase();
+    if (!gatewayPaymentId) {
+      // Safe, explicit upstream-failure contract used by ops/support.
+      throw new ApiError(502, "Gateway did not return a valid payment ID");
+    }
 
-  const deposit = await Deposit.create({
-    userId: req.user._id,
-    amount,
-    requestedCreditAmount,
-    expectedPayAmount,
-    expectedPayCurrency,
-    gatewayFeeAmount: gatewayAmountFields.gatewayFeeAmount,
-    gatewayFeeCurrency: String(gatewayAmountFields.gatewayFeeCurrency || "").toLowerCase(),
-    payableAmountDisplay: String(gatewayAmountFields.payableAmountDisplay || "").trim(),
-    feeHandlingMode: String(gatewayAmountFields.feeHandlingMode || "credit_exact_pay_fee_extra"),
-    currency,
-    network,
-    status: "pending",
-    gateway,
-    gatewayStatus,
-    gatewayOrderId,
-    gatewayPaymentId,
-    paymentUrl,
-    payAddress,
-    qrData,
-    payCurrency: String(invoice?.pay_currency || asset.payCurrency || "").toLowerCase(),
-    payment: {
-      payment_id: gatewayPaymentId,
-      payment_url: paymentUrl,
-      pay_address: payAddress,
-      qr_code_url: qrData,
-    },
-  });
+    const paymentUrl = String(invoice?.invoice_url || invoice?.payment_url || "").trim();
+    const payAddress = String(invoice?.pay_address || invoice?.payin_address || "").trim();
+    const qrData = paymentUrl || payAddress || "";
+    const gatewayAmountFields = depositControllerDeps.extractGatewayExpectedPaymentFields({
+      gateway,
+      payload: invoice,
+      requestedCreditAmount: amount,
+    });
+    const requestedCreditAmount = Number(amount);
+    const expectedPayAmount = toPositiveNumberOrNull(gatewayAmountFields.expectedPayAmount);
+    const expectedPayCurrency = String(gatewayAmountFields.expectedPayCurrency || invoice?.pay_currency || asset.payCurrency || "").toLowerCase();
 
-  await upsertDepositTransaction({
-    deposit,
-    status: "pending",
-    source: "Awaiting live crypto payment",
-    metadata: {
-      gatewayStatus,
+    const deposit = await Deposit.create({
+      userId: req.user._id,
+      amount,
       requestedCreditAmount,
       expectedPayAmount,
       expectedPayCurrency,
+      gatewayFeeAmount: gatewayAmountFields.gatewayFeeAmount,
+      gatewayFeeCurrency: String(gatewayAmountFields.gatewayFeeCurrency || "").toLowerCase(),
+      payableAmountDisplay: String(gatewayAmountFields.payableAmountDisplay || "").trim(),
+      feeHandlingMode: String(gatewayAmountFields.feeHandlingMode || "credit_exact_pay_fee_extra"),
+      currency,
+      network,
+      status: "pending",
+      gateway,
+      gatewayStatus,
+      gatewayOrderId,
+      gatewayPaymentId,
+      paymentUrl,
+      payAddress,
+      qrData,
+      payCurrency: String(invoice?.pay_currency || asset.payCurrency || "").toLowerCase(),
+      payment: {
+        payment_id: gatewayPaymentId,
+        payment_url: paymentUrl,
+        pay_address: payAddress,
+        qr_code_url: qrData,
+      },
+    });
+
+    await upsertDepositTransaction({
+      deposit,
+      status: "pending",
+      source: "Awaiting live crypto payment",
+      metadata: {
+        gatewayStatus,
+        requestedCreditAmount,
+        expectedPayAmount,
+        expectedPayCurrency,
+        gatewayFeeAmount: toPositiveNumberOrNull(deposit.gatewayFeeAmount),
+        gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
+      },
+    });
+
+    return res.status(201).json({
+      message: "Live deposit order created",
+      deposit,
+      paymentUrl: deposit.paymentUrl,
+      payAddress: deposit.payAddress,
+      qrData: deposit.qrData,
+      requestedCreditAmount: toPositiveNumberOrNull(deposit.requestedCreditAmount) ?? Number(deposit.amount || 0),
+      expectedPayAmount: toPositiveNumberOrNull(deposit.expectedPayAmount),
+      expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
       gatewayFeeAmount: toPositiveNumberOrNull(deposit.gatewayFeeAmount),
       gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
-    },
-  });
+      feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
+      status: deposit.status,
+    });
+  } catch (error) {
+    console.error("[deposit:create-live] error", {
+      message: String(error?.message || error),
+      stack: error?.stack || "",
+      userId: String(req.user?._id || ""),
+      gateway,
+      amount: String(req.body?.amount ?? ""),
+      currency: String(requestedCurrencyInput || ""),
+      network: String(requestedNetworkInput || ""),
+    });
 
-  return res.status(201).json({
-    message: "Live deposit order created",
-    deposit,
-    paymentUrl: deposit.paymentUrl,
-    payAddress: deposit.payAddress,
-    qrData: deposit.qrData,
-    requestedCreditAmount: toPositiveNumberOrNull(deposit.requestedCreditAmount) ?? Number(deposit.amount || 0),
-    expectedPayAmount: toPositiveNumberOrNull(deposit.expectedPayAmount),
-    expectedPayCurrency: String(deposit.expectedPayCurrency || deposit.payCurrency || "").toLowerCase(),
-    gatewayFeeAmount: toPositiveNumberOrNull(deposit.gatewayFeeAmount),
-    gatewayFeeCurrency: String(deposit.gatewayFeeCurrency || "").toLowerCase(),
-    feeHandlingMode: String(deposit.feeHandlingMode || "credit_exact_pay_fee_extra"),
-    status: deposit.status,
-  });
+    if (error instanceof ApiError && Number(error.statusCode || 500) < 500) {
+      throw error;
+    }
+
+    const safeDetail = String(error?.message || "Unknown error");
+    return res.status(500).json({
+      message: "Unable to create live payment order",
+      detail: safeDetail,
+    });
+  }
 });
 
 export const createLiveDeposit = createDeposit;

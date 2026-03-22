@@ -85,6 +85,15 @@ export const createGatewayInvoice = async ({ gateway, amount, orderId, descripti
   return createNowPaymentsInvoice({ amount, orderId, description, payCurrency, deps });
 };
 
+export const extractNowPaymentsPaymentId = (payload = {}) => {
+  const candidates = [payload?.payment_id, payload?.id, payload?.paymentId, payload?.data?.payment_id, payload?.data?.id];
+  const resolved = candidates.map((entry) => normalizeText(entry)).find((entry) => Boolean(entry));
+  if (!resolved || ["null", "undefined"].includes(resolved.toLowerCase())) {
+    return "";
+  }
+  return resolved;
+};
+
 export const getNowPaymentsPaymentStatus = async ({ paymentId, orderId, deps = {} } = {}) => {
   if (!NOWPAYMENTS_API_KEY) {
     throw new Error("NOWPAYMENTS_API_KEY is not configured");
@@ -187,7 +196,7 @@ export const extractGatewayWebhookData = ({ gateway, payload = {} } = {}) => {
   }
 
   return {
-    gatewayPaymentId: normalizeText(payload.payment_id),
+    gatewayPaymentId: extractNowPaymentsPaymentId(payload),
     gatewayOrderId: normalizeText(payload.order_id),
     gatewayStatus: normalizeGatewayStatus(payload.payment_status || payload.status),
     txHash: normalizeText(payload.payin_hash || payload.txhash || payload.txHash),

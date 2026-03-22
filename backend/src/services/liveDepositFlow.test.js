@@ -76,7 +76,58 @@ test("create live deposit order returns payment URL/address and pending status",
     assert.equal(body.payAddress, "0xabc123");
     assert.equal(body.deposit.gatewayPaymentId, "np_1001");
     assert.equal(body.deposit.gateway, "nowpayments");
-    assert.equal(txCalls.length >= 2, true);
+    assert.equal(txCalls.length >= 1, true);
+  } finally {
+    __resetDepositControllerDeps();
+    Deposit.create = originalDepositCreate;
+    Transaction.findOneAndUpdate = originalTxFindOneAndUpdate;
+  }
+});
+
+test("gateway response missing payment_id fails gracefully and does not save deposit", async () => {
+  const originalDepositCreate = Deposit.create;
+  const originalTxFindOneAndUpdate = Transaction.findOneAndUpdate;
+  let createCalls = 0;
+  let txCalls = 0;
+
+  try {
+    Deposit.create = async () => {
+      createCalls += 1;
+      return {};
+    };
+    Transaction.findOneAndUpdate = async () => {
+      txCalls += 1;
+      return {};
+    };
+    __setDepositControllerDeps({
+      createGatewayInvoice: async () => ({
+        payment_status: "waiting",
+        order_id: "missing-id-order",
+        invoice_url: "https://pay.example/invoice/missing",
+      }),
+      extractNowPaymentsPaymentId: () => "",
+    });
+
+    const error = await new Promise((resolve) => {
+      const req = {
+        user: { _id: "user_1" },
+        body: { amount: 50, currency: "USDT", network: "BEP20" },
+      };
+      const res = {
+        status() {
+          return this;
+        },
+        json() {
+          return this;
+        },
+      };
+      createLiveDeposit(req, res, resolve);
+    });
+
+    assert.equal(error?.statusCode, 502);
+    assert.equal(error?.message, "Gateway did not return a valid payment ID");
+    assert.equal(createCalls, 0);
+    assert.equal(txCalls, 0);
   } finally {
     __resetDepositControllerDeps();
     Deposit.create = originalDepositCreate;

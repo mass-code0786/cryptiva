@@ -35,15 +35,29 @@ const depositSchema = new mongoose.Schema(
     },
     gatewayPaymentId: {
       type: String,
-      default: "",
+      default: undefined,
       trim: true,
       index: true,
+      set: (value) => {
+        const normalized = String(value || "").trim();
+        if (!normalized || ["null", "undefined"].includes(normalized.toLowerCase())) {
+          return undefined;
+        }
+        return normalized;
+      },
     },
     gatewayOrderId: {
       type: String,
-      default: "",
+      default: undefined,
       trim: true,
       index: true,
+      set: (value) => {
+        const normalized = String(value || "").trim();
+        if (!normalized || ["null", "undefined"].includes(normalized.toLowerCase())) {
+          return undefined;
+        }
+        return normalized;
+      },
     },
     gatewayStatus: {
       type: String,
@@ -97,8 +111,35 @@ const depositSchema = new mongoose.Schema(
   }
 );
 
-depositSchema.index({ gateway: 1, gatewayPaymentId: 1 }, { unique: true, sparse: true });
-depositSchema.index({ gateway: 1, gatewayOrderId: 1 }, { unique: true, sparse: true });
+depositSchema.pre("validate", function validateGatewayPaymentId(next) {
+  const gateway = String(this.gateway || "").trim().toLowerCase();
+  const paymentId = String(this.gatewayPaymentId || "").trim();
+  if (gateway === "nowpayments" && !paymentId) {
+    return next(new Error("gatewayPaymentId is required for nowpayments deposits"));
+  }
+  return next();
+});
+
+depositSchema.index(
+  { gateway: 1, gatewayPaymentId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      gateway: { $type: "string", $ne: "" },
+      gatewayPaymentId: { $type: "string", $ne: "" },
+    },
+  }
+);
+depositSchema.index(
+  { gateway: 1, gatewayOrderId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      gateway: { $type: "string", $ne: "" },
+      gatewayOrderId: { $type: "string", $ne: "" },
+    },
+  }
+);
 
 const Deposit = mongoose.model("Deposit", depositSchema);
 

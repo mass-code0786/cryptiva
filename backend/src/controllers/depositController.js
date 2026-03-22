@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import mongoose from "mongoose";
 
 import { CRYPTO_GATEWAY_DEFAULT, DEPOSIT_AMOUNT_TOLERANCE_PERCENT, DEPOSIT_MIN_AMOUNT } from "../config/env.js";
@@ -8,6 +9,7 @@ import { creditDepositOnce, markDepositFailedOrExpired } from "../services/depos
 import {
   LIVE_DEPOSIT_GATEWAYS,
   createGatewayInvoice,
+  extractNowPaymentsPaymentId,
   extractGatewayWebhookData,
   isGatewaySuccessFinalStatus,
   mapGatewayStatusToDepositStatus,
@@ -19,6 +21,7 @@ import {
 const normalizeGateway = (value = "") => String(value || "").trim().toLowerCase() || CRYPTO_GATEWAY_DEFAULT;
 const depositControllerDeps = {
   createGatewayInvoice,
+  extractNowPaymentsPaymentId,
   verifyGatewayWebhookSignature,
   extractGatewayWebhookData,
   mapGatewayStatusToDepositStatus,
@@ -35,6 +38,7 @@ export const __setDepositControllerDeps = (overrides = {}) => {
 export const __resetDepositControllerDeps = () => {
   Object.assign(depositControllerDeps, {
     createGatewayInvoice,
+    extractNowPaymentsPaymentId,
     verifyGatewayWebhookSignature,
     extractGatewayWebhookData,
     mapGatewayStatusToDepositStatus,
@@ -91,6 +95,31 @@ export const createDeposit = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Only USDT BEP20 live deposits are currently supported");
   }
 
+  const provisionalOrderId = crypto.randomUUID();
+  let invoice;
+  try {
+    invoice = await depositControllerDeps.createGatewayInvoice({
+      gateway,
+      amount,
+      orderId: provisionalOrderId,
+      description: `Cryptiva deposit ${provisionalOrderId}`,
+      payCurrency: asset.payCurrency,
+    });
+  } catch (error) {
+    throw new ApiError(502, `Unable to create live payment order: ${String(error?.message || "Gateway error")}`);
+  }
+
+  const gatewayPaymentId = depositControllerDeps.extractNowPaymentsPaymentId(invoice);
+  if (!gatewayPaymentId) {
+    throw new ApiError(502, "Gateway did not return a valid payment ID");
+  }
+
+  const paymentUrl = String(invoice?.invoice_url || invoice?.payment_url || "").trim();
+  const payAddress = String(invoice?.pay_address || invoice?.payin_address || "").trim();
+  const qrData = paymentUrl || payAddress || "";
+  const gatewayStatus = String(invoice?.payment_status || invoice?.status || "waiting").toLowerCase();
+  const gatewayOrderId = String(invoice?.order_id || provisionalOrderId).trim();
+
   const deposit = await Deposit.create({
     userId: req.user._id,
     amount,
@@ -98,84 +127,38 @@ export const createDeposit = asyncHandler(async (req, res) => {
     network,
     status: "pending",
     gateway,
-    gatewayStatus: "creating",
-    payCurrency: asset.payCurrency,
+    gatewayStatus,
+    gatewayOrderId,
+    gatewayPaymentId,
+    paymentUrl,
+    payAddress,
+    qrData,
+    payCurrency: String(invoice?.pay_currency || asset.payCurrency || "").toLowerCase(),
+    payment: {
+      payment_id: gatewayPaymentId,
+      payment_url: paymentUrl,
+      pay_address: payAddress,
+      qr_code_url: qrData,
+    },
   });
 
   await upsertDepositTransaction({
     deposit,
     status: "pending",
-    source: "Live deposit request created",
+    source: "Awaiting live crypto payment",
     metadata: {
-      gatewayStatus: "creating",
+      gatewayStatus,
     },
   });
 
-  const gatewayOrderId = String(deposit._id);
-  try {
-    const invoice = await depositControllerDeps.createGatewayInvoice({
-      gateway,
-      amount,
-      orderId: gatewayOrderId,
-      description: `Cryptiva deposit ${gatewayOrderId}`,
-      payCurrency: asset.payCurrency,
-    });
-
-    const gatewayPaymentId = String(invoice?.payment_id || invoice?.id || "").trim();
-    const paymentUrl = String(invoice?.invoice_url || invoice?.payment_url || "").trim();
-    const payAddress = String(invoice?.pay_address || invoice?.payin_address || "").trim();
-    const qrData = paymentUrl || payAddress || "";
-    const gatewayStatus = String(invoice?.payment_status || invoice?.status || "waiting").toLowerCase();
-
-    deposit.gatewayOrderId = String(invoice?.order_id || gatewayOrderId);
-    deposit.gatewayPaymentId = gatewayPaymentId;
-    deposit.gatewayStatus = gatewayStatus;
-    deposit.paymentUrl = paymentUrl;
-    deposit.payAddress = payAddress;
-    deposit.qrData = qrData;
-    deposit.payCurrency = String(invoice?.pay_currency || asset.payCurrency || "").toLowerCase();
-    deposit.payment = {
-      payment_id: gatewayPaymentId,
-      payment_url: paymentUrl,
-      pay_address: payAddress,
-      qr_code_url: qrData,
-    };
-    await deposit.save();
-
-    await upsertDepositTransaction({
-      deposit,
-      status: "pending",
-      source: "Awaiting live crypto payment",
-      metadata: {
-        gatewayStatus,
-      },
-    });
-
-    return res.status(201).json({
-      message: "Live deposit order created",
-      deposit,
-      paymentUrl: deposit.paymentUrl,
-      payAddress: deposit.payAddress,
-      qrData: deposit.qrData,
-      status: deposit.status,
-    });
-  } catch (error) {
-    deposit.status = "failed";
-    deposit.gatewayStatus = "create_failed";
-    deposit.webhookPayload = { error: String(error?.message || "Gateway order creation failed") };
-    await deposit.save();
-
-    await upsertDepositTransaction({
-      deposit,
-      status: "failed",
-      source: "Live deposit order creation failed",
-      metadata: {
-        gatewayStatus: "create_failed",
-      },
-    });
-
-    throw new ApiError(502, `Unable to create live payment order: ${String(error?.message || "Gateway error")}`);
-  }
+  return res.status(201).json({
+    message: "Live deposit order created",
+    deposit,
+    paymentUrl: deposit.paymentUrl,
+    payAddress: deposit.payAddress,
+    qrData: deposit.qrData,
+    status: deposit.status,
+  });
 });
 
 export const createLiveDeposit = createDeposit;

@@ -249,3 +249,43 @@ test("concurrent direct referral execution creates only one income record", asyn
   assert.equal(state.transactions.length, 1);
   assert.equal(state.incomeLogs.length, 1);
 });
+
+test("different referred users and trades are not blocked as duplicates after prior cap cycle", async () => {
+  const { deps, state } = buildDeps({ creditedAmount: 5 });
+  const traderOne = {
+    _id: "507f191e810c19729de860f1",
+    userId: "CTV-TRADER-1",
+    email: "trader1@example.com",
+    referredByUserId: "CTV-SPONSOR",
+  };
+  const traderTwo = {
+    _id: "507f191e810c19729de860f2",
+    userId: "CTV-TRADER-2",
+    email: "trader2@example.com",
+    referredByUserId: "CTV-SPONSOR",
+  };
+
+  const first = await creditDirectReferralCommission({
+    traderUser: traderOne,
+    transactionAmount: 10000,
+    eventType: "trade_start",
+    eventId: "507f1f77bcf86cd799439201",
+    eventStatus: "success",
+    deps,
+  });
+
+  const second = await creditDirectReferralCommission({
+    traderUser: traderTwo,
+    transactionAmount: 1000,
+    eventType: "trade_start",
+    eventId: "507f1f77bcf86cd799439202",
+    eventStatus: "success",
+    deps,
+  });
+
+  assert.equal(first.credited, 5);
+  assert.equal(second.credited, 5);
+  assert.equal(state.referralIncomes.length, 2);
+  assert.equal(state.transactions.length, 2);
+  assert.equal(state.incomeLogs.length, 2);
+});

@@ -26,6 +26,56 @@ const ensureWallet = async (userId, WalletModel = Wallet) => {
 
 const toAmount = (value) => Number(Number(value || 0).toFixed(6));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+const CAP_INCOME_FIELDS = ["tradingIncomeWallet", "referralIncomeWallet", "levelIncomeWallet", "salaryIncomeWallet"];
+
+const parseCycleTradeId = (cycleId = "") => {
+  const text = String(cycleId || "").trim();
+  if (!text.startsWith("trade_")) return null;
+  const tradeId = text.slice(6);
+  if (!mongoose.isValidObjectId(tradeId)) return null;
+  return tradeId;
+};
+
+const ensureCapCycleMetadata = (wallet, now = new Date()) => {
+  if (!wallet || typeof wallet !== "object") return false;
+
+  let changed = false;
+
+  if (!Number.isFinite(Number(wallet.capCycleVersion))) {
+    wallet.capCycleVersion = 0;
+    changed = true;
+  }
+
+  if (!wallet.capCycleIncomeOffset || typeof wallet.capCycleIncomeOffset !== "object") {
+    wallet.capCycleIncomeOffset = {};
+    changed = true;
+  }
+
+  for (const field of CAP_INCOME_FIELDS) {
+    if (!Number.isFinite(Number(wallet.capCycleIncomeOffset[field]))) {
+      wallet.capCycleIncomeOffset[field] = 0;
+      changed = true;
+    }
+  }
+
+  if (!wallet.capCycleStartedAt && Number(wallet.capCycleVersion || 0) > 0) {
+    wallet.capCycleStartedAt = now;
+    changed = true;
+  }
+
+  return changed;
+};
+
+const getCycleIncomeBreakdown = (wallet) => {
+  const offsets = wallet?.capCycleIncomeOffset || {};
+  const breakdown = {};
+  for (const field of CAP_INCOME_FIELDS) {
+    const walletValue = toAmount(wallet?.[field] || 0);
+    const offsetValue = toAmount(offsets[field] || 0);
+    breakdown[field] = toAmount(Math.max(0, walletValue - offsetValue));
+  }
+  return breakdown;
+};
 
 const acquireCapApplyLockWithRetry = async ({ userId, deps = {}, logger = console } = {}) => {
   const acquireCapLockFn = deps.acquireCapLockFn || acquireDistributedLock;
@@ -91,11 +141,18 @@ export const getQualifiedDirectCountForWorkingUser = async (userId, deps = {}) =
 
 const getCapMultiplier = (workingUser) => (workingUser ? WORKING_CAP_MULTIPLIER : NON_WORKING_CAP_MULTIPLIER);
 
-const resolveIncomeCapResetCycleId = async ({ userId, deps = {} } = {}) => {
+const resolveIncomeCapResetCycleId = async ({ userId, boundaryAt = null, deps = {} } = {}) => {
   const TradeModel = deps.TradeModel || Trade;
-  const latestPositiveTrade = await TradeModel.findOne({
+  const query = {
     userId,
     amount: { $gt: 0 },
+  };
+  if (boundaryAt instanceof Date && !Number.isNaN(boundaryAt.getTime())) {
+    query.createdAt = { $lte: boundaryAt };
+  }
+
+  const latestPositiveTrade = await TradeModel.findOne({
+    ...query,
   })
     .sort({ createdAt: -1 })
     .select("_id createdAt");
@@ -107,13 +164,23 @@ const resolveIncomeCapResetCycleId = async ({ userId, deps = {} } = {}) => {
   return "no_capital";
 };
 
-export const executeCapitalResetOnCapReached = async ({ userId, reason = "income_cap_reached", cycleId = "", deps = {} } = {}) => {
+export const executeCapitalResetOnCapReached = async ({
+  userId,
+  reason = "income_cap_reached",
+  cycleId = "",
+  boundaryAt = null,
+  deps = {},
+} = {}) => {
   const logger = deps.logger || console;
   const SettingModel = deps.SettingModel || Setting;
   const TradeModel = deps.TradeModel || Trade;
   const WalletModel = deps.WalletModel || Wallet;
   const now = new Date();
-  const resolvedCycleId = String(cycleId || (await resolveIncomeCapResetCycleId({ userId, deps })) || "no_capital").trim() || "no_capital";
+  const resetBoundaryAt =
+    boundaryAt instanceof Date && !Number.isNaN(boundaryAt.getTime()) ? boundaryAt : now;
+  const resolvedCycleId =
+    String(cycleId || (await resolveIncomeCapResetCycleId({ userId, boundaryAt: resetBoundaryAt, deps })) || "no_capital").trim() ||
+    "no_capital";
   const key = `${CAP_RESET_SETTING_PREFIX}${String(userId)}:${resolvedCycleId}`;
 
   const lockResult = await SettingModel.updateOne(
@@ -141,22 +208,46 @@ export const executeCapitalResetOnCapReached = async ({ userId, reason = "income
     return { executed: false, alreadyExecuted: true, activeTradesClosed: 0 };
   }
 
+  const tradeBoundaryId = parseCycleTradeId(resolvedCycleId);
+  const closeTradesQuery = {
+    userId,
+    status: "active",
+    createdAt: { $lte: resetBoundaryAt },
+  };
+  if (tradeBoundaryId) {
+    closeTradesQuery._id = { $lte: new mongoose.Types.ObjectId(tradeBoundaryId) };
+  }
+
   const [tradeUpdateResult, wallet] = await Promise.all([
-    TradeModel.updateMany(
-      { userId, status: "active" },
-      { $set: { status: "completed", amount: 0, closedAt: now, lastSettledAt: now } }
-    ),
+    TradeModel.updateMany(closeTradesQuery, { $set: { status: "completed", amount: 0, closedAt: now, lastSettledAt: now } }),
     ensureWallet(userId, WalletModel),
   ]);
+  const activeTradesQuery = TradeModel.find({ userId, status: "active" });
+  const activeTrades =
+    activeTradesQuery && typeof activeTradesQuery.select === "function"
+      ? await activeTradesQuery.select("amount")
+      : await activeTradesQuery;
 
-  wallet.tradingWallet = 0;
-  wallet.tradingBalance = 0;
+  const activePrincipal = toAmount(
+    (Array.isArray(activeTrades) ? activeTrades : []).reduce((sum, trade) => sum + Number(trade?.amount || 0), 0)
+  );
+  ensureCapCycleMetadata(wallet, now);
+  wallet.capCycleVersion = Number(wallet.capCycleVersion || 0) + 1;
+  wallet.capCycleStartedAt = now;
+  wallet.capCycleIncomeOffset = {
+    tradingIncomeWallet: toAmount(wallet.tradingIncomeWallet || 0),
+    referralIncomeWallet: toAmount(wallet.referralIncomeWallet || 0),
+    levelIncomeWallet: toAmount(wallet.levelIncomeWallet || 0),
+    salaryIncomeWallet: toAmount(wallet.salaryIncomeWallet || 0),
+  };
+  wallet.tradingWallet = activePrincipal;
+  wallet.tradingBalance = activePrincipal;
   wallet.balance = toAmount((wallet.depositWallet || 0) + (wallet.withdrawalWallet || 0));
   await wallet.save();
 
   const activeTradesClosed = Number(tradeUpdateResult?.modifiedCount || 0);
   logger.warn(
-    `[income-cap] capital reset executed: user=${String(userId)} cycle=${resolvedCycleId} activeTradesClosed=${activeTradesClosed} tradingCapitalSetTo=0`
+    `[income-cap] capital reset executed: user=${String(userId)} cycle=${resolvedCycleId} activeTradesClosed=${activeTradesClosed} tradingCapitalAfterReset=${activePrincipal}`
   );
   return { executed: true, alreadyExecuted: false, activeTradesClosed, cycleId: resolvedCycleId };
 };
@@ -168,6 +259,10 @@ export const getIncomeCapState = async (userId, deps = {}) => {
     deps.getQualifiedDirectCountFn || deps.getQualifiedDirectCountForWorkingUserFn || getQualifiedDirectCountForWorkingUser;
 
   const wallet = await ensureWallet(userId, WalletModel);
+  const metadataChanged = ensureCapCycleMetadata(wallet);
+  if (metadataChanged) {
+    await wallet.save();
+  }
   const investmentBase = toAmount(wallet.tradingWallet || wallet.tradingBalance || 0);
   const qualifiedDirectCount = Number(
     deps.hasActiveReferralFn
@@ -178,10 +273,11 @@ export const getIncomeCapState = async (userId, deps = {}) => {
   const multiplier = getCapMultiplier(workingUser);
   const maxCap = toAmount(investmentBase * multiplier);
 
-  const tradingIncome = toAmount(wallet.tradingIncomeWallet);
-  const referralIncome = toAmount(wallet.referralIncomeWallet);
-  const levelIncome = toAmount(wallet.levelIncomeWallet);
-  const salaryIncome = toAmount(wallet.salaryIncomeWallet);
+  const cycleIncome = getCycleIncomeBreakdown(wallet);
+  const tradingIncome = toAmount(cycleIncome.tradingIncomeWallet);
+  const referralIncome = toAmount(cycleIncome.referralIncomeWallet);
+  const levelIncome = toAmount(cycleIncome.levelIncomeWallet);
+  const salaryIncome = toAmount(cycleIncome.salaryIncomeWallet);
   const totalIncome = toAmount(tradingIncome + referralIncome + levelIncome + salaryIncome);
   const remainingCap = toAmount(Math.max(0, maxCap - totalIncome));
 
@@ -196,7 +292,10 @@ export const getIncomeCapState = async (userId, deps = {}) => {
     workingUser,
     capMultiplier: multiplier,
     maxCap,
+    capCycleVersion: Number(wallet.capCycleVersion || 0),
+    capCycleStartedAt: wallet.capCycleStartedAt || null,
     totalIncome,
+    cycleIncome,
     remainingCap,
   };
 };
@@ -222,8 +321,14 @@ export const applyIncomeWithCap = async ({ userId, requestedAmount, walletField,
     const state = await getIncomeCapState(userId, deps);
     const capReachedBeforeCredit = state.remainingCap <= 0 || (state.maxCap > 0 && state.totalIncome >= state.maxCap);
     if (capReachedBeforeCredit) {
+      const capDetectedAt = new Date();
       logger.warn(`[income-cap] cap reached: user=${String(userId)} maxCap=${state.maxCap} totalIncome=${state.totalIncome}`);
-      capitalReset = await executeCapitalResetOnCapReachedFn({ userId, reason: "cap_reached_no_credit", deps });
+      capitalReset = await executeCapitalResetOnCapReachedFn({
+        userId,
+        reason: "cap_reached_no_credit",
+        boundaryAt: capDetectedAt,
+        deps,
+      });
       return { creditedAmount: 0, capReached: true, state, capitalReset };
     }
 
@@ -247,10 +352,16 @@ export const applyIncomeWithCap = async ({ userId, requestedAmount, walletField,
     await state.wallet.save();
 
     if (capReachedAfterCredit) {
+      const capDetectedAt = new Date();
       logger.warn(
         `[income-cap] cap reached on credit: user=${String(userId)} maxCap=${state.maxCap} totalBefore=${state.totalIncome} credited=${creditedAmount}`
       );
-      capitalReset = await executeCapitalResetOnCapReachedFn({ userId, reason: "cap_reached_on_credit", deps });
+      capitalReset = await executeCapitalResetOnCapReachedFn({
+        userId,
+        reason: "cap_reached_on_credit",
+        boundaryAt: capDetectedAt,
+        deps,
+      });
     }
 
     return { creditedAmount, capReached, state, capitalReset };

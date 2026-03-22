@@ -54,6 +54,37 @@ const walletSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    capCycleVersion: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    capCycleStartedAt: {
+      type: Date,
+      default: null,
+    },
+    capCycleIncomeOffset: {
+      tradingIncomeWallet: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      referralIncomeWallet: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      levelIncomeWallet: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+      salaryIncomeWallet: {
+        type: Number,
+        default: 0,
+        min: 0,
+      },
+    },
     depositTotal: {
       type: Number,
       default: 0,

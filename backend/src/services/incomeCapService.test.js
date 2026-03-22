@@ -17,6 +17,14 @@ const createWallet = (overrides = {}) => {
     referralIncomeWallet: 0,
     levelIncomeWallet: 0,
     salaryIncomeWallet: 0,
+    capCycleVersion: 0,
+    capCycleStartedAt: null,
+    capCycleIncomeOffset: {
+      tradingIncomeWallet: 0,
+      referralIncomeWallet: 0,
+      levelIncomeWallet: 0,
+      salaryIncomeWallet: 0,
+    },
     saveCalls: 0,
     save: async function save() {
       this.saveCalls += 1;
@@ -224,6 +232,7 @@ test("capital reset closes active trades, zeroes trading capital, and prevents d
           select: async () => ({ _id: "trade_cycle_1" }),
         }),
       }),
+      find: async () => [],
       updateMany: async (query, update) => {
         updateManyCalls += 1;
         let modifiedCount = 0;
@@ -298,6 +307,7 @@ test("capital reset runs again for a new trading cycle", async () => {
           select: async () => ({ _id: cycle === 1 ? "trade_cycle_1" : "trade_cycle_2" }),
         }),
       }),
+      find: async () => [],
       updateMany: async () => {
         updateManyCalls += 1;
         return { modifiedCount: 1 };
@@ -448,4 +458,224 @@ test("concurrent credits do not over-credit beyond cap for same user", async () 
   assert.equal(wallet.tradingIncomeWallet, 250);
   assert.equal(wallet.withdrawalWallet, 250);
   assert.equal(resetCalls >= 1, true);
+});
+
+test("exact-cap hit then fresh restart uses new cap cycle and credits referral again", async () => {
+  const settings = new Map();
+  const trades = [
+    {
+      _id: "507f1f77bcf86cd799439101",
+      userId: USER_ID,
+      status: "active",
+      amount: 10,
+      createdAt: new Date("2024-03-22T10:00:00.000Z"),
+    },
+  ];
+  const wallet = createWallet({
+    tradingWallet: 10,
+    tradingBalance: 10,
+    referralIncomeWallet: 0,
+    withdrawalWallet: 0,
+    balance: 0,
+  });
+
+  const deps = {
+    ...createCapLockMocks(),
+    logger: { info: () => {}, warn: () => {} },
+    WalletModel: walletModelFor(wallet),
+    hasActiveReferralFn: async () => false,
+    SettingModel: {
+      updateOne: async (query, update, options) => {
+        const key = String(query.key);
+        if (settings.has(key)) return { matchedCount: 1, modifiedCount: 0, upsertedCount: 0 };
+        if (options?.upsert) {
+          settings.set(key, update.$setOnInsert);
+          return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1, upsertedId: key };
+        }
+        return { matchedCount: 0, modifiedCount: 0, upsertedCount: 0 };
+      },
+    },
+    TradeModel: {
+      findOne: (query) => ({
+        sort: () => ({
+          select: async () => {
+            const filtered = trades
+              .filter((trade) => String(trade.userId) === String(query.userId) && Number(trade.amount || 0) > 0)
+              .filter((trade) => !query.createdAt?.$lte || trade.createdAt <= query.createdAt.$lte)
+              .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            const selected = filtered[0];
+            return selected ? { _id: selected._id, createdAt: selected.createdAt } : null;
+          },
+        }),
+      }),
+      find: async (query) =>
+        trades
+          .filter((trade) => String(trade.userId) === String(query.userId))
+          .filter((trade) => (query.status ? String(trade.status) === String(query.status) : true))
+          .map((trade) => ({ amount: trade.amount })),
+      updateMany: async (query, update) => {
+        let modifiedCount = 0;
+        for (const trade of trades) {
+          const matchesUser = String(trade.userId) === String(query.userId);
+          const matchesStatus = String(trade.status) === String(query.status);
+          const matchesCreatedAt = !query.createdAt?.$lte || trade.createdAt <= query.createdAt.$lte;
+          if (matchesUser && matchesStatus && matchesCreatedAt) {
+            trade.status = update.$set.status;
+            trade.amount = update.$set.amount;
+            trade.closedAt = update.$set.closedAt;
+            trade.lastSettledAt = update.$set.lastSettledAt;
+            modifiedCount += 1;
+          }
+        }
+        return { modifiedCount };
+      },
+    },
+  };
+
+  const firstReferral = await applyIncomeWithCap({
+    userId: USER_ID,
+    requestedAmount: 25,
+    walletField: "referralIncomeWallet",
+    bypassWorkingUserRestriction: true,
+    deps,
+  });
+
+  assert.equal(firstReferral.creditedAmount, 25);
+  assert.equal(firstReferral.capReached, true);
+  assert.equal(wallet.capCycleVersion, 1);
+  assert.equal(wallet.tradingWallet, 0);
+  assert.equal(wallet.capCycleIncomeOffset.referralIncomeWallet, 25);
+
+  trades.push({
+    _id: "507f1f77bcf86cd799439102",
+    userId: USER_ID,
+    status: "active",
+    amount: 5,
+    createdAt: new Date("2024-03-22T10:05:00.000Z"),
+  });
+  wallet.tradingWallet = 5;
+  wallet.tradingBalance = 5;
+
+  const secondReferral = await applyIncomeWithCap({
+    userId: USER_ID,
+    requestedAmount: 50,
+    walletField: "referralIncomeWallet",
+    bypassWorkingUserRestriction: true,
+    deps,
+  });
+
+  assert.equal(secondReferral.creditedAmount, 12.5);
+  assert.equal(secondReferral.capReached, true);
+  assert.equal(wallet.referralIncomeWallet, 37.5);
+  assert.equal(wallet.capCycleVersion, 2);
+});
+
+test("no stale cap state remains after reset in a new trading cycle", async () => {
+  const wallet = createWallet({
+    tradingWallet: 5,
+    tradingBalance: 5,
+    referralIncomeWallet: 25,
+    capCycleVersion: 1,
+    capCycleStartedAt: new Date("2026-03-22T10:00:00.000Z"),
+    capCycleIncomeOffset: {
+      tradingIncomeWallet: 0,
+      referralIncomeWallet: 25,
+      levelIncomeWallet: 0,
+      salaryIncomeWallet: 0,
+    },
+  });
+
+  const state = await getIncomeCapState(USER_ID, {
+    WalletModel: walletModelFor(wallet),
+    hasActiveReferralFn: async () => false,
+    logger: { info: () => {}, warn: () => {} },
+  });
+
+  assert.equal(state.maxCap, 12.5);
+  assert.equal(state.totalIncome, 0);
+  assert.equal(state.remainingCap, 12.5);
+  assert.equal(state.cycleIncome.referralIncomeWallet, 0);
+});
+
+test("reset does not close or zero trades created after reset boundary", async () => {
+  const settings = new Map();
+  const oldTradeTime = new Date("2026-03-22T10:00:00.000Z");
+  const boundaryAt = new Date("2026-03-22T10:01:00.000Z");
+  const newTradeTime = new Date("2026-03-22T10:02:00.000Z");
+  const oldTradeId = "507f1f77bcf86cd799439111";
+  const newTradeId = "507f1f77bcf86cd799439122";
+  const trades = [
+    { _id: oldTradeId, userId: USER_ID, status: "active", amount: 10, createdAt: oldTradeTime },
+    { _id: newTradeId, userId: USER_ID, status: "active", amount: 5, createdAt: newTradeTime },
+  ];
+  const wallet = createWallet({
+    tradingWallet: 15,
+    tradingBalance: 15,
+    referralIncomeWallet: 25,
+  });
+
+  const deps = {
+    logger: { info: () => {}, warn: () => {} },
+    WalletModel: walletModelFor(wallet),
+    SettingModel: {
+      updateOne: async (query, update, options) => {
+        const key = String(query.key);
+        if (settings.has(key)) return { matchedCount: 1, modifiedCount: 0, upsertedCount: 0 };
+        if (options?.upsert) {
+          settings.set(key, update.$setOnInsert);
+          return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1, upsertedId: key };
+        }
+        return { matchedCount: 0, modifiedCount: 0, upsertedCount: 0 };
+      },
+    },
+    TradeModel: {
+      findOne: (query) => ({
+        sort: () => ({
+          select: async () => {
+            const filtered = trades
+              .filter((trade) => String(trade.userId) === String(query.userId) && Number(trade.amount || 0) > 0)
+              .filter((trade) => !query.createdAt?.$lte || trade.createdAt <= query.createdAt.$lte)
+              .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            const selected = filtered[0];
+            return selected ? { _id: selected._id } : null;
+          },
+        }),
+      }),
+      find: async (query) =>
+        trades
+          .filter((trade) => String(trade.userId) === String(query.userId))
+          .filter((trade) => (query.status ? String(trade.status) === String(query.status) : true))
+          .map((trade) => ({ amount: trade.amount })),
+      updateMany: async (query, update) => {
+        let modifiedCount = 0;
+        for (const trade of trades) {
+          const matchesUser = String(trade.userId) === String(query.userId);
+          const matchesStatus = String(trade.status) === String(query.status);
+          const matchesCreatedAt = !query.createdAt?.$lte || trade.createdAt <= query.createdAt.$lte;
+          const matchesTradeId = !query._id?.$lte || String(trade._id) <= String(query._id.$lte);
+          if (matchesUser && matchesStatus && matchesCreatedAt && matchesTradeId) {
+            trade.status = update.$set.status;
+            trade.amount = update.$set.amount;
+            modifiedCount += 1;
+          }
+        }
+        return { modifiedCount };
+      },
+    },
+  };
+
+  const resetResult = await executeCapitalResetOnCapReached({
+    userId: USER_ID,
+    boundaryAt,
+    deps,
+  });
+
+  assert.equal(resetResult.executed, true);
+  assert.equal(resetResult.activeTradesClosed, 1);
+  assert.equal(trades[0].status, "completed");
+  assert.equal(trades[0].amount, 0);
+  assert.equal(trades[1].status, "active");
+  assert.equal(trades[1].amount, 5);
+  assert.equal(wallet.tradingWallet, 5);
+  assert.equal(wallet.tradingBalance, 5);
 });

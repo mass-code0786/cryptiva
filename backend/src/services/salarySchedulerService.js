@@ -1,8 +1,9 @@
 import { runWeeklySalaryDistribution } from "../controllers/salaryController.js";
 
-const SALARY_SCHEDULER_INTERVAL_MS = 10 * 60 * 1000;
-const SALARY_DISTRIBUTION_UTC_HOUR = 23;
-const SALARY_DISTRIBUTION_MIN_UTC_MINUTE = 50;
+const SALARY_SCHEDULER_INTERVAL_MS = 60 * 1000;
+const SALARY_WEEKLY_CRON_UTC = "0 6 * * 0"; // Sunday 06:00 UTC (11:30 IST)
+const [SALARY_DISTRIBUTION_MIN_UTC_MINUTE, SALARY_DISTRIBUTION_UTC_HOUR, , , SALARY_DISTRIBUTION_UTC_DAY] =
+  SALARY_WEEKLY_CRON_UTC.split(" ").map((part, index) => (index <= 1 || index === 4 ? Number(part) : part));
 
 let salarySchedulerTimer = null;
 let lastRunWeekKey = "";
@@ -11,8 +12,7 @@ let salarySchedulerRunning = false;
 const getWeekKey = (referenceDate = new Date()) => {
   const ref = new Date(referenceDate);
   const day = ref.getUTCDay();
-  const diffToMonday = (day + 6) % 7;
-  const weekStart = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate() - diffToMonday, 0, 0, 0, 0));
+  const weekStart = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate() - day, 0, 0, 0, 0));
   return weekStart.toISOString().slice(0, 10);
 };
 
@@ -20,15 +20,23 @@ const shouldRunNow = (now = new Date()) => {
   const utcDay = now.getUTCDay();
   const utcHour = now.getUTCHours();
   const utcMinute = now.getUTCMinutes();
-  return utcDay === 0 && utcHour === SALARY_DISTRIBUTION_UTC_HOUR && utcMinute >= SALARY_DISTRIBUTION_MIN_UTC_MINUTE;
+  return (
+    utcDay === SALARY_DISTRIBUTION_UTC_DAY &&
+    utcHour === SALARY_DISTRIBUTION_UTC_HOUR &&
+    utcMinute === SALARY_DISTRIBUTION_MIN_UTC_MINUTE
+  );
 };
 
-const runSalarySchedulerTick = async () => {
+export const runSalarySchedulerTick = async (deps = {}) => {
+  const nowFn = deps.nowFn || (() => new Date());
+  const runWeeklySalaryDistributionFn = deps.runWeeklySalaryDistributionFn || runWeeklySalaryDistribution;
+  const logger = deps.logger || console;
+
   if (salarySchedulerRunning) {
     return;
   }
 
-  const now = new Date();
+  const now = nowFn();
   if (!shouldRunNow(now)) {
     return;
   }
@@ -40,13 +48,14 @@ const runSalarySchedulerTick = async () => {
 
   salarySchedulerRunning = true;
   try {
-    const result = await runWeeklySalaryDistribution(now);
+    logger.log("[salary] weekly payout triggered at", now.toISOString());
+    const result = await runWeeklySalaryDistributionFn(now);
     lastRunWeekKey = weekKey;
-    console.log(
+    logger.log(
       `[SalaryScheduler] Weekly salary run completed for week ${weekKey}: credited=${result.credited}, users=${result.totalUsers}`
     );
   } catch (error) {
-    console.error("[SalaryScheduler] Weekly salary run failed", error);
+    logger.error("[SalaryScheduler] Weekly salary run failed", error);
   } finally {
     salarySchedulerRunning = false;
   }
@@ -66,4 +75,13 @@ export const startSalaryScheduler = () => {
   runSalarySchedulerTick().catch((error) => {
     console.error("[SalaryScheduler] Initial tick failed", error);
   });
+};
+
+export const __resetSalarySchedulerStateForTests = () => {
+  if (salarySchedulerTimer) {
+    clearInterval(salarySchedulerTimer);
+    salarySchedulerTimer = null;
+  }
+  lastRunWeekKey = "";
+  salarySchedulerRunning = false;
 };

@@ -35,9 +35,7 @@ const getHighestQualifiedRankIndex = (mainLegBusiness, otherLegBusiness) => {
 const getWeekRange = (date = new Date()) => {
   const ref = new Date(date);
   const day = ref.getUTCDay();
-  const diffToMonday = (day + 6) % 7;
-
-  const weekStart = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate() - diffToMonday, 0, 0, 0, 0));
+  const weekStart = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate() - day, 0, 0, 0, 0));
   const weekEnd = new Date(weekStart);
   weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
   weekEnd.setUTCHours(23, 59, 59, 999);

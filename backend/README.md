@@ -12,6 +12,18 @@ MONGO_URI=mongodb://127.0.0.1:27017/cryptiva
 JWT_SECRET=replace-with-strong-secret
 CLIENT_URL=http://localhost:5173
 ADMIN_EMAILS=
+NOWPAYMENTS_API_KEY=
+NOWPAYMENTS_IPN_SECRET=
+NOWPAYMENTS_IPN_URL=http://localhost:5000/api/webhooks/nowpayments
+CRYPTO_GATEWAY_DEFAULT=nowpayments
+DEPOSIT_MIN_AMOUNT=5
+DEPOSIT_AMOUNT_TOLERANCE_PERCENT=2
+DEPOSIT_PENDING_EXPIRY_HOURS=2
+DEPOSIT_EXPIRY_INTERVAL_MS=300000
+DEPOSIT_SUCCESS_NOTIFICATION_ENABLED=true
+DEPOSIT_SUCCESS_EMAIL_ENABLED=false
+DEPOSIT_EMAIL_WEBHOOK_URL=
+SYSTEM_NOTIFICATION_SENDER_ID=
 ```
 
 Production example:
@@ -75,14 +87,28 @@ Base URL: `/api`
 
 ### Deposits (JWT Required)
 
+- `POST /deposits/create-live`
+  - body: `{ "amount": 100, "currency": "USDT", "network": "BEP20" }`
+  - creates hosted payment order and returns `paymentUrl`, `payAddress`, `qrData`
 - `POST /deposit/create`
-  - body: `{ "amount": 100, "currency": "USDT", "network": "BEP20", "txHash": "0x..." }`
+  - alias of `/deposits/create-live`
 - `POST /deposit`
   - alias of `/deposit/create`
 - `GET /deposit/history?page=1&limit=20`
   - returns MongoDB deposit history
 - `GET /deposit/status/:id`
   - returns deposit and transaction status
+- `GET /deposits/:id/status`
+  - alias of `/deposit/status/:id`
+
+### Webhooks
+
+- `POST /webhooks/nowpayments`
+  - verifies `x-nowpayments-sig`
+  - maps gateway status -> internal deposit status
+  - validates received USD amount against expected amount within tolerance
+  - amount mismatch sets deposit `pending_review`
+  - credits wallet exactly once on final success
 
 ### Withdrawals (JWT Required)
 
@@ -106,6 +132,10 @@ Base URL: `/api`
   - approve deposit and credit wallet
 - `PATCH /admin/deposits/:depositId/reject`
   - reject deposit
+- `POST /admin/deposits/:depositId/recheck`
+  - fetch latest payment status from gateway and apply status transition
+- `POST /admin/deposits/:depositId/manual-credit`
+  - force credit deposit once with admin audit trail
 - `GET /admin/withdrawals`
   - list all withdrawal requests
 - `PATCH /admin/withdrawals/:withdrawalId/approve`

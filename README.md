@@ -46,7 +46,16 @@ Backend environment variables:
 - `JWT_SECRET`
 - `NOWPAYMENTS_API_KEY`
 - `NOWPAYMENTS_IPN_SECRET` (required for webhook verification)
-- `NOWPAYMENTS_IPN_URL` (example: `https://api.cryptiva.world/api/deposit/webhook`)
+- `NOWPAYMENTS_IPN_URL` (example: `https://api.cryptiva.world/api/webhooks/nowpayments`)
+- `CRYPTO_GATEWAY_DEFAULT` (default: `nowpayments`)
+- `DEPOSIT_MIN_AMOUNT` (default: `5`)
+- `DEPOSIT_AMOUNT_TOLERANCE_PERCENT` (default: `2`)
+- `DEPOSIT_PENDING_EXPIRY_HOURS` (default: `2`)
+- `DEPOSIT_EXPIRY_INTERVAL_MS` (default: `300000`)
+- `DEPOSIT_SUCCESS_NOTIFICATION_ENABLED` (default: `true`)
+- `DEPOSIT_SUCCESS_EMAIL_ENABLED` (default: `false`)
+- `DEPOSIT_EMAIL_WEBHOOK_URL` (optional)
+- `SYSTEM_NOTIFICATION_SENDER_ID` (optional)
 
 Frontend environment variables:
 - `VITE_API_URL` (example: `https://api.cryptiva.world/api`)
@@ -64,7 +73,7 @@ DNS records (at your domain provider):
 
 Then set:
 - `CLIENT_URL=https://cryptiva.world,https://www.cryptiva.world`
-- `NOWPAYMENTS_IPN_URL=https://api.cryptiva.world/api/deposit/webhook`
+- `NOWPAYMENTS_IPN_URL=https://api.cryptiva.world/api/webhooks/nowpayments`
 - `VITE_API_URL=https://api.cryptiva.world/api`
 
 ## GitHub Workflow

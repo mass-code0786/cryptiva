@@ -23,13 +23,67 @@ const depositSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "confirmed", "failed"],
+      enum: ["pending", "pending_review", "approved", "rejected", "confirmed", "completed", "failed", "expired"],
       default: "pending",
+      index: true,
+    },
+    gateway: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    gatewayPaymentId: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    gatewayOrderId: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    gatewayStatus: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+    payCurrency: {
+      type: String,
+      default: "",
+      trim: true,
     },
     txHash: {
       type: String,
       default: "",
       trim: true,
+    },
+    paymentUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    payAddress: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    qrData: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    webhookPayload: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    creditedAt: {
+      type: Date,
+      default: null,
+      index: true,
     },
     payment: {
       payment_id: String,
@@ -42,6 +96,9 @@ const depositSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+depositSchema.index({ gateway: 1, gatewayPaymentId: 1 }, { unique: true, sparse: true });
+depositSchema.index({ gateway: 1, gatewayOrderId: 1 }, { unique: true, sparse: true });
 
 const Deposit = mongoose.model("Deposit", depositSchema);
 

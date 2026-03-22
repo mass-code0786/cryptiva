@@ -5,7 +5,7 @@ import Trade from "../models/Trade.js";
 import User from "../models/User.js";
 import { creditDirectReferralCommission } from "./referralService.js";
 
-const DEPOSIT_SUCCESS_STATUSES = ["approved", "confirmed"];
+const DEPOSIT_SUCCESS_STATUSES = ["approved", "confirmed", "completed"];
 const TRADE_SUCCESS_STATUSES = ["active", "completed"];
 
 const toAmount = (value) => Number(Number(value || 0).toFixed(6));

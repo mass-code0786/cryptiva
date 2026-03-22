@@ -1,7 +1,6 @@
 import { FormEvent, useState } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { createDepositRequest } from "../services/financeService";
-import { fetchMyProfile } from "../services/userService";
 
 const DepositPage = () => {
   const [amount, setAmount] = useState("50");
@@ -17,18 +16,11 @@ const DepositPage = () => {
     setPayAddress("");
     setQrCodeUrl("");
     try {
-      const profileRes = await fetchMyProfile();
-      const walletAddress = profileRes.data?.user?.walletAddress;
-      if (!walletAddress) {
-        setMessage("Please bind your USDT BEP20 wallet address first.");
-        return;
-      }
-
       const { data } = await createDepositRequest({ amount: Number(amount), currency: "USDT" });
-      setPaymentUrl(data?.payment?.payment_url || "");
-      setPayAddress(data?.payment?.pay_address || "");
-      setQrCodeUrl(data?.payment?.qr_code_url || "");
-      setMessage("Deposit request created");
+      setPaymentUrl(data?.paymentUrl || data?.payment?.payment_url || "");
+      setPayAddress(data?.payAddress || data?.payment?.pay_address || "");
+      setQrCodeUrl(data?.qrData || data?.payment?.qr_code_url || "");
+      setMessage("Live payment order created");
     } catch (error: any) {
       setMessage(error?.response?.data?.message || "Deposit request failed");
     }

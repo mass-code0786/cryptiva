@@ -4,6 +4,7 @@ import {
   adjustTradeIncome,
   approveSupportQueryAdmin,
   approveDeposit,
+  manualCreditDeposit,
   changeAdminPassword,
   approveWithdrawal,
   blockUser,
@@ -24,6 +25,7 @@ import {
   listUsers,
   listWithdrawals,
   rejectDeposit,
+  recheckDepositPaymentStatus,
   rejectSupportQueryAdmin,
   resetUserPasswordByAdmin,
   rejectWithdrawal,
@@ -63,6 +65,8 @@ router.post("/fund-deduct", deductFund);
 router.get("/deposits", listDeposits);
 router.patch("/deposits/:depositId/approve", approveDeposit);
 router.patch("/deposits/:depositId/reject", rejectDeposit);
+router.post("/deposits/:depositId/recheck", recheckDepositPaymentStatus);
+router.post("/deposits/:depositId/manual-credit", manualCreditDeposit);
 router.get("/withdrawals", listWithdrawals);
 router.patch("/withdrawals/:withdrawalId/approve", approveWithdrawal);
 router.patch("/withdrawals/:withdrawalId/reject", rejectWithdrawal);

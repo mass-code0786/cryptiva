@@ -8,6 +8,7 @@ import Transaction from "../models/Transaction.js";
 import User from "../models/User.js";
 import Wallet from "../models/Wallet.js";
 import Withdrawal from "../models/Withdrawal.js";
+import { DEPOSIT_AMOUNT_TOLERANCE_PERCENT } from "../config/env.js";
 import { ApiError, asyncHandler } from "../middleware/errorHandler.js";
 import { computeTeamBusiness, syncTeamBusinessForUserAndUplines } from "./referralController.js";
 import { logIncomeEvent } from "../services/incomeLogService.js";
@@ -18,6 +19,40 @@ import { startTradeAndActivate } from "../services/tradeActivationService.js";
 import { validateStrongPassword } from "../services/passwordPolicyService.js";
 import { resetUserPasswordByAdminAction } from "../services/adminPasswordService.js";
 import { getUserCapCycleDiagnostics } from "../services/adminDiagnosticsService.js";
+import { creditDepositOnce, markDepositFailedOrExpired } from "../services/depositCreditService.js";
+import {
+  extractGatewayWebhookData,
+  getGatewayPaymentStatus,
+  isGatewaySuccessFinalStatus,
+  mapGatewayStatusToDepositStatus,
+  validateReceivedAmountAgainstExpected,
+} from "../services/liveDepositGatewayService.js";
+
+const adminDepositDeps = {
+  getGatewayPaymentStatus,
+  extractGatewayWebhookData,
+  mapGatewayStatusToDepositStatus,
+  isGatewaySuccessFinalStatus,
+  validateReceivedAmountAgainstExpected,
+  creditDepositOnce,
+  markDepositFailedOrExpired,
+};
+
+export const __setAdminDepositDeps = (overrides = {}) => {
+  Object.assign(adminDepositDeps, overrides || {});
+};
+
+export const __resetAdminDepositDeps = () => {
+  Object.assign(adminDepositDeps, {
+    getGatewayPaymentStatus,
+    extractGatewayWebhookData,
+    mapGatewayStatusToDepositStatus,
+    isGatewaySuccessFinalStatus,
+    validateReceivedAmountAgainstExpected,
+    creditDepositOnce,
+    markDepositFailedOrExpired,
+  });
+};
 
 const INCOME_TYPES = ["trading", "referral", "REFERRAL", "level", "LEVEL", "salary", "SALARY"];
 
@@ -42,6 +77,31 @@ const ensureWallet = async (userId) => {
   }
   return wallet;
 };
+
+const upsertDepositTransaction = async ({ deposit, status, source, metadata = {} }) =>
+  Transaction.findOneAndUpdate(
+    { userId: deposit.userId, type: "deposit", "metadata.depositId": deposit._id },
+    {
+      $set: {
+        userId: deposit.userId,
+        type: "deposit",
+        amount: Number(deposit.amount || 0),
+        network: deposit.network || "BEP20",
+        source,
+        status,
+        metadata: {
+          depositId: deposit._id,
+          currency: deposit.currency,
+          network: deposit.network,
+          gateway: deposit.gateway,
+          gatewayPaymentId: deposit.gatewayPaymentId || "",
+          gatewayOrderId: deposit.gatewayOrderId || "",
+          ...metadata,
+        },
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
 const findUserByParam = async (userRef) => {
   const normalizedRef = String(userRef || "").trim();
@@ -431,8 +491,8 @@ export const getDashboardOverview = asyncHandler(async (_req, res) => {
       countActivatedUsers({ createdFrom: start, createdTo: end }),
       getSum(Withdrawal, { status: "completed" }),
       getSum(Withdrawal, { status: "completed", createdAt: { $gte: start, $lte: end } }),
-      getSum(Deposit, { status: { $in: ["approved", "confirmed"] } }),
-      getSum(Deposit, { status: { $in: ["approved", "confirmed"] }, createdAt: { $gte: start, $lte: end } }),
+      getSum(Deposit, { status: { $in: ["approved", "confirmed", "completed"] } }),
+      getSum(Deposit, { status: { $in: ["approved", "confirmed", "completed"] }, createdAt: { $gte: start, $lte: end } }),
     ]);
   const totalInactiveUsers = Math.max(0, totalUsers - totalActiveUsers);
 
@@ -507,7 +567,7 @@ export const getDashboardAnalytics = asyncHandler(async (_req, res) => {
     getMonthlySeries(incomeMatch, 12),
     getUserGrowthSeries(30),
     getDailySeries(Withdrawal, { status: "completed" }, 30),
-    getDailySeries(Deposit, { status: { $in: ["approved", "confirmed"] } }, 30),
+    getDailySeries(Deposit, { status: { $in: ["approved", "confirmed", "completed"] } }, 30),
   ]);
 
   res.json({
@@ -1052,6 +1112,166 @@ export const rejectDeposit = asyncHandler(async (req, res) => {
   });
 
   res.json({ message: "Deposit rejected", deposit });
+});
+
+export const recheckDepositPaymentStatus = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.depositId)) {
+    throw new ApiError(404, "Deposit request not found");
+  }
+
+  const deposit = await Deposit.findById(req.params.depositId);
+  if (!deposit) throw new ApiError(404, "Deposit request not found");
+  if (!deposit.gateway) {
+    throw new ApiError(400, "Deposit is not linked with a live gateway");
+  }
+
+  const payload = await adminDepositDeps.getGatewayPaymentStatus({
+    gateway: deposit.gateway,
+    paymentId: deposit.gatewayPaymentId,
+    orderId: deposit.gatewayOrderId || String(deposit._id),
+  });
+  if (!payload) {
+    throw new ApiError(404, "Gateway payment not found");
+  }
+
+  const data =
+    adminDepositDeps.extractGatewayWebhookData({ gateway: deposit.gateway, payload }) ||
+    ({
+      gatewayPaymentId: String(payload.payment_id || deposit.gatewayPaymentId || "").trim(),
+      gatewayOrderId: String(payload.order_id || deposit.gatewayOrderId || "").trim(),
+      gatewayStatus: String(payload.payment_status || payload.status || "").toLowerCase(),
+      txHash: String(payload.payin_hash || payload.txhash || payload.txHash || "").trim(),
+    });
+
+  if (data.gatewayPaymentId) deposit.gatewayPaymentId = data.gatewayPaymentId;
+  if (data.gatewayOrderId) deposit.gatewayOrderId = data.gatewayOrderId;
+  if (data.txHash) deposit.txHash = data.txHash;
+  deposit.gatewayStatus = String(data.gatewayStatus || deposit.gatewayStatus || "").toLowerCase();
+  deposit.webhookPayload = payload;
+
+  const mappedStatus = adminDepositDeps.mapGatewayStatusToDepositStatus(data.gatewayStatus);
+  if (adminDepositDeps.isGatewaySuccessFinalStatus(data.gatewayStatus)) {
+    const amountValidation = adminDepositDeps.validateReceivedAmountAgainstExpected({
+      expectedUsdAmount: deposit.amount,
+      payload,
+      tolerancePercent: DEPOSIT_AMOUNT_TOLERANCE_PERCENT,
+    });
+
+    if (!amountValidation.isWithinTolerance) {
+      deposit.status = "pending_review";
+      await deposit.save();
+      await upsertDepositTransaction({
+        deposit,
+        status: "pending",
+        source: `Gateway recheck amount ${amountValidation.reason}; pending manual review`,
+        metadata: {
+          gatewayStatus: deposit.gatewayStatus,
+          amountValidation,
+          txHash: data.txHash,
+        },
+      });
+      await addActivityLog({
+        adminId: req.user._id,
+        action: "Deposit moved to pending review after gateway recheck",
+        type: "deposit_recheck",
+        targetUserId: deposit.userId,
+        amount: deposit.amount,
+        metadata: { depositId: deposit._id, gatewayStatus: deposit.gatewayStatus, amountValidation },
+      });
+      return res.json({ message: "Deposit moved to pending_review due to amount mismatch", deposit, amountValidation });
+    }
+
+    await deposit.save();
+    const result = await adminDepositDeps.creditDepositOnce({
+      depositId: deposit._id,
+      source: "Deposit confirmed after admin gateway recheck",
+      gatewayStatus: data.gatewayStatus,
+      txHash: data.txHash,
+      webhookPayload: payload,
+    });
+    await addActivityLog({
+      adminId: req.user._id,
+      action: "Deposit rechecked and credited",
+      type: "deposit_recheck",
+      targetUserId: deposit.userId,
+      amount: deposit.amount,
+      metadata: { depositId: deposit._id, gatewayStatus: data.gatewayStatus, credited: result.credited },
+    });
+    return res.json({ message: "Deposit rechecked", deposit: result.deposit || deposit, credited: result.credited });
+  }
+
+  if (mappedStatus === "failed" || mappedStatus === "expired") {
+    const updated = await adminDepositDeps.markDepositFailedOrExpired({
+      deposit,
+      mappedStatus,
+      gatewayStatus: data.gatewayStatus,
+      txHash: data.txHash,
+      webhookPayload: payload,
+    });
+    await addActivityLog({
+      adminId: req.user._id,
+      action: "Deposit rechecked and marked non-success",
+      type: "deposit_recheck",
+      targetUserId: updated.userId,
+      amount: updated.amount,
+      metadata: { depositId: updated._id, status: updated.status, gatewayStatus: updated.gatewayStatus },
+    });
+    return res.json({ message: "Deposit rechecked", deposit: updated, credited: false });
+  }
+
+  await deposit.save();
+  await upsertDepositTransaction({
+    deposit,
+    status: "pending",
+    source: "Gateway recheck pending confirmation",
+    metadata: {
+      gatewayStatus: deposit.gatewayStatus,
+      txHash: data.txHash,
+    },
+  });
+  await addActivityLog({
+    adminId: req.user._id,
+    action: "Deposit rechecked - still pending",
+    type: "deposit_recheck",
+    targetUserId: deposit.userId,
+    amount: deposit.amount,
+    metadata: { depositId: deposit._id, gatewayStatus: deposit.gatewayStatus },
+  });
+
+  res.json({ message: "Deposit still pending at gateway", deposit, credited: false });
+});
+
+export const manualCreditDeposit = asyncHandler(async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.depositId)) {
+    throw new ApiError(404, "Deposit request not found");
+  }
+  const reason = String(req.body.reason || "Manual credit by admin").trim();
+  const deposit = await Deposit.findById(req.params.depositId);
+  if (!deposit) throw new ApiError(404, "Deposit request not found");
+
+  const result = await adminDepositDeps.creditDepositOnce({
+    depositId: deposit._id,
+    source: `Manual deposit credit by admin: ${reason}`,
+    gatewayStatus: deposit.gatewayStatus || "manual_credit",
+    txHash: deposit.txHash || "",
+    webhookPayload: deposit.webhookPayload || { manualCreditReason: reason, byAdmin: String(req.user._id) },
+  });
+
+  await addActivityLog({
+    adminId: req.user._id,
+    action: "Deposit manually credited",
+    type: "deposit_manual_credit",
+    targetUserId: deposit.userId,
+    amount: deposit.amount,
+    reason,
+    metadata: { depositId: deposit._id, credited: result.credited },
+  });
+
+  res.json({
+    message: result.credited ? "Deposit manually credited" : "Deposit was already credited",
+    deposit: result.deposit || deposit,
+    credited: result.credited,
+  });
 });
 
 export const listWithdrawals = asyncHandler(async (req, res) => {

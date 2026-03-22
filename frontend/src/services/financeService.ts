@@ -1,7 +1,7 @@
 import api from "./api";
 
 export const createDepositRequest = (payload: { amount: number; currency?: string }) =>
-  api.post("/deposit/create", payload);
+  api.post("/deposits/create-live", payload);
 
 export const createWithdrawalRequest = (payload: { amount: number; pin: string }) =>
   api.post("/withdrawals", payload);

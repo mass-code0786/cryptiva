@@ -20,10 +20,12 @@ import tradeRoutes from "./routes/tradeRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
+import webhookRoutes from "./routes/webhookRoutes.js";
 import withdrawalRoutes from "./routes/withdrawalRoutes.js";
 import { settleActiveTrades, startTradeEngine, stopTradeEngine } from "./services/tradeEngineService.js";
 import { startSalaryScheduler } from "./services/salarySchedulerService.js";
 import { startKeepAliveScheduler, stopKeepAliveScheduler } from "./services/keepAliveService.js";
+import { startDepositExpiryScheduler, stopDepositExpiryScheduler } from "./services/depositExpiryService.js";
 
 const app = express();
 const uploadsRoot = path.join(process.cwd(), "uploads");
@@ -59,7 +61,14 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "10mb" }));
+app.use(
+  express.json({
+    limit: "10mb",
+    verify: (req, _res, buf) => {
+      req.rawBody = buf?.toString("utf8") || "";
+    },
+  })
+);
 app.use(morgan("dev"));
 app.use("/uploads", express.static(uploadsRoot));
 
@@ -92,6 +101,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/deposit", depositRoutes);
+app.use("/api/deposits", depositRoutes);
 app.use("/api/withdrawals", withdrawalRoutes);
 app.use("/api/withdraw", withdrawalRoutes);
 app.use("/api/referrals", referralRoutes);
@@ -100,6 +110,7 @@ app.use("/api/salary-progress", salaryRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/trade", tradeRoutes);
 app.use("/api/p2p", p2pRoutes);
+app.use("/api/webhooks", webhookRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/popup-banners", popupBannerRoutes);
@@ -123,6 +134,9 @@ mongoose
         port: PORT,
         intervalMs: Number(process.env.KEEP_ALIVE_INTERVAL_MS) || 300000,
       });
+      startDepositExpiryScheduler({
+        intervalMs: Number(process.env.DEPOSIT_EXPIRY_INTERVAL_MS) || 300000,
+      });
     });
   })
   .catch((error) => {
@@ -141,8 +155,10 @@ mongoose.connection.on("connected", () => {
 
 process.on("SIGINT", () => {
   stopKeepAliveScheduler();
+  stopDepositExpiryScheduler();
 });
 
 process.on("SIGTERM", () => {
   stopKeepAliveScheduler();
+  stopDepositExpiryScheduler();
 });

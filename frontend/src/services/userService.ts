@@ -46,6 +46,13 @@ export type TeamReferralsResponse = {
     active: number;
     inactive: number;
   }>;
+  qualifiedDirectCount?: number;
+  unlockedLevels?: number;
+  maxLevels?: number;
+  levelStatus?: Array<{
+    level: number;
+    status: "open" | "locked";
+  }>;
 };
 
 export type ReferralIncomeHistoryItem = {

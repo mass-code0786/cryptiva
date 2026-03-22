@@ -4,6 +4,7 @@ import Trade from "../models/Trade.js";
 import User from "../models/User.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { getActivatedUserIdSet, getActivationInvestmentByUserIds, getUserActivationStatusMap } from "../services/activationService.js";
+import { getUserLevelUnlockStatus } from "../services/levelUnlockStatusService.js";
 
 const salaryRankTable = [
   { rank: 1, name: "Rank 1", main: 2000, other: 3000, weeklySalary: 50 },
@@ -128,6 +129,7 @@ const sumTeamBusiness = async (userIds) => {
 
 export const listReferrals = asyncHandler(async (req, res) => {
   const referrals = await collectAllMembersByLevel(req.user._id, 30);
+  const levelUnlock = await getUserLevelUnlockStatus(req.user._id);
   const levelCounts = Array.from({ length: 30 }, (_, index) => index + 1).map((level) => {
     const members = referrals.filter((item) => Number(item.level) === level);
     const active = members.filter((item) => item.status === "active").length;
@@ -147,6 +149,10 @@ export const listReferrals = asyncHandler(async (req, res) => {
     totalDirectTeam,
     totalLevelTeam,
     levelCounts,
+    qualifiedDirectCount: levelUnlock.qualifiedDirectCount,
+    unlockedLevels: levelUnlock.unlockedLevels,
+    maxLevels: levelUnlock.maxLevels,
+    levelStatus: levelUnlock.levelStatus,
   });
 });
 

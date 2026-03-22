@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layouts/DashboardLayout";
 import { fetchReferralIncomeHistory, fetchTeamReferrals, type ReferralIncomeHistoryItem } from "../services/userService";
+import { toLevelStatusRows } from "../utils/levelUnlockStatus";
 
 type TeamItem = {
   _id: string;
@@ -22,6 +23,12 @@ const ReferralsPage = () => {
   const [levelCountRows, setLevelCountRows] = useState<Array<{ level: number; total: number; active: number; inactive: number }>>([]);
   const [levelIncomeHistory, setLevelIncomeHistory] = useState<ReferralIncomeHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [qualifiedDirectCount, setQualifiedDirectCount] = useState(0);
+  const [unlockedLevels, setUnlockedLevels] = useState(0);
+  const [maxLevels, setMaxLevels] = useState(30);
+  const [levelStatusRows, setLevelStatusRows] = useState<Array<{ level: number; status: "open" | "locked" }>>(
+    toLevelStatusRows([], 30) as Array<{ level: number; status: "open" | "locked" }>
+  );
 
   useEffect(() => {
     Promise.all([
@@ -34,6 +41,13 @@ const ReferralsPage = () => {
         setTotalDirectTeam(Number(teamRes.data.totalDirectTeam || referrals.filter((item) => Number(item.level) === 1).length));
         setTotalLevelTeam(Number(teamRes.data.totalLevelTeam || referrals.length));
         setLevelCountRows(teamRes.data.levelCounts || []);
+        const resolvedMaxLevels = Number(teamRes.data.maxLevels || 30);
+        setQualifiedDirectCount(Number(teamRes.data.qualifiedDirectCount || 0));
+        setUnlockedLevels(Number(teamRes.data.unlockedLevels || 0));
+        setMaxLevels(resolvedMaxLevels);
+        setLevelStatusRows(
+          toLevelStatusRows(teamRes.data.levelStatus || [], resolvedMaxLevels) as Array<{ level: number; status: "open" | "locked" }>
+        );
         setLevelIncomeHistory(historyRes.data.items || []);
       })
       .catch(() => {
@@ -41,6 +55,10 @@ const ReferralsPage = () => {
         setTotalDirectTeam(0);
         setTotalLevelTeam(0);
         setLevelCountRows([]);
+        setQualifiedDirectCount(0);
+        setUnlockedLevels(0);
+        setMaxLevels(30);
+        setLevelStatusRows(toLevelStatusRows([], 30) as Array<{ level: number; status: "open" | "locked" }>);
         setLevelIncomeHistory([]);
       })
       .finally(() => setHistoryLoading(false));
@@ -96,6 +114,37 @@ const ReferralsPage = () => {
               <div key={level} className="rounded-xl bg-slate-800/60 p-2">
                 <p className="text-slate-400">L{level}</p>
                 <p className="font-semibold text-cyan-300">{levelSummaries.get(level)?.active ?? members.filter((entry) => entry.status === "active").length}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-emerald-700/30 bg-slate-900/70 p-4">
+          <h2 className="text-xl font-semibold text-emerald-200">Level Unlock Status</h2>
+          <p className="mt-1 text-sm text-slate-400">Unlock rule: 1 qualified direct = 2 levels</p>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-3">
+              <p className="text-slate-400">Qualified Directs</p>
+              <p className="mt-1 text-lg font-semibold text-cyan-200">{qualifiedDirectCount}</p>
+            </div>
+            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-3">
+              <p className="text-slate-400">Unlocked Levels</p>
+              <p className="mt-1 text-lg font-semibold text-emerald-300">
+                {unlockedLevels} / {maxLevels}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6">
+            {levelStatusRows.map((row) => (
+              <div
+                key={row.level}
+                className={`rounded-xl border px-3 py-2 text-xs ${
+                  row.status === "open"
+                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
+                    : "border-slate-700 bg-slate-800/70 text-slate-400"
+                }`}
+              >
+                <p className="font-semibold">Level {row.level}</p>
+                <p className="mt-1 uppercase tracking-[0.12em]">{row.status === "open" ? "Open" : "Locked"}</p>
               </div>
             ))}
           </div>

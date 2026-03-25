@@ -85,7 +85,7 @@ const P2PPage = () => {
             Send Funds
           </button>
         </form>
-        {message && <p className="mt-3 text-sm text-wallet-accentSoft">{message}</p>}
+        {message && <p className="mt-3 text-sm text-wallet-accent">{message}</p>}
       </div>
     </DashboardLayout>
   );

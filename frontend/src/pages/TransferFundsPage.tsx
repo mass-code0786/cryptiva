@@ -31,11 +31,11 @@ const TransferFundsPage = () => {
         <form className="mt-4 space-y-3" onSubmit={submit}>
           <div className="rounded-[20px] border border-white/8 bg-[#0a1b34]/85 p-3 text-sm">
             <p className="text-wallet-muted">Transfer From</p>
-            <p className="font-medium text-wallet-accentSoft">Withdrawal Wallet</p>
+            <p className="font-medium text-wallet-accentAlt">Withdrawal Wallet</p>
           </div>
           <div className="rounded-[20px] border border-white/8 bg-[#0a1b34]/85 p-3 text-sm">
             <p className="text-wallet-muted">Transfer To</p>
-            <p className="font-medium text-wallet-accentSoft">Deposit Wallet</p>
+            <p className="font-medium text-wallet-accentAlt">Deposit Wallet</p>
           </div>
           <input
             type="number"
@@ -54,7 +54,7 @@ const TransferFundsPage = () => {
           </button>
         </form>
 
-        {message && <p className="mt-3 text-sm text-wallet-accentSoft">{message}</p>}
+        {message && <p className="mt-3 text-sm text-wallet-accent">{message}</p>}
       </div>
     </DashboardLayout>
   );

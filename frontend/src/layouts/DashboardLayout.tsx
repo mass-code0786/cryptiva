@@ -104,7 +104,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#2A0C0C_0%,#0A0A0A_62%)] text-wallet-text">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#0B0B1F_0%,#1A0F3C_35%,#2A0F5A_72%,#FF416C_140%)] text-wallet-text">
       <header className="sticky top-0 z-20 border-b border-wallet-border/60 bg-wallet-bg/90 px-3 py-3 backdrop-blur sm:px-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">

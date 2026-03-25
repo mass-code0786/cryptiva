@@ -83,12 +83,12 @@ const SupportPage = () => {
           </button>
         </form>
 
-        {message && <p className="rounded-xl border border-wallet-accent/25 bg-wallet-accent/10 px-3 py-2 text-sm text-wallet-accentSoft">{message}</p>}
+        {message && <p className="rounded-xl border border-wallet-accent/25 bg-wallet-accent/10 px-3 py-2 text-sm text-wallet-accent">{message}</p>}
         {error && <p className="rounded-xl border border-wallet-danger/30 bg-wallet-danger/10 px-3 py-2 text-sm text-wallet-danger">{error}</p>}
 
         <div className="wallet-table">
           <table className="min-w-full divide-y divide-cyan-800/30 text-sm">
-            <thead className="bg-[#0c223e]/90 text-left text-wallet-muted">
+            <thead className="bg-wallet-panelAlt/90 text-left text-wallet-muted">
               <tr>
                 <th className="px-4 py-3">Subject</th>
                 <th className="px-4 py-3">Message</th>
@@ -115,7 +115,7 @@ const SupportPage = () => {
               {!loading &&
                 items.map((item) => (
                   <tr key={item._id}>
-                    <td className="px-4 py-3 text-wallet-accentSoft">{item.subject}</td>
+                    <td className="px-4 py-3 text-wallet-accentAlt">{item.subject}</td>
                     <td className="px-4 py-3 text-wallet-muted">{item.message}</td>
                     <td className="px-4 py-3 text-wallet-muted">{item.adminReply || "-"}</td>
                     <td className="px-4 py-3">

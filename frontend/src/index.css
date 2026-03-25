@@ -11,26 +11,32 @@
 
   .wallet-topbar {
     @apply border-b;
-    border-color: rgba(42, 42, 42, 0.9);
-    background: rgba(10, 10, 10, 0.94);
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(11, 11, 31, 0.7);
+    backdrop-filter: blur(18px);
   }
 
   .wallet-panel {
-    @apply rounded-2xl border;
-    background: rgba(20, 20, 20, 0.88);
-    border-color: rgba(42, 42, 42, 0.95);
+    @apply rounded-2xl border transition-all duration-200;
+    background: linear-gradient(180deg, rgba(20, 16, 38, 0.72) 0%, rgba(14, 12, 30, 0.66) 100%);
+    border-color: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
   }
 
   .wallet-panel-muted {
-    @apply rounded-2xl border;
-    background: rgba(20, 20, 20, 0.76);
-    border-color: rgba(42, 42, 42, 0.85);
+    @apply rounded-2xl border transition-all duration-200;
+    background: linear-gradient(180deg, rgba(28, 17, 55, 0.62) 0%, rgba(16, 12, 32, 0.56) 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(14px);
   }
 
   .wallet-panel-strong {
-    @apply rounded-2xl border;
-    background: linear-gradient(160deg, rgba(20, 20, 20, 0.96) 0%, rgba(10, 10, 10, 0.98) 100%);
-    border-color: rgba(42, 42, 42, 1);
+    @apply rounded-2xl border transition-all duration-200;
+    background: linear-gradient(145deg, rgba(35, 15, 73, 0.82) 0%, rgba(20, 12, 42, 0.78) 46%, rgba(255, 65, 108, 0.2) 100%);
+    border-color: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 18px 44px rgba(255, 65, 108, 0.1);
   }
 
   .wallet-title {
@@ -43,7 +49,8 @@
 
   .wallet-input {
     @apply w-full rounded-xl border bg-wallet-bg p-3 text-wallet-text outline-none;
-    border-color: rgba(42, 42, 42, 1);
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(10, 10, 10, 0.76);
   }
 
   .wallet-input::placeholder {
@@ -53,17 +60,23 @@
   .wallet-button-primary {
     @apply rounded-xl px-4 py-3 font-semibold text-wallet-text;
     background: linear-gradient(135deg, #ff3b3b 0%, #b71c1c 100%);
+    box-shadow: 0 10px 24px rgba(255, 65, 108, 0.18);
+  }
+
+  .wallet-button-primary:hover {
+    box-shadow: 0 12px 28px rgba(255, 65, 108, 0.24);
+    filter: brightness(1.03);
   }
 
   .wallet-button-secondary {
     @apply rounded-xl border px-4 py-3 font-semibold text-wallet-text;
-    border-color: rgba(42, 42, 42, 1);
-    background: rgba(20, 20, 20, 0.72);
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(20, 16, 38, 0.56);
   }
 
   .wallet-chip {
     @apply rounded-full border px-2 py-1 text-xs uppercase tracking-wide;
-    border-color: rgba(42, 42, 42, 1);
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
   .wallet-status-success {
@@ -84,22 +97,29 @@
 
   .wallet-table {
     @apply overflow-x-auto rounded-2xl border;
-    background: rgba(20, 20, 20, 0.9);
-    border-color: rgba(42, 42, 42, 1);
+    background: rgba(20, 16, 38, 0.74);
+    border-color: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(14px);
   }
 
   .wallet-empty-state {
     @apply rounded-xl border px-4 py-6 text-center text-sm text-wallet-muted;
-    background: rgba(20, 20, 20, 0.7);
-    border-color: rgba(42, 42, 42, 0.9);
+    background: rgba(20, 16, 38, 0.5);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .wallet-panel:hover,
+  .wallet-panel-muted:hover,
+  .wallet-panel-strong:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px rgba(255, 65, 108, 0.08);
   }
 }
 
 body {
   @apply bg-wallet-bg text-wallet-text antialiased;
   background:
-    radial-gradient(circle at top, rgba(183, 28, 28, 0.18) 0%, rgba(10, 10, 10, 0) 34%),
-    linear-gradient(180deg, #141414 0%, #0a0a0a 68%);
+    linear-gradient(135deg, #0b0b1f 0%, #1a0f3c 38%, #2a0f5a 72%, #ff416c 140%);
   font-family: "Space Grotesk", sans-serif;
 }
 

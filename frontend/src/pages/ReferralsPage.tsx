@@ -72,24 +72,24 @@ const ReferralsPage = () => {
     <DashboardLayout>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="wallet-panel-muted p-4">
-            <p className="wallet-kicker">Total Direct Team</p>
-            <p className="mt-2 text-2xl font-semibold text-wallet-accentSoft">{totalDirectTeam}</p>
+          <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Direct Team</p>
+            <p className="mt-2 text-2xl font-semibold text-wallet-accent">{totalDirectTeam}</p>
           </div>
-          <div className="wallet-panel-muted p-4">
-            <p className="wallet-kicker">Total Level Team</p>
-            <p className="mt-2 text-2xl font-semibold text-wallet-accentSoft">{totalLevelTeam}</p>
+          <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Level Team</p>
+            <p className="mt-2 text-2xl font-semibold text-wallet-accent">{totalLevelTeam}</p>
           </div>
         </div>
-        <div className="wallet-panel p-4">
-          <h2 className="wallet-title text-xl">Level Unlock Status</h2>
+        <div className="rounded-2xl border border-wallet-success/30 bg-wallet-panel/70 p-4">
+          <h2 className="text-xl font-semibold text-wallet-success">Level Unlock Status</h2>
           <p className="mt-1 text-sm text-wallet-muted">Unlock rule: 1 qualified direct = 2 levels</p>
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-[20px] border border-white/10 bg-[#0a1b34]/85 p-3">
+            <div className="rounded-xl border border-wallet-border/50 bg-wallet-panelAlt/60 p-3">
               <p className="text-wallet-muted">Qualified Directs</p>
-              <p className="mt-1 text-lg font-semibold text-wallet-accentSoft">{qualifiedDirectCount}</p>
+              <p className="mt-1 text-lg font-semibold text-wallet-accent">{qualifiedDirectCount}</p>
             </div>
-            <div className="rounded-[20px] border border-white/10 bg-[#0a1b34]/85 p-3">
+            <div className="rounded-xl border border-wallet-border/50 bg-wallet-panelAlt/60 p-3">
               <p className="text-wallet-muted">Unlocked Levels</p>
               <p className="mt-1 text-lg font-semibold text-wallet-success">
                 {unlockedLevels} / {maxLevels}
@@ -102,8 +102,8 @@ const ReferralsPage = () => {
                 key={row.level}
                 className={`rounded-xl border px-3 py-2 text-xs ${
                   row.status === "open"
-                    ? "wallet-status-success"
-                    : "border-white/10 bg-[#0a1b34]/70 text-wallet-muted"
+                    ? "border-wallet-success/40 bg-wallet-success/15 text-wallet-success"
+                    : "border-wallet-border/50 bg-wallet-panelAlt/60 text-wallet-muted"
                 }`}
               >
                 <p className="font-semibold">Level {row.level}</p>
@@ -112,20 +112,20 @@ const ReferralsPage = () => {
             ))}
           </div>
         </div>
-        <div className="wallet-panel p-4">
-          <h3 className="wallet-title text-base">Level Income History (Audit Trace)</h3>
+        <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+          <h3 className="text-base font-semibold text-wallet-accent">Level Income History (Audit Trace)</h3>
           <p className="mt-1 text-xs text-wallet-muted">
             Includes level number, source member details, receiver details, ROI/trade reference, and timestamp.
           </p>
           {historyLoading ? (
-            <p className="wallet-empty-state mt-3">Loading level income history...</p>
+            <p className="mt-3 text-sm text-wallet-muted">Loading level income history...</p>
           ) : levelIncomeHistory.length === 0 ? (
-            <p className="wallet-empty-state mt-3">No level income records found.</p>
+            <p className="mt-3 text-sm text-wallet-muted">No level income records found.</p>
           ) : (
-            <div className="wallet-table mt-3">
+            <div className="mt-3 overflow-x-auto">
               <table className="min-w-full text-xs">
                 <thead>
-                  <tr className="bg-[#0c223e]/90 text-left text-wallet-muted">
+                  <tr className="text-left text-wallet-muted">
                     <th className="px-2 py-1">Time</th>
                     <th className="px-2 py-1">Level</th>
                     <th className="px-2 py-1">Amount</th>
@@ -139,9 +139,9 @@ const ReferralsPage = () => {
                 </thead>
                 <tbody>
                   {levelIncomeHistory.map((row) => (
-                    <tr key={row.id} className="border-t border-white/8">
+                    <tr key={row.id} className="border-t border-wallet-border/50">
                       <td className="px-2 py-2 text-wallet-muted">{row.timestamp ? new Date(row.timestamp).toLocaleString() : "-"}</td>
-                      <td className="px-2 py-2 text-wallet-accentSoft">L{row.level || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-accent">L{row.level || "-"}</td>
                       <td className="px-2 py-2 text-wallet-text">${Number(row.amount || 0).toFixed(4)}</td>
                       <td className="px-2 py-2 text-wallet-muted">{row.receiverUserId || "-"}</td>
                       <td className="px-2 py-2 text-wallet-muted">{row.sourceUserId || "-"}</td>
@@ -158,20 +158,20 @@ const ReferralsPage = () => {
         </div>
         <div className="space-y-3">
           {items.length === 0 && (
-            <div className="wallet-panel p-4">
-              <p className="wallet-empty-state">No team members yet.</p>
+            <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+              <p className="text-sm text-wallet-muted">No team members yet.</p>
             </div>
           )}
           {Array.from(levelMap.entries()).map(([level, members]) => (
-            <div key={level} className="wallet-panel p-4">
-              <h3 className="wallet-title text-sm">Level {level}</h3>
+            <div key={level} className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+              <h3 className="text-sm font-semibold text-wallet-accent">Level {level}</h3>
               {members.length === 0 ? (
                 <p className="mt-2 text-xs text-wallet-muted">No members in this level.</p>
               ) : (
-                <div className="wallet-table mt-3">
+                <div className="mt-3 overflow-x-auto">
                   <table className="min-w-full text-xs">
                     <thead>
-                      <tr className="bg-[#0c223e]/90 text-left text-wallet-muted">
+                      <tr className="text-left text-wallet-muted">
                         <th className="px-2 py-1">User ID</th>
                         <th className="px-2 py-1">Name</th>
                         <th className="px-2 py-1">Join Date</th>
@@ -181,8 +181,8 @@ const ReferralsPage = () => {
                     </thead>
                     <tbody>
                       {members.map((member) => (
-                        <tr key={member._id} className="border-t border-white/8">
-                          <td className="px-2 py-2 text-wallet-accentSoft">{member.fromUser?.userId || "-"}</td>
+                        <tr key={member._id} className="border-t border-wallet-border/50">
+                          <td className="px-2 py-2 text-wallet-accent">{member.fromUser?.userId || "-"}</td>
                           <td className="px-2 py-2 text-wallet-text">{member.fromUser?.name || "User"}</td>
                           <td className="px-2 py-2 text-wallet-muted">
                             {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : "-"}
@@ -190,8 +190,10 @@ const ReferralsPage = () => {
                           <td className="px-2 py-2 text-wallet-muted">${Number(member.investment || 0).toFixed(2)}</td>
                           <td className="px-2 py-2">
                             <span
-                              className={`wallet-chip ${
-                                member.status === "active" ? "wallet-status-success" : "wallet-status-warning"
+                              className={`rounded-full px-2 py-1 uppercase ${
+                                member.status === "active"
+                                  ? "bg-wallet-success/20 text-wallet-success"
+                                  : "bg-wallet-panelAlt text-wallet-muted"
                               }`}
                             >
                               {member.status || "inactive"}

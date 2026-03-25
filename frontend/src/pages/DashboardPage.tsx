@@ -15,7 +15,6 @@ const popupDismissKey = (bannerId: string) => `dashboard_popup_banner_dismissed_
 
 const DashboardPage = () => {
   const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [walletLoading, setWalletLoading] = useState(true);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [recent, setRecent] = useState<TransactionItem[]>([]);
   const [popupBanner, setPopupBanner] = useState<PopupBannerItem | null>(null);
@@ -45,7 +44,6 @@ const DashboardPage = () => {
           }))
         );
 
-    setWalletLoading(true);
     fetchWallet()
       .then((res) => setWallet(res.data.wallet))
       .catch(() =>
@@ -59,8 +57,7 @@ const DashboardPage = () => {
           withdrawTotal: 0,
           p2pTotal: 0,
         })
-      )
-      .finally(() => setWalletLoading(false));
+      );
     fetchTransactions()
       .then((res) => {
         const items = res.data.items || [];
@@ -126,22 +123,22 @@ const DashboardPage = () => {
   return (
     <DashboardLayout>
       {showPopupBanner && popupBanner && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-          <div className="wallet-panel relative w-full max-w-xl overflow-hidden shadow-[0_30px_70px_rgba(0,0,0,0.6)]">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-wallet-bg/85 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-wallet-border/70 bg-wallet-bg shadow-[0_30px_70px_rgba(0,0,0,0.6)]">
             <button
               type="button"
               onClick={() => {
                 sessionStorage.setItem(popupDismissKey(popupBanner._id), "1");
                 setShowPopupBanner(false);
               }}
-              className="absolute right-2 top-2 z-10 rounded-full border border-wallet-border bg-wallet-panel p-1.5 text-wallet-text hover:border-wallet-accent/50 hover:text-wallet-accentSoft"
+              className="absolute right-2 top-2 z-10 rounded-full border border-wallet-border/80 bg-wallet-panel/90 p-1.5 text-wallet-text hover:border-wallet-accent/50 hover:text-wallet-accent"
               aria-label="Close popup banner"
             >
               <X size={16} />
             </button>
 
             <div className="p-3 sm:p-4">
-              {popupBanner.title && <p className="mb-2 text-sm font-semibold text-wallet-accentSoft">{popupBanner.title}</p>}
+              {popupBanner.title && <p className="mb-2 text-sm font-semibold text-wallet-accent">{popupBanner.title}</p>}
               {popupBanner.targetUrl ? (
                 <a href={popupBanner.targetUrl} target="_blank" rel="noreferrer">
                   <img
@@ -170,7 +167,7 @@ const DashboardPage = () => {
                       setDownloadingBanner(false);
                     }
                   }}
-                  className="wallet-button-secondary rounded-xl px-3 py-2"
+                  className="inline-flex items-center gap-2 rounded-xl border border-wallet-accent/30 bg-wallet-accent/10 px-3 py-2 text-sm font-semibold text-wallet-text hover:bg-wallet-accent/15"
                 >
                   <Download size={16} />
                   {downloadingBanner ? "Downloading..." : "Download"}
@@ -185,12 +182,11 @@ const DashboardPage = () => {
           depositWallet={wallet?.depositWallet || 0}
           withdrawalWallet={wallet?.withdrawalWallet || 0}
           tradingWallet={wallet?.tradingWallet || wallet?.tradingBalance || 0}
-          loading={walletLoading}
         />
-        <section className="wallet-panel p-3 sm:p-4">
+        <section className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/55 p-3 sm:p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="wallet-title text-sm sm:text-base">Income Summary</h2>
-            <span className="wallet-kicker">Crypto Earnings</span>
+            <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Income Summary</h2>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-muted">Crypto Earnings</span>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-5 md:overflow-visible">
             <div className="min-w-[150px] md:min-w-0">
@@ -210,10 +206,10 @@ const DashboardPage = () => {
             </div>
           </div>
         </section>
-        <section className="wallet-panel p-4">
+        <section className="rounded-2xl border border-wallet-border/60 bg-wallet-bg/60 p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="wallet-title text-sm sm:text-base">Income Cap Status</h2>
-            <span className="wallet-kicker text-wallet-accentSoft">
+            <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Income Cap Status</h2>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-accentAlt/85">
               {capSummary.isWorkingUser ? "Working User" : "Non-Working User"}
             </span>
           </div>
@@ -232,10 +228,10 @@ const DashboardPage = () => {
             </p>
           </div>
         </section>
-        <section className="wallet-panel p-4 sm:p-5">
+        <section className="rounded-2xl border border-wallet-accent/25 bg-gradient-to-br from-wallet-panel via-wallet-panel to-wallet-elevated/25 p-4 shadow-[0_0_24px_rgba(0,200,255,0.08)] sm:p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="wallet-title text-sm sm:text-base">Salary Rank Progress</h2>
-            <span className="wallet-kicker text-wallet-accentSoft">Team Growth</span>
+            <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Salary Rank Progress</h2>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-accentAlt/85">Team Growth</span>
           </div>
           <div className="grid grid-cols-1 gap-2 text-sm text-wallet-text sm:grid-cols-2">
             <p>
@@ -270,10 +266,10 @@ const DashboardPage = () => {
             </p>
           </div>
           <div className="mt-4">
-            <p className="wallet-kicker mb-2">Progress</p>
-            <div className="h-3 w-full rounded-full bg-[#0a1b34]">
+            <p className="mb-2 text-xs uppercase tracking-[0.18em] text-wallet-muted">Progress</p>
+            <div className="h-3 w-full rounded-full bg-wallet-panelAlt">
               <div
-                className="h-3 rounded-full bg-gradient-to-r from-[#46d69e] via-wallet-accentSoft to-[#78cfff] transition-all duration-700 ease-out"
+                className="h-3 rounded-full bg-gradient-to-r from-wallet-success via-wallet-accent to-wallet-accentAlt transition-all duration-700 ease-out"
                 style={{ width: `${salaryRankProgress.progressPercentage}%` }}
               />
             </div>
@@ -281,22 +277,22 @@ const DashboardPage = () => {
           </div>
         </section>
         <div className="grid grid-cols-2 gap-3">
-          <div className="wallet-panel-muted p-3">
+          <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-3">
             <p className="text-xs text-wallet-muted">P2P Total</p>
             <p className="mt-1 text-lg font-semibold text-wallet-text">${(wallet?.p2pTotal || 0).toFixed(2)}</p>
           </div>
-          <div className="wallet-panel-muted p-3">
+          <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-3">
             <p className="text-xs text-wallet-muted">Recent Entries</p>
             <p className="mt-1 text-lg font-semibold text-wallet-text">{recent.length}</p>
           </div>
         </div>
-        <div className="wallet-panel p-4">
-          <h2 className="wallet-title text-sm">Latest Transactions</h2>
+        <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+          <h2 className="text-sm font-semibold text-wallet-accent">Latest Transactions</h2>
           <div className="mt-3 space-y-2 text-sm">
-            {recent.length === 0 && <p className="wallet-empty-state">No transaction history available.</p>}
+            {recent.length === 0 && <p className="text-wallet-muted">No transaction history available.</p>}
             {recent.map((item) => (
-              <div key={item._id} className="flex items-center justify-between rounded-[18px] border border-white/8 bg-[#0a1b34]/88 px-3 py-3">
-                <span className="text-xs uppercase tracking-[0.16em] text-wallet-muted">{item.type}</span>
+              <div key={item._id} className="flex items-center justify-between rounded-xl bg-wallet-panelAlt/60 px-3 py-2">
+                <span className="uppercase text-xs text-wallet-muted">{item.type}</span>
                 <span className="font-semibold text-wallet-text">${formatFixedSafe(item.amount, 2, "0.00")}</span>
               </div>
             ))}

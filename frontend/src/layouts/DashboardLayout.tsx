@@ -104,18 +104,18 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <div className="wallet-shell">
-      <header className="wallet-topbar sticky top-0 z-20">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,#10284A_0%,#061427_62%)] text-wallet-text">
+      <header className="sticky top-0 z-20 border-b border-wallet-border/60 bg-wallet-bg/90 px-3 py-3 backdrop-blur sm:px-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <CryptivaLogo variant="icon" className="h-8 w-8 shrink-0" />
-            <span className="truncate text-lg font-bold tracking-[0.18em] text-wallet-text">CRYPTIVA</span>
+            <span className="truncate text-lg font-bold tracking-wide text-wallet-text">CRYPTIVA</span>
           </div>
           <div className="relative flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={onOpenNotifications}
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-wallet-border bg-wallet-panel text-wallet-accentSoft transition hover:border-wallet-accent/50 hover:bg-wallet-panelAlt hover:text-wallet-text"
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-wallet-accent/30 bg-wallet-panel text-wallet-text transition hover:border-wallet-accent hover:bg-wallet-panelAlt hover:text-wallet-accent"
               aria-label="Notifications"
             >
               <Bell size={16} />
@@ -132,27 +132,27 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
               rel="noreferrer"
               title="Download App"
               aria-label="Download App"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-wallet-border bg-wallet-panel text-wallet-accentSoft transition hover:border-wallet-accent/50 hover:bg-wallet-panelAlt hover:text-wallet-text"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-wallet-accent/30 bg-wallet-panel text-wallet-text transition hover:border-wallet-accent hover:bg-wallet-panelAlt hover:text-wallet-accent"
             >
               <Download size={16} />
             </a>
             <button
               onClick={() => setMenuOpen(true)}
-              className="rounded-2xl border border-wallet-border bg-wallet-panel p-2 text-wallet-accentSoft transition hover:border-wallet-accent/50 hover:bg-wallet-panelAlt hover:text-wallet-text"
+              className="rounded-xl border border-wallet-border/80 bg-wallet-panel p-2 text-wallet-text transition hover:border-wallet-accent/60 hover:bg-wallet-panelAlt hover:text-wallet-accent"
               aria-label="Open navigation menu"
             >
               <Menu size={18} />
             </button>
 
             {notificationOpen && (
-              <div className="wallet-panel absolute right-0 top-[calc(100%+0.55rem)] z-30 w-[min(24rem,90vw)] p-3 backdrop-blur">
+              <div className="absolute right-0 top-[calc(100%+0.45rem)] z-30 w-[min(24rem,90vw)] rounded-2xl border border-wallet-border/70 bg-wallet-bg/95 p-3 shadow-2xl backdrop-blur">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-wallet-text">Notifications</p>
+                  <p className="text-sm font-semibold text-wallet-accent">Notifications</p>
                   <button
                     type="button"
                     onClick={onMarkAllRead}
                     disabled={markingAllRead || notificationItems.length === 0 || notificationUnread === 0}
-                    className="wallet-button-secondary rounded-xl px-2.5 py-1.5 text-[11px] disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-lg border border-wallet-accent/25 bg-wallet-accent/10 px-2 py-1 text-[11px] text-wallet-text hover:bg-wallet-accent/15 disabled:opacity-50"
                   >
                     <CheckCheck size={12} />
                     {markingAllRead ? "Marking..." : "Mark all read"}
@@ -161,7 +161,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
 
                 <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
                   {!notificationLoading && notificationItems.length === 0 && (
-                    <p className="wallet-empty-state text-xs">
+                    <p className="rounded-xl border border-wallet-border/50 bg-wallet-panel/70 px-3 py-4 text-center text-xs text-wallet-muted">
                       No notifications yet.
                     </p>
                   )}
@@ -173,7 +173,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                       onClick={() => onMarkNotificationRead(item)}
                       className={`w-full rounded-xl border px-3 py-2 text-left transition ${
                         item.isRead
-                          ? "border-white/8 bg-wallet-panel text-wallet-muted"
+                          ? "border-wallet-border/40 bg-wallet-panel/70 text-wallet-muted"
                           : "border-wallet-accent/30 bg-wallet-accent/10 text-wallet-text"
                       }`}
                     >
@@ -194,7 +194,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     type="button"
                     disabled={notificationLoading}
                     onClick={() => loadNotifications(notificationPage + 1, true)}
-                    className="wallet-button-secondary mt-2 w-full rounded-xl px-3 py-2 text-xs disabled:opacity-50"
+                    className="mt-2 w-full rounded-lg border border-wallet-border/60 bg-wallet-panel/80 px-3 py-2 text-xs text-wallet-text hover:bg-wallet-panelAlt disabled:opacity-50"
                   >
                     {notificationLoading ? "Loading..." : "Load more"}
                   </button>
@@ -208,63 +208,62 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       <button
         type="button"
         onClick={() => setMenuOpen(false)}
-        className={`fixed inset-0 z-30 bg-[#020817]/80 transition-opacity md:hidden ${
+        className={`fixed inset-0 z-30 bg-wallet-bg/75 transition-opacity md:hidden ${
           menuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         aria-label="Close mobile menu"
       />
 
       <aside
-        className={`fixed right-0 top-0 z-40 h-screen w-72 border-l border-wallet-border bg-[#08152a]/96 p-4 shadow-2xl backdrop-blur transition-transform duration-300 md:hidden ${
+        className={`fixed right-0 top-0 z-40 h-screen w-72 border-l border-wallet-border/70 bg-wallet-bg/95 p-4 shadow-2xl backdrop-blur transition-transform duration-300 md:hidden ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CryptivaLogo variant="icon" className="h-6 w-6 shrink-0" />
-            <span className="text-sm font-semibold tracking-[0.18em] text-wallet-text">CRYPTIVA</span>
+            <span className="text-sm font-semibold tracking-wide text-wallet-accent">CRYPTIVA</span>
           </div>
           <button
             onClick={() => setMenuOpen(false)}
-            className="rounded-xl border border-wallet-border bg-wallet-panel p-1.5 text-wallet-accentSoft"
+            className="rounded-lg border border-wallet-border/80 bg-wallet-panel p-1.5 text-wallet-text"
             aria-label="Close navigation menu"
           >
             <X size={16} />
           </button>
         </div>
         <nav className="space-y-1">
-          <Link onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/deposit">
+          <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/deposit">
             Deposit
           </Link>
-          <Link onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/withdraw">
+          <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/withdraw">
             Withdraw
           </Link>
-          <Link onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/p2p">
+          <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/p2p">
             P2P Transfer
           </Link>
-          <Link onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/wallet-transfer">
+          <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/wallet-transfer">
             Transfer Funds
           </Link>
-          <Link onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/support">
+          <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/support">
             Support / Query
           </Link>
-          <Link onClick={() => setMenuOpen(false)} className="block rounded-xl px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/profile">
+          <Link onClick={() => setMenuOpen(false)} className="block rounded-lg px-3 py-2 text-sm text-wallet-muted hover:bg-wallet-panelAlt hover:text-wallet-text" to="/profile">
             Wallet address
           </Link>
         </nav>
         <button
           onClick={onLogout}
-          className="mt-4 w-full rounded-xl px-3 py-2 text-left text-sm text-wallet-danger hover:bg-wallet-danger/10"
+          className="mt-4 w-full rounded-lg px-3 py-2 text-left text-sm text-wallet-danger hover:bg-wallet-danger/10"
         >
           Logout
         </button>
       </aside>
 
-      <main className="wallet-page-transition mx-auto max-w-3xl px-4 pb-28 pt-5 sm:pt-6">{children}</main>
+      <main className="mx-auto max-w-3xl px-4 pb-24 pt-5">{children}</main>
       <BottomNavigation />
     </div>
   );
 };
 
 export default DashboardLayout;
-

@@ -27,19 +27,19 @@ const resolveTypeLabel = (type: string) => {
   return String(type || "").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 };
 
-const resolveStatusClass = (status: string) => {
+const resolveStatusTextClass = (status: string) => {
   const normalized = String(status || "").toLowerCase();
-  if (["completed", "success", "finished", "paid", "active"].includes(normalized)) return "wallet-status-success";
-  if (["pending", "waiting", "review", "processing", "partial", "partially_paid"].includes(normalized)) return "wallet-status-warning";
-  if (["failed", "rejected", "cancelled", "canceled"].includes(normalized)) return "wallet-status-danger";
-  return "wallet-status-info";
+  if (["completed", "success", "finished", "paid", "active"].includes(normalized)) return "text-wallet-success";
+  if (["pending", "waiting", "review", "processing", "partial", "partially_paid"].includes(normalized)) return "text-wallet-warning";
+  if (["failed", "rejected", "cancelled", "canceled"].includes(normalized)) return "text-wallet-danger";
+  return "text-wallet-accent";
 };
 
 const TransactionTable = ({ items }: { items: Transaction[] }) => {
   return (
-    <div className="wallet-table">
+    <div className="overflow-x-auto rounded-2xl border border-wallet-border/70 bg-wallet-panel/80">
       <table className="w-full text-left text-sm">
-        <thead className="bg-[#0c223e]/90 text-wallet-muted">
+        <thead className="bg-wallet-panelAlt/80 text-wallet-muted">
           <tr>
             <th className="p-3">Date</th>
             <th className="p-3">Type</th>
@@ -49,15 +49,8 @@ const TransactionTable = ({ items }: { items: Transaction[] }) => {
           </tr>
         </thead>
         <tbody>
-          {items.length === 0 && (
-            <tr>
-              <td colSpan={5} className="p-4 text-wallet-muted">
-                No transactions found.
-              </td>
-            </tr>
-          )}
           {items.map((tx) => (
-            <tr key={tx._id} className="border-t border-white/8 text-wallet-text">
+            <tr key={tx._id} className="border-t border-wallet-border/50 text-wallet-text">
               <td className="p-3">{new Date(tx.createdAt).toLocaleString()}</td>
               <td className="p-3">{resolveTypeLabel(tx.type)}</td>
               <td className={`p-3 font-semibold ${Number(tx.amount || 0) < 0 ? "text-wallet-danger" : "text-wallet-success"}`}>
@@ -87,9 +80,7 @@ const TransactionTable = ({ items }: { items: Transaction[] }) => {
                 )}
               </td>
               <td className="p-3 text-wallet-muted">{tx.network || "INTERNAL"}</td>
-              <td className="p-3">
-                <span className={`wallet-chip ${resolveStatusClass(tx.status)}`}>{tx.status || "Unknown"}</span>
-              </td>
+              <td className={`p-3 uppercase ${resolveStatusTextClass(tx.status)}`}>{tx.status}</td>
             </tr>
           ))}
         </tbody>

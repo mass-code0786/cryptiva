@@ -123,8 +123,8 @@ const DashboardPage = () => {
   return (
     <DashboardLayout>
       {showPopupBanner && popupBanner && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-wallet-bg/85 p-4">
-          <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-wallet-border bg-wallet-bg shadow-[0_30px_70px_rgba(0,0,0,0.6)]">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-wallet-bg/70 p-4 backdrop-blur-md">
+          <div className="wallet-panel relative w-full max-w-xl overflow-hidden shadow-[0_30px_70px_rgb(var(--wallet-shadow-color)/0.36)]">
             <button
               type="button"
               onClick={() => {
@@ -183,7 +183,7 @@ const DashboardPage = () => {
           withdrawalWallet={wallet?.withdrawalWallet || 0}
           tradingWallet={wallet?.tradingWallet || wallet?.tradingBalance || 0}
         />
-        <section className="rounded-2xl border border-wallet-border bg-wallet-panel p-3 sm:p-4">
+        <section className="wallet-panel p-3 sm:p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Income Summary</h2>
             <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-muted">Crypto Earnings</span>
@@ -206,7 +206,7 @@ const DashboardPage = () => {
             </div>
           </div>
         </section>
-        <section className="rounded-2xl border border-wallet-border bg-wallet-panelAlt p-4">
+        <section className="wallet-panel-muted p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Income Cap Status</h2>
             <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-accentAlt/85">
@@ -277,21 +277,21 @@ const DashboardPage = () => {
           </div>
         </section>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-3">
+          <div className="wallet-panel p-3">
             <p className="text-xs text-wallet-muted">P2P Total</p>
             <p className="wallet-profit-flash mt-1 text-lg font-semibold text-wallet-accent">${(wallet?.p2pTotal || 0).toFixed(2)}</p>
           </div>
-          <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-3">
+          <div className="wallet-panel p-3">
             <p className="text-xs text-wallet-muted">Recent Entries</p>
             <p className="mt-1 text-lg font-semibold text-wallet-accent">{recent.length}</p>
           </div>
         </div>
-        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+        <div className="wallet-panel p-4">
           <h2 className="text-sm font-semibold text-wallet-accent">Latest Transactions</h2>
           <div className="mt-3 space-y-2 text-sm">
             {recent.length === 0 && <p className="text-wallet-muted">No transaction history available.</p>}
             {recent.map((item) => (
-              <div key={item._id} className="wallet-row-enter flex items-center justify-between rounded-xl border border-wallet-border bg-wallet-panelAlt px-3 py-2 transition-colors hover:border-wallet-accent/30">
+              <div key={item._id} className="wallet-row-enter flex items-center justify-between rounded-xl border border-wallet-border bg-wallet-panelAlt/75 px-3 py-2 transition-colors hover:border-wallet-accent/30">
                 <span className="uppercase text-xs text-wallet-muted">{item.type}</span>
                 <span className="font-semibold text-wallet-text">${formatFixedSafe(item.amount, 2, "0.00")}</span>
               </div>

@@ -58,7 +58,7 @@ const DepositPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+      <div className="wallet-panel p-4">
         <h2 className="text-xl font-semibold text-wallet-text">Deposit</h2>
         <p className="mt-1 text-sm text-wallet-muted">Only USDT BEP20 is allowed. Minimum deposit: $5.</p>
         <p className="mt-2 rounded-xl border border-wallet-warning/25 bg-wallet-warning/10 px-3 py-2 text-xs text-wallet-warning">
@@ -81,7 +81,7 @@ const DepositPage = () => {
         </form>
         {message && <p className="mt-3 text-sm text-wallet-accent">{message}</p>}
         {requestedCreditAmount !== null && (
-          <div className="mt-3 rounded-xl border border-wallet-border bg-wallet-panelAlt p-3 text-sm text-wallet-text">
+          <div className="wallet-panel-muted mt-3 rounded-xl p-3 text-sm text-wallet-text">
             <p>
               Deposit Amount (credited in Cryptiva):{" "}
               <span className="font-semibold text-wallet-accent">{money(requestedCreditAmount)} USDT</span>
@@ -115,7 +115,7 @@ const DepositPage = () => {
           </a>
         )}
         {payAddress && (
-          <div className="mt-3 rounded-xl border border-wallet-border bg-wallet-panelAlt p-3 text-sm">
+          <div className="wallet-panel-muted mt-3 rounded-xl p-3 text-sm">
             <p className="text-wallet-muted">Payment Address (USDT BEP20)</p>
             <p className="mt-1 break-all text-wallet-accent">{payAddress}</p>
           </div>

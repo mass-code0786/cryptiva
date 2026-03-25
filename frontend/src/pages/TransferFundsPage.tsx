@@ -29,11 +29,11 @@ const TransferFundsPage = () => {
         <p className="mt-1 text-sm text-wallet-muted">Move funds from Withdrawal Wallet to Deposit Wallet.</p>
 
         <form className="mt-4 space-y-3" onSubmit={submit}>
-          <div className="rounded-[20px] border border-wallet-border bg-wallet-panelAlt p-3 text-sm">
+          <div className="wallet-panel-muted rounded-[20px] p-3 text-sm">
             <p className="text-wallet-muted">Transfer From</p>
             <p className="font-medium text-wallet-accent">Withdrawal Wallet</p>
           </div>
-          <div className="rounded-[20px] border border-wallet-border bg-wallet-panelAlt p-3 text-sm">
+          <div className="wallet-panel-muted rounded-[20px] p-3 text-sm">
             <p className="text-wallet-muted">Transfer To</p>
             <p className="font-medium text-wallet-accent">Deposit Wallet</p>
           </div>

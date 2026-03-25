@@ -28,7 +28,7 @@ const WithdrawalPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+      <div className="wallet-panel p-4">
         <h2 className="text-xl font-semibold text-wallet-text">Withdraw</h2>
         <p className="mt-1 text-sm text-wallet-muted">
           Only USDT BEP20. Minimum withdraw: $10. Funds go to your saved wallet address.

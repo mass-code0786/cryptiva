@@ -76,7 +76,7 @@ const TradingPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+        <div className="wallet-panel p-4">
           <h2 className="text-xl font-semibold text-wallet-text">Place Trade</h2>
           <p className="mt-2 text-sm text-wallet-text">
             Deposit Wallet: <span className="wallet-profit-flash font-semibold text-wallet-accent">${walletBalance.toFixed(2)}</span>
@@ -107,7 +107,7 @@ const TradingPage = () => {
           </form>
         </div>
 
-        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+        <div className="wallet-panel p-4">
           <h3 className="text-sm font-semibold text-wallet-accent">Active Trade Status</h3>
           <p className="mt-1 text-xs text-wallet-muted">
             Trade cards below show per-trade progress only, not your overall income cap.
@@ -117,7 +117,7 @@ const TradingPage = () => {
               <p className="text-sm text-wallet-muted">No active trades.</p>
             )}
             {activeTrades.map((trade) => (
-              <div key={trade._id} className="wallet-row-enter rounded-xl border border-wallet-border bg-wallet-panelAlt p-3 text-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-wallet-accent/35">
+              <div key={trade._id} className="wallet-row-enter rounded-xl border border-wallet-border bg-wallet-panelAlt/75 p-3 text-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-wallet-accent/35">
                 <div className="flex items-center justify-between">
                   <span className="text-wallet-muted">Amount</span>
                   <span className="font-semibold text-wallet-text">${trade.amount.toFixed(2)}</span>

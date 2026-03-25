@@ -97,7 +97,7 @@ const SupportPage = () => {
                 <th className="px-4 py-3">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-wallet-border/30 bg-wallet-panel/60">
+            <tbody className="divide-y divide-wallet-border/30 bg-wallet-panel/50">
               {!loading && items.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-4 text-wallet-muted">

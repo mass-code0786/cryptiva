@@ -72,24 +72,24 @@ const ReferralsPage = () => {
     <DashboardLayout>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+          <div className="wallet-panel p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Direct Team</p>
             <p className="mt-2 text-2xl font-semibold text-wallet-accent">{totalDirectTeam}</p>
           </div>
-          <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+          <div className="wallet-panel p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Level Team</p>
             <p className="mt-2 text-2xl font-semibold text-wallet-accent">{totalLevelTeam}</p>
           </div>
         </div>
-        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+        <div className="wallet-panel p-4">
           <h2 className="text-xl font-semibold text-wallet-success">Level Unlock Status</h2>
           <p className="mt-1 text-sm text-wallet-muted">Unlock rule: 1 qualified direct = 2 levels</p>
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl border border-wallet-border bg-wallet-panelAlt p-3">
+            <div className="wallet-panel-muted rounded-xl p-3">
               <p className="text-wallet-muted">Qualified Directs</p>
               <p className="mt-1 text-lg font-semibold text-wallet-accent">{qualifiedDirectCount}</p>
             </div>
-            <div className="rounded-xl border border-wallet-border bg-wallet-panelAlt p-3">
+            <div className="wallet-panel-muted rounded-xl p-3">
               <p className="text-wallet-muted">Unlocked Levels</p>
               <p className="mt-1 text-lg font-semibold text-wallet-success">
                 {unlockedLevels} / {maxLevels}
@@ -112,7 +112,7 @@ const ReferralsPage = () => {
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+        <div className="wallet-panel p-4">
           <h3 className="text-base font-semibold text-wallet-accent">Level Income History (Audit Trace)</h3>
           <p className="mt-1 text-xs text-wallet-muted">
             Includes level number, source member details, receiver details, ROI/trade reference, and timestamp.
@@ -158,12 +158,12 @@ const ReferralsPage = () => {
         </div>
         <div className="space-y-3">
           {items.length === 0 && (
-            <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+            <div className="wallet-panel p-4">
               <p className="text-sm text-wallet-muted">No team members yet.</p>
             </div>
           )}
           {Array.from(levelMap.entries()).map(([level, members]) => (
-            <div key={level} className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
+            <div key={level} className="wallet-panel p-4">
               <h3 className="text-sm font-semibold text-wallet-accent">Level {level}</h3>
               {members.length === 0 ? (
                 <p className="mt-2 text-xs text-wallet-muted">No members in this level.</p>

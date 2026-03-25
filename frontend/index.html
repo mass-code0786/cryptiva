@@ -25,6 +25,22 @@
     <noscript>
       <meta http-equiv="refresh" content="0;url=https://cryptiva.world" />
     </noscript>
+    <script>
+      (function () {
+        try {
+          var stored = window.localStorage.getItem("cryptiva-theme");
+          var prefersLight =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: light)").matches;
+          var theme = stored === "light" || stored === "dark" ? stored : prefersLight ? "light" : "dark";
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+        } catch (error) {
+          document.documentElement.dataset.theme = "dark";
+          document.documentElement.style.colorScheme = "dark";
+        }
+      })();
+    </script>
     <title>Cryptiva</title>
   </head>
   <body>

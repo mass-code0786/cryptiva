@@ -59,12 +59,12 @@
 
   .wallet-button-primary {
     @apply rounded-xl px-4 py-3 font-semibold text-wallet-text;
-    background: linear-gradient(135deg, #00e5a8 0%, #00c2ff 100%);
-    box-shadow: 0 10px 24px rgba(0, 229, 168, 0.14);
+    background: linear-gradient(135deg, #00d4ff 0%, #00ffa3 100%);
+    box-shadow: 0 10px 24px rgba(0, 212, 255, 0.14);
   }
 
   .wallet-button-primary:hover {
-    box-shadow: 0 12px 28px rgba(0, 229, 168, 0.18);
+    box-shadow: 0 12px 28px rgba(0, 212, 255, 0.18);
     filter: brightness(1.03);
   }
 
@@ -108,11 +108,34 @@
     border-color: rgba(31, 92, 110, 0.34);
   }
 
+  .wallet-auth-shell {
+    @apply min-h-[100dvh];
+    background: linear-gradient(135deg, #021b2b 0%, #04344a 52%, #065a60 100%);
+  }
+
+  .wallet-auth-card {
+    @apply rounded-2xl border;
+    background: rgba(6, 58, 70, 0.6);
+    border-color: rgba(0, 200, 255, 0.15);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+  }
+
+  .wallet-auth-input {
+    @apply w-full rounded-xl border bg-wallet-bg p-3 text-wallet-text outline-none;
+    border-color: rgba(31, 92, 110, 0.42);
+    background: rgba(2, 27, 43, 0.78);
+  }
+
+  .wallet-auth-link {
+    @apply text-wallet-accentAlt transition-colors hover:text-wallet-accent;
+  }
+
   .wallet-panel:hover,
   .wallet-panel-muted:hover,
   .wallet-panel-strong:hover {
     transform: translateY(-2px);
-    box-shadow: 0 18px 40px rgba(0, 229, 168, 0.08);
+    box-shadow: 0 18px 40px rgba(0, 212, 255, 0.08);
   }
 }
 
@@ -130,13 +153,13 @@ body {
 @keyframes cryptivaGlowPulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 8px rgba(0, 229, 168, 0.22))
-      drop-shadow(0 0 14px rgba(0, 194, 255, 0.16));
+    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.2))
+      drop-shadow(0 0 14px rgba(0, 255, 163, 0.14));
     opacity: 0.95;
   }
   50% {
-    filter: drop-shadow(0 0 12px rgba(0, 229, 168, 0.28))
-      drop-shadow(0 0 18px rgba(0, 194, 255, 0.2));
+    filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.26))
+      drop-shadow(0 0 18px rgba(0, 255, 163, 0.18));
     opacity: 1;
   }
 }

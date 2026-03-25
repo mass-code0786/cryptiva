@@ -181,72 +181,72 @@ const ProfilePage = () => {
     <DashboardLayout>
       <div className="space-y-4">
         {showForcePasswordNotice && (
-          <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+          <div className="rounded-2xl border border-wallet-warning/30 bg-wallet-warning/10 p-3 text-sm text-wallet-warning">
             Your password was reset by admin. Please set a new password now.
           </div>
         )}
-        <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-          <h2 className="text-xl font-semibold">Profile Settings</h2>
-          <p className="mt-1 text-sm text-slate-400">Bind your USDT BEP20 wallet address before deposit/withdraw.</p>
+        <div className="wallet-panel p-4">
+          <h2 className="wallet-title text-xl">Profile Settings</h2>
+          <p className="mt-1 text-sm text-wallet-muted">Bind your USDT BEP20 wallet address before deposit/withdraw.</p>
           <form className="mt-4 space-y-3" onSubmit={onSubmit}>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+              className="wallet-input"
               placeholder="Full Name"
             />
             <input
               value={walletAddress}
               onChange={(e) => setWalletAddress(e.target.value)}
-              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+              className="wallet-input"
               placeholder="USDT BEP20 Wallet Address"
             />
             <input
               value={network}
               readOnly
-              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 text-slate-400"
+              className="wallet-input text-wallet-muted"
             />
-            <button className="w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950">
+            <button className="wallet-button-primary w-full">
               Save Changes
             </button>
           </form>
-          {message && <p className="mt-3 text-sm text-cyan-200">{message}</p>}
+          {message && <p className="mt-3 text-sm text-wallet-accent">{message}</p>}
         </div>
-        <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4 text-sm">
-          <p className="text-slate-400">User ID</p>
+        <div className="wallet-panel p-4 text-sm">
+          <p className="text-wallet-muted">User ID</p>
           <p className="font-medium">{user?.userId || "-"}</p>
-          <p className="mt-2 text-slate-400">Email</p>
+          <p className="mt-2 text-wallet-muted">Email</p>
           <p className="font-medium">{user?.email || "-"}</p>
-          <p className="mt-2 text-slate-400">Referral Code</p>
+          <p className="mt-2 text-wallet-muted">Referral Code</p>
           <p className="font-medium">{user?.referralCode || "-"}</p>
           <form className="mt-3 space-y-2" onSubmit={onUpdateReferralCode}>
             <input
               value={newReferralCode}
               onChange={(e) => setNewReferralCode(e.target.value.toLowerCase())}
               disabled={user?.canChangeReferralCode === false}
-              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="wallet-input disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Change referral code (one time)"
             />
             <button
               type="submit"
               disabled={user?.canChangeReferralCode === false}
-              className="w-full rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className="wallet-button-secondary w-full disabled:cursor-not-allowed disabled:opacity-60"
             >
               Update Referral Code
             </button>
             {user?.canChangeReferralCode === false && (
-              <p className="text-xs text-amber-300">Referral code change already used.</p>
+              <p className="text-xs text-wallet-warning">Referral code change already used.</p>
             )}
-            {referralMessage && <p className="text-xs text-cyan-300">{referralMessage}</p>}
+            {referralMessage && <p className="text-xs text-wallet-accent">{referralMessage}</p>}
           </form>
-          <p className="mt-2 text-slate-400">Referral Link</p>
+          <p className="mt-2 text-wallet-muted">Referral Link</p>
           <p className="break-all font-medium">{referralLink || "-"}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               disabled={!referralLink}
               onClick={onCopyReferralLink}
-              className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-50"
+              className="wallet-button-secondary rounded-lg px-3 py-2 text-xs disabled:opacity-50"
             >
               Copy Link
             </button>
@@ -254,7 +254,7 @@ const ProfilePage = () => {
               href={`https://wa.me/?text=Join%20Cryptiva%20using%20my%20referral%20link:%20${encodedLink}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+              className="rounded-lg border border-wallet-border/50 bg-wallet-bg/70 px-3 py-2 text-xs text-wallet-text hover:border-wallet-accent"
             >
               WhatsApp
             </a>
@@ -262,7 +262,7 @@ const ProfilePage = () => {
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodedLink}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+              className="rounded-lg border border-wallet-border/50 bg-wallet-bg/70 px-3 py-2 text-xs text-wallet-text hover:border-wallet-accent"
             >
               Facebook
             </a>
@@ -270,7 +270,7 @@ const ProfilePage = () => {
               href={`https://t.me/share/url?url=${encodedLink}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+              className="rounded-lg border border-wallet-border/50 bg-wallet-bg/70 px-3 py-2 text-xs text-wallet-text hover:border-wallet-accent"
             >
               Telegram
             </a>
@@ -278,47 +278,47 @@ const ProfilePage = () => {
               href={`https://twitter.com/intent/tweet?text=Join%20Cryptiva%20&url=${encodedLink}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-200 hover:border-cyan-600"
+              className="rounded-lg border border-wallet-border/50 bg-wallet-bg/70 px-3 py-2 text-xs text-wallet-text hover:border-wallet-accent"
             >
               Twitter
             </a>
           </div>
-          {copyMessage && <p className="mt-2 text-xs text-cyan-300">{copyMessage}</p>}
+          {copyMessage && <p className="mt-2 text-xs text-wallet-accent">{copyMessage}</p>}
         </div>
-        <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-          <h3 className="text-lg font-semibold">Change Password</h3>
-          <p className="mt-1 text-xs text-slate-400">Use a strong password with uppercase, lowercase, number, and special character.</p>
+        <div className="wallet-panel p-4">
+          <h3 className="wallet-title text-lg">Change Password</h3>
+          <p className="mt-1 text-xs text-wallet-muted">Use a strong password with uppercase, lowercase, number, and special character.</p>
           <form className="mt-4 space-y-3" onSubmit={onChangePassword}>
             <input
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+              className="wallet-input"
               placeholder="Current password"
             />
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+              className="wallet-input"
               placeholder="New password"
             />
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+              className="wallet-input"
               placeholder="Confirm new password"
             />
             <button
               type="submit"
               disabled={passwordBusy}
-              className="w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
+              className="wallet-button-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
             >
               {passwordBusy ? "Updating..." : "Update Password"}
             </button>
           </form>
-          {passwordMessage && <p className="mt-3 text-sm text-cyan-200">{passwordMessage}</p>}
+          {passwordMessage && <p className="mt-3 text-sm text-wallet-accent">{passwordMessage}</p>}
         </div>
       </div>
     </DashboardLayout>

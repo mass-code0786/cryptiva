@@ -87,7 +87,7 @@ const SupportPage = () => {
         {error && <p className="rounded-xl border border-wallet-danger/30 bg-wallet-danger/10 px-3 py-2 text-sm text-wallet-danger">{error}</p>}
 
         <div className="wallet-table">
-          <table className="min-w-full divide-y divide-cyan-800/30 text-sm">
+          <table className="min-w-full divide-y divide-wallet-border/40 text-sm">
             <thead className="bg-wallet-panelAlt/90 text-left text-wallet-muted">
               <tr>
                 <th className="px-4 py-3">Subject</th>
@@ -97,7 +97,7 @@ const SupportPage = () => {
                 <th className="px-4 py-3">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/8 bg-wallet-panel/60">
+            <tbody className="divide-y divide-wallet-border/30 bg-wallet-panel/60">
               {!loading && items.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-4 text-wallet-muted">

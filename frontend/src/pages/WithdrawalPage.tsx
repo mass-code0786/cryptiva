@@ -28,9 +28,9 @@ const WithdrawalPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-        <h2 className="text-xl font-semibold">Withdraw</h2>
-        <p className="mt-1 text-sm text-slate-400">
+      <div className="wallet-panel p-4">
+        <h2 className="wallet-title text-xl">Withdraw</h2>
+        <p className="mt-1 text-sm text-wallet-muted">
           Only USDT BEP20. Minimum withdraw: $10. Funds go to your saved wallet address.
         </p>
         <form className="mt-4 space-y-3" onSubmit={submit}>
@@ -40,21 +40,21 @@ const WithdrawalPage = () => {
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+            className="wallet-input"
             placeholder="Amount (USDT)"
           />
           <input
             type="password"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+            className="wallet-input"
             placeholder="PIN"
           />
-          <button className="w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950">
+          <button className="wallet-button-primary w-full">
             Submit Withdrawal
           </button>
         </form>
-        {message && <p className="mt-3 text-sm text-cyan-200">{message}</p>}
+        {message && <p className="mt-3 text-sm text-wallet-accentSoft">{message}</p>}
       </div>
     </DashboardLayout>
   );

@@ -58,10 +58,10 @@ const DepositPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-        <h2 className="text-xl font-semibold">Deposit</h2>
-        <p className="mt-1 text-sm text-slate-400">Only USDT BEP20 is allowed. Minimum deposit: $5.</p>
-        <p className="mt-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+      <div className="wallet-panel-strong p-4">
+        <h2 className="wallet-title text-xl">Deposit</h2>
+        <p className="mt-1 text-sm text-wallet-muted">Only USDT BEP20 is allowed. Minimum deposit: $5.</p>
+        <p className="mt-2 rounded-2xl border border-wallet-warning/25 bg-wallet-warning/10 px-3 py-2 text-xs text-wallet-warning">
           Due to gateway/network charges, the payable amount may be slightly higher than the credited amount.
           Cryptiva wallet will be credited with the selected deposit amount after successful payment verification.
         </p>
@@ -72,24 +72,24 @@ const DepositPage = () => {
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+            className="wallet-input"
             placeholder="Amount (USDT)"
           />
-          <button className="w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950">
+          <button className="wallet-button-primary w-full">
             Create Deposit
           </button>
         </form>
-        {message && <p className="mt-3 text-sm text-cyan-200">{message}</p>}
+        {message && <p className="mt-3 text-sm text-wallet-accentSoft">{message}</p>}
         {requestedCreditAmount !== null && (
-          <div className="mt-3 rounded-xl border border-cyan-800/40 bg-slate-950/70 p-3 text-sm text-slate-200">
+          <div className="mt-3 rounded-[20px] border border-wallet-border bg-[#0a1b34]/90 p-4 text-sm text-wallet-text">
             <p>
               Deposit Amount (credited in Cryptiva):{" "}
-              <span className="font-semibold text-cyan-300">{money(requestedCreditAmount)} USDT</span>
+              <span className="font-semibold text-wallet-accentSoft">{money(requestedCreditAmount)} USDT</span>
             </p>
             {gatewayFeeAmount !== null && (
               <p className="mt-1">
                 Gateway / Network Fee:{" "}
-                <span className="font-semibold text-amber-200">
+                <span className="font-semibold text-wallet-warning">
                   {money(Math.max(0, gatewayFeeAmount))} {gatewayFeeCurrency || expectedPayCurrency}
                 </span>
               </p>
@@ -97,7 +97,7 @@ const DepositPage = () => {
             {expectedPayAmount !== null && (
               <p className="mt-1">
                 Total You Need to Pay:{" "}
-                <span className="font-semibold text-emerald-300">
+                <span className="font-semibold text-wallet-success">
                   {money(expectedPayAmount)} {expectedPayCurrency || "USDT"}
                 </span>
               </p>
@@ -106,7 +106,7 @@ const DepositPage = () => {
         )}
         {paymentUrl && (
           <a
-            className="mt-3 block rounded-xl bg-cyan-500/10 p-3 text-sm text-cyan-300 underline"
+            className="wallet-button-secondary mt-3 flex rounded-[20px] px-4 py-3 underline"
             href={paymentUrl}
             target="_blank"
             rel="noreferrer"
@@ -115,16 +115,16 @@ const DepositPage = () => {
           </a>
         )}
         {payAddress && (
-          <div className="mt-3 rounded-xl bg-slate-950/70 p-3 text-sm">
-            <p className="text-slate-400">Payment Address (USDT BEP20)</p>
-            <p className="mt-1 break-all text-cyan-300">{payAddress}</p>
+          <div className="mt-3 rounded-[20px] border border-white/8 bg-[#0a1b34]/90 p-3 text-sm">
+            <p className="text-wallet-muted">Payment Address (USDT BEP20)</p>
+            <p className="mt-1 break-all text-wallet-accentSoft">{payAddress}</p>
           </div>
         )}
         {qrCodeUrl && (
           <img
             src={qrCodeUrl}
             alt="Deposit QR code"
-            className="mt-3 max-w-[180px] rounded-xl border border-cyan-800/40 bg-slate-950 p-2"
+            className="mt-3 max-w-[180px] rounded-[20px] border border-wallet-border bg-[#0a1b34] p-2"
           />
         )}
       </div>

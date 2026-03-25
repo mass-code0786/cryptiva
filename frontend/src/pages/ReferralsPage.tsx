@@ -72,26 +72,26 @@ const ReferralsPage = () => {
     <DashboardLayout>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Direct Team</p>
-            <p className="mt-2 text-2xl font-semibold text-cyan-200">{totalDirectTeam}</p>
+          <div className="wallet-panel-muted p-4">
+            <p className="wallet-kicker">Total Direct Team</p>
+            <p className="mt-2 text-2xl font-semibold text-wallet-accentSoft">{totalDirectTeam}</p>
           </div>
-          <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Level Team</p>
-            <p className="mt-2 text-2xl font-semibold text-cyan-200">{totalLevelTeam}</p>
+          <div className="wallet-panel-muted p-4">
+            <p className="wallet-kicker">Total Level Team</p>
+            <p className="mt-2 text-2xl font-semibold text-wallet-accentSoft">{totalLevelTeam}</p>
           </div>
         </div>
-        <div className="rounded-2xl border border-emerald-700/30 bg-slate-900/70 p-4">
-          <h2 className="text-xl font-semibold text-emerald-200">Level Unlock Status</h2>
-          <p className="mt-1 text-sm text-slate-400">Unlock rule: 1 qualified direct = 2 levels</p>
+        <div className="wallet-panel p-4">
+          <h2 className="wallet-title text-xl">Level Unlock Status</h2>
+          <p className="mt-1 text-sm text-wallet-muted">Unlock rule: 1 qualified direct = 2 levels</p>
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-3">
-              <p className="text-slate-400">Qualified Directs</p>
-              <p className="mt-1 text-lg font-semibold text-cyan-200">{qualifiedDirectCount}</p>
+            <div className="rounded-[20px] border border-white/10 bg-[#0a1b34]/85 p-3">
+              <p className="text-wallet-muted">Qualified Directs</p>
+              <p className="mt-1 text-lg font-semibold text-wallet-accentSoft">{qualifiedDirectCount}</p>
             </div>
-            <div className="rounded-xl border border-slate-700 bg-slate-800/60 p-3">
-              <p className="text-slate-400">Unlocked Levels</p>
-              <p className="mt-1 text-lg font-semibold text-emerald-300">
+            <div className="rounded-[20px] border border-white/10 bg-[#0a1b34]/85 p-3">
+              <p className="text-wallet-muted">Unlocked Levels</p>
+              <p className="mt-1 text-lg font-semibold text-wallet-success">
                 {unlockedLevels} / {maxLevels}
               </p>
             </div>
@@ -102,8 +102,8 @@ const ReferralsPage = () => {
                 key={row.level}
                 className={`rounded-xl border px-3 py-2 text-xs ${
                   row.status === "open"
-                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
-                    : "border-slate-700 bg-slate-800/70 text-slate-400"
+                    ? "wallet-status-success"
+                    : "border-white/10 bg-[#0a1b34]/70 text-wallet-muted"
                 }`}
               >
                 <p className="font-semibold">Level {row.level}</p>
@@ -112,20 +112,20 @@ const ReferralsPage = () => {
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-          <h3 className="text-base font-semibold text-cyan-200">Level Income History (Audit Trace)</h3>
-          <p className="mt-1 text-xs text-slate-400">
+        <div className="wallet-panel p-4">
+          <h3 className="wallet-title text-base">Level Income History (Audit Trace)</h3>
+          <p className="mt-1 text-xs text-wallet-muted">
             Includes level number, source member details, receiver details, ROI/trade reference, and timestamp.
           </p>
           {historyLoading ? (
-            <p className="mt-3 text-sm text-slate-400">Loading level income history...</p>
+            <p className="wallet-empty-state mt-3">Loading level income history...</p>
           ) : levelIncomeHistory.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-400">No level income records found.</p>
+            <p className="wallet-empty-state mt-3">No level income records found.</p>
           ) : (
-            <div className="mt-3 overflow-x-auto">
+            <div className="wallet-table mt-3">
               <table className="min-w-full text-xs">
                 <thead>
-                  <tr className="text-left text-slate-400">
+                  <tr className="bg-[#0c223e]/90 text-left text-wallet-muted">
                     <th className="px-2 py-1">Time</th>
                     <th className="px-2 py-1">Level</th>
                     <th className="px-2 py-1">Amount</th>
@@ -139,16 +139,16 @@ const ReferralsPage = () => {
                 </thead>
                 <tbody>
                   {levelIncomeHistory.map((row) => (
-                    <tr key={row.id} className="border-t border-slate-800">
-                      <td className="px-2 py-2 text-slate-300">{row.timestamp ? new Date(row.timestamp).toLocaleString() : "-"}</td>
-                      <td className="px-2 py-2 text-cyan-300">L{row.level || "-"}</td>
-                      <td className="px-2 py-2 text-slate-100">${Number(row.amount || 0).toFixed(4)}</td>
-                      <td className="px-2 py-2 text-slate-300">{row.receiverUserId || "-"}</td>
-                      <td className="px-2 py-2 text-slate-300">{row.sourceUserId || "-"}</td>
-                      <td className="px-2 py-2 text-slate-300">{row.sourceUserName || "-"}</td>
-                      <td className="px-2 py-2 text-slate-300">{row.sourceUserSponsorId || "-"}</td>
-                      <td className="px-2 py-2 text-slate-300">{row.tradeId || "-"}</td>
-                      <td className="px-2 py-2 text-slate-300">{row.roiEventKey || row.roiCreditTransactionId || "-"}</td>
+                    <tr key={row.id} className="border-t border-white/8">
+                      <td className="px-2 py-2 text-wallet-muted">{row.timestamp ? new Date(row.timestamp).toLocaleString() : "-"}</td>
+                      <td className="px-2 py-2 text-wallet-accentSoft">L{row.level || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-text">${Number(row.amount || 0).toFixed(4)}</td>
+                      <td className="px-2 py-2 text-wallet-muted">{row.receiverUserId || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-muted">{row.sourceUserId || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-muted">{row.sourceUserName || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-muted">{row.sourceUserSponsorId || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-muted">{row.tradeId || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-muted">{row.roiEventKey || row.roiCreditTransactionId || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -158,20 +158,20 @@ const ReferralsPage = () => {
         </div>
         <div className="space-y-3">
           {items.length === 0 && (
-            <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-              <p className="text-sm text-slate-400">No team members yet.</p>
+            <div className="wallet-panel p-4">
+              <p className="wallet-empty-state">No team members yet.</p>
             </div>
           )}
           {Array.from(levelMap.entries()).map(([level, members]) => (
-            <div key={level} className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-              <h3 className="text-sm font-semibold text-cyan-200">Level {level}</h3>
+            <div key={level} className="wallet-panel p-4">
+              <h3 className="wallet-title text-sm">Level {level}</h3>
               {members.length === 0 ? (
-                <p className="mt-2 text-xs text-slate-500">No members in this level.</p>
+                <p className="mt-2 text-xs text-wallet-muted">No members in this level.</p>
               ) : (
-                <div className="mt-3 overflow-x-auto">
+                <div className="wallet-table mt-3">
                   <table className="min-w-full text-xs">
                     <thead>
-                      <tr className="text-left text-slate-400">
+                      <tr className="bg-[#0c223e]/90 text-left text-wallet-muted">
                         <th className="px-2 py-1">User ID</th>
                         <th className="px-2 py-1">Name</th>
                         <th className="px-2 py-1">Join Date</th>
@@ -181,17 +181,17 @@ const ReferralsPage = () => {
                     </thead>
                     <tbody>
                       {members.map((member) => (
-                        <tr key={member._id} className="border-t border-slate-800">
-                          <td className="px-2 py-2 text-cyan-300">{member.fromUser?.userId || "-"}</td>
-                          <td className="px-2 py-2 text-slate-200">{member.fromUser?.name || "User"}</td>
-                          <td className="px-2 py-2 text-slate-400">
+                        <tr key={member._id} className="border-t border-white/8">
+                          <td className="px-2 py-2 text-wallet-accentSoft">{member.fromUser?.userId || "-"}</td>
+                          <td className="px-2 py-2 text-wallet-text">{member.fromUser?.name || "User"}</td>
+                          <td className="px-2 py-2 text-wallet-muted">
                             {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : "-"}
                           </td>
-                          <td className="px-2 py-2 text-slate-300">${Number(member.investment || 0).toFixed(2)}</td>
+                          <td className="px-2 py-2 text-wallet-muted">${Number(member.investment || 0).toFixed(2)}</td>
                           <td className="px-2 py-2">
                             <span
-                              className={`rounded-full px-2 py-1 uppercase ${
-                                member.status === "active" ? "bg-emerald-500/20 text-emerald-200" : "bg-slate-700 text-slate-300"
+                              className={`wallet-chip ${
+                                member.status === "active" ? "wallet-status-success" : "wallet-status-warning"
                               }`}
                             >
                               {member.status || "inactive"}
@@ -205,7 +205,7 @@ const ReferralsPage = () => {
               )}
             </div>
           ))}
-          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

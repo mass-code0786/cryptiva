@@ -54,17 +54,17 @@ const P2PPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-        <h2 className="text-xl font-semibold">P2P Transfer</h2>
+      <div className="wallet-panel p-4">
+        <h2 className="wallet-title text-xl">P2P Transfer</h2>
         <form className="mt-4 space-y-3" onSubmit={submit}>
           <input
             value={receiverUserId}
             onChange={(e) => setReceiverUserId(e.target.value.toUpperCase())}
-            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+            className="wallet-input"
             placeholder="Receiver User ID (e.g. CTV-82AYIWCF)"
           />
           {lookupMessage && (
-            <p className={`text-xs ${receiverName ? "text-emerald-300" : "text-rose-300"}`}>{lookupMessage}</p>
+            <p className={`text-xs ${receiverName ? "text-wallet-success" : "text-wallet-danger"}`}>{lookupMessage}</p>
           )}
           <input
             type="number"
@@ -72,20 +72,20 @@ const P2PPage = () => {
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+            className="wallet-input"
             placeholder="Amount"
           />
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 outline-none focus:border-cyan-500"
+            className="wallet-input"
             placeholder="Note (optional)"
           />
-          <button className="w-full rounded-xl bg-cyan-500 px-4 py-3 font-semibold text-slate-950">
+          <button className="wallet-button-primary w-full">
             Send Funds
           </button>
         </form>
-        {message && <p className="mt-3 text-sm text-cyan-200">{message}</p>}
+        {message && <p className="mt-3 text-sm text-wallet-accentSoft">{message}</p>}
       </div>
     </DashboardLayout>
   );

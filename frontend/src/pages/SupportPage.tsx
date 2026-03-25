@@ -56,39 +56,39 @@ const SupportPage = () => {
     <DashboardLayout>
       <section className="space-y-4">
         <div>
-          <h2 className="text-xl font-semibold text-cyan-100">Support / Query</h2>
-          <p className="mt-1 text-sm text-slate-400">Submit your query and track admin replies.</p>
+          <h2 className="wallet-title text-xl">Support / Query</h2>
+          <p className="mt-1 text-sm text-wallet-muted">Submit your query and track admin replies.</p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-3 rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
+        <form onSubmit={onSubmit} className="wallet-panel space-y-3 p-4">
           <input
             value={subject}
             onChange={(event) => setSubject(event.target.value)}
             placeholder="Subject"
-            className="w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
+            className="wallet-input"
           />
           <textarea
             value={messageText}
             onChange={(event) => setMessageText(event.target.value)}
             rows={4}
             placeholder="Message"
-            className="w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
+            className="wallet-input"
           />
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-cyan-300 disabled:opacity-60"
+            className="wallet-button-primary disabled:opacity-60"
           >
             {submitting ? "Sending..." : "Send Query"}
           </button>
         </form>
 
-        {message && <p className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-100">{message}</p>}
-        {error && <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p>}
+        {message && <p className="rounded-xl border border-wallet-accent/25 bg-wallet-accent/10 px-3 py-2 text-sm text-wallet-accentSoft">{message}</p>}
+        {error && <p className="rounded-xl border border-wallet-danger/30 bg-wallet-danger/10 px-3 py-2 text-sm text-wallet-danger">{error}</p>}
 
-        <div className="overflow-x-auto rounded-2xl border border-cyan-700/25">
+        <div className="wallet-table">
           <table className="min-w-full divide-y divide-cyan-800/30 text-sm">
-            <thead className="bg-slate-950/70 text-left text-slate-300">
+            <thead className="bg-[#0c223e]/90 text-left text-wallet-muted">
               <tr>
                 <th className="px-4 py-3">Subject</th>
                 <th className="px-4 py-3">Message</th>
@@ -97,17 +97,17 @@ const SupportPage = () => {
                 <th className="px-4 py-3">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 bg-slate-900/60">
+            <tbody className="divide-y divide-white/8 bg-wallet-panel/60">
               {!loading && items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-4 text-slate-300">
+                  <td colSpan={5} className="px-4 py-4 text-wallet-muted">
                     No queries found.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-4 text-slate-300">
+                  <td colSpan={5} className="px-4 py-4 text-wallet-muted">
                     Loading queries...
                   </td>
                 </tr>
@@ -115,13 +115,13 @@ const SupportPage = () => {
               {!loading &&
                 items.map((item) => (
                   <tr key={item._id}>
-                    <td className="px-4 py-3 text-cyan-100">{item.subject}</td>
-                    <td className="px-4 py-3 text-slate-300">{item.message}</td>
-                    <td className="px-4 py-3 text-slate-300">{item.adminReply || "-"}</td>
+                    <td className="px-4 py-3 text-wallet-accentSoft">{item.subject}</td>
+                    <td className="px-4 py-3 text-wallet-muted">{item.message}</td>
+                    <td className="px-4 py-3 text-wallet-muted">{item.adminReply || "-"}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-cyan-500/15 px-2 py-1 text-xs uppercase tracking-wide text-cyan-100">{item.status}</span>
+                      <span className="wallet-chip wallet-status-info">{item.status}</span>
                     </td>
-                    <td className="px-4 py-3 text-slate-300">{new Date(item.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-wallet-muted">{new Date(item.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
             </tbody>

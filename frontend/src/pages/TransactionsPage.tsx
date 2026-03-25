@@ -62,11 +62,11 @@ const TransactionsPage = () => {
 
   return (
     <DashboardLayout>
-      <h2 className="mb-3 text-xl font-semibold">{tabHeadingMap[activeTab]}</h2>
+      <h2 className="wallet-title mb-3 text-xl">{tabHeadingMap[activeTab]}</h2>
 
-      <div className="mb-4 rounded-2xl border border-cyan-800/40 bg-slate-900/70 p-4">
-        <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Total Withdrawal</p>
-        <p className="mt-2 text-2xl font-semibold text-cyan-200">${totalWithdrawal.toFixed(2)}</p>
+      <div className="wallet-panel-strong mb-4 p-4">
+        <p className="wallet-kicker">Total Withdrawal</p>
+        <p className="mt-2 text-2xl font-semibold text-wallet-accentSoft">${totalWithdrawal.toFixed(2)}</p>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -79,8 +79,8 @@ const TransactionsPage = () => {
               onClick={() => setActiveTab(tab.key)}
               className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? "border-cyan-400 bg-cyan-500/20 text-cyan-200"
-                  : "border-slate-700 bg-slate-900/50 text-slate-300 hover:border-slate-500 hover:text-white"
+                  ? "border-wallet-accent/25 bg-wallet-accent/12 text-wallet-accentSoft"
+                  : "border-white/10 bg-[#0a1b34]/70 text-wallet-muted hover:border-wallet-accent/20 hover:text-wallet-text"
               }`}
             >
               {tab.label}

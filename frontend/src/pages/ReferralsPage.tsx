@@ -74,11 +74,11 @@ const ReferralsPage = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Direct Team</p>
-            <p className="mt-2 text-2xl font-semibold text-wallet-accent">{totalDirectTeam}</p>
+            <p className="mt-2 text-2xl font-semibold text-wallet-accentAlt">{totalDirectTeam}</p>
           </div>
           <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Level Team</p>
-            <p className="mt-2 text-2xl font-semibold text-wallet-accent">{totalLevelTeam}</p>
+            <p className="mt-2 text-2xl font-semibold text-wallet-accentAlt">{totalLevelTeam}</p>
           </div>
         </div>
         <div className="rounded-2xl border border-wallet-success/30 bg-wallet-panel/70 p-4">
@@ -87,7 +87,7 @@ const ReferralsPage = () => {
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
             <div className="rounded-xl border border-wallet-border/50 bg-wallet-panelAlt/60 p-3">
               <p className="text-wallet-muted">Qualified Directs</p>
-              <p className="mt-1 text-lg font-semibold text-wallet-accent">{qualifiedDirectCount}</p>
+              <p className="mt-1 text-lg font-semibold text-wallet-accentAlt">{qualifiedDirectCount}</p>
             </div>
             <div className="rounded-xl border border-wallet-border/50 bg-wallet-panelAlt/60 p-3">
               <p className="text-wallet-muted">Unlocked Levels</p>
@@ -141,7 +141,7 @@ const ReferralsPage = () => {
                   {levelIncomeHistory.map((row) => (
                     <tr key={row.id} className="border-t border-wallet-border/50">
                       <td className="px-2 py-2 text-wallet-muted">{row.timestamp ? new Date(row.timestamp).toLocaleString() : "-"}</td>
-                      <td className="px-2 py-2 text-wallet-accent">L{row.level || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-accentAlt">L{row.level || "-"}</td>
                       <td className="px-2 py-2 text-wallet-text">${Number(row.amount || 0).toFixed(4)}</td>
                       <td className="px-2 py-2 text-wallet-muted">{row.receiverUserId || "-"}</td>
                       <td className="px-2 py-2 text-wallet-muted">{row.sourceUserId || "-"}</td>
@@ -182,7 +182,7 @@ const ReferralsPage = () => {
                     <tbody>
                       {members.map((member) => (
                         <tr key={member._id} className="border-t border-wallet-border/50">
-                          <td className="px-2 py-2 text-wallet-accent">{member.fromUser?.userId || "-"}</td>
+                          <td className="px-2 py-2 text-wallet-accentAlt">{member.fromUser?.userId || "-"}</td>
                           <td className="px-2 py-2 text-wallet-text">{member.fromUser?.name || "User"}</td>
                           <td className="px-2 py-2 text-wallet-muted">
                             {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : "-"}

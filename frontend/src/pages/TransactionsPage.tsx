@@ -66,7 +66,7 @@ const TransactionsPage = () => {
 
       <div className="mb-4 rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
         <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Withdrawal</p>
-        <p className="mt-2 text-2xl font-semibold text-wallet-accent">${totalWithdrawal.toFixed(2)}</p>
+        <p className="mt-2 text-2xl font-semibold text-wallet-accentAlt">${totalWithdrawal.toFixed(2)}</p>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">

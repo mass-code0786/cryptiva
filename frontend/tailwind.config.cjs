@@ -9,18 +9,18 @@ module.exports = {
           700: "#0369a1"
         },
         wallet: {
-          bg: "#061427",
-          panel: "#0B1F3A",
-          panelAlt: "#10284A",
-          elevated: "#1B3D6B",
-          accent: "#00C8FF",
-          accentAlt: "#6C7CFF",
-          text: "#EAF4FF",
-          muted: "#8FA8C9",
-          border: "#1B3D6B",
-          success: "#67D7A7",
-          warning: "#F4B860",
-          danger: "#F57F7F"
+          bg: "#0A0A0A",
+          panel: "#141414",
+          panelAlt: "#1A1A1A",
+          elevated: "#2A2A2A",
+          accent: "#FF3B3B",
+          accentAlt: "#FFD700",
+          text: "#F5F5F5",
+          muted: "#A0A0A0",
+          border: "#2A2A2A",
+          success: "#4CAF50",
+          warning: "#FFC107",
+          danger: "#FF5252"
         }
       }
     },

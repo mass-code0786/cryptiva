@@ -138,7 +138,7 @@ const DashboardPage = () => {
             </button>
 
             <div className="p-3 sm:p-4">
-              {popupBanner.title && <p className="mb-2 text-sm font-semibold text-wallet-accent">{popupBanner.title}</p>}
+              {popupBanner.title && <p className="mb-2 text-sm font-semibold text-wallet-accentAlt">{popupBanner.title}</p>}
               {popupBanner.targetUrl ? (
                 <a href={popupBanner.targetUrl} target="_blank" rel="noreferrer">
                   <img
@@ -228,7 +228,7 @@ const DashboardPage = () => {
             </p>
           </div>
         </section>
-        <section className="rounded-2xl border border-wallet-accent/25 bg-gradient-to-br from-wallet-panel via-wallet-panel to-wallet-elevated/25 p-4 shadow-[0_0_24px_rgba(0,200,255,0.08)] sm:p-5">
+        <section className="rounded-2xl border border-wallet-accent/25 bg-gradient-to-br from-wallet-panel via-wallet-panel to-[#2a160c]/40 p-4 shadow-[0_0_20px_rgba(255,59,59,0.08)] sm:p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Salary Rank Progress</h2>
             <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-accentAlt/85">Team Growth</span>
@@ -269,21 +269,21 @@ const DashboardPage = () => {
             <p className="mb-2 text-xs uppercase tracking-[0.18em] text-wallet-muted">Progress</p>
             <div className="h-3 w-full rounded-full bg-wallet-panelAlt">
               <div
-                className="h-3 rounded-full bg-gradient-to-r from-wallet-success via-wallet-accent to-wallet-accentAlt transition-all duration-700 ease-out"
+                className="h-3 rounded-full bg-gradient-to-r from-wallet-accent via-wallet-accentAlt to-[#b89600] transition-all duration-700 ease-out"
                 style={{ width: `${salaryRankProgress.progressPercentage}%` }}
               />
             </div>
-            <p className="mt-2 text-sm font-semibold text-wallet-success">{salaryRankProgress.progressPercentage.toFixed(1)}%</p>
+            <p className="mt-2 text-sm font-semibold text-wallet-accentAlt">{salaryRankProgress.progressPercentage.toFixed(1)}%</p>
           </div>
         </section>
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-3">
             <p className="text-xs text-wallet-muted">P2P Total</p>
-            <p className="mt-1 text-lg font-semibold text-wallet-text">${(wallet?.p2pTotal || 0).toFixed(2)}</p>
+            <p className="mt-1 text-lg font-semibold text-wallet-accentAlt">${(wallet?.p2pTotal || 0).toFixed(2)}</p>
           </div>
           <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-3">
             <p className="text-xs text-wallet-muted">Recent Entries</p>
-            <p className="mt-1 text-lg font-semibold text-wallet-text">{recent.length}</p>
+            <p className="mt-1 text-lg font-semibold text-wallet-accentAlt">{recent.length}</p>
           </div>
         </div>
         <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">

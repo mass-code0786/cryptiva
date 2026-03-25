@@ -84,7 +84,7 @@ const DepositPage = () => {
           <div className="mt-3 rounded-xl border border-wallet-border/60 bg-wallet-bg/70 p-3 text-sm text-wallet-text">
             <p>
               Deposit Amount (credited in Cryptiva):{" "}
-              <span className="font-semibold text-wallet-accent">{money(requestedCreditAmount)} USDT</span>
+              <span className="font-semibold text-wallet-accentAlt">{money(requestedCreditAmount)} USDT</span>
             </p>
             {gatewayFeeAmount !== null && (
               <p className="mt-1">
@@ -117,7 +117,7 @@ const DepositPage = () => {
         {payAddress && (
           <div className="mt-3 rounded-xl bg-wallet-bg/70 p-3 text-sm">
             <p className="text-wallet-muted">Payment Address (USDT BEP20)</p>
-            <p className="mt-1 break-all text-wallet-accent">{payAddress}</p>
+            <p className="mt-1 break-all text-wallet-accentAlt">{payAddress}</p>
           </div>
         )}
         {qrCodeUrl && (

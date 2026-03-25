@@ -79,10 +79,10 @@ const TradingPage = () => {
         <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
           <h2 className="text-xl font-semibold text-wallet-text">Place Trade</h2>
           <p className="mt-2 text-sm text-wallet-text">
-            Deposit Wallet: <span className="font-semibold text-wallet-accent">${walletBalance.toFixed(2)}</span>
+            Deposit Wallet: <span className="font-semibold text-wallet-accentAlt">${walletBalance.toFixed(2)}</span>
           </p>
           <p className="mt-1 text-sm text-wallet-text">
-            Trading Wallet: <span className="font-semibold text-wallet-accent">${tradingWallet.toFixed(2)}</span>
+            Trading Wallet: <span className="font-semibold text-wallet-accentAlt">${tradingWallet.toFixed(2)}</span>
           </p>
           <p className="mt-1 text-sm text-wallet-muted">Minimum trade amount is $5.</p>
           <form className="mt-4 space-y-3" onSubmit={onSubmit}>
@@ -124,7 +124,7 @@ const TradingPage = () => {
                 </div>
                 <div className="mt-1 flex items-center justify-between">
                   <span className="text-wallet-muted">Trade Earnings</span>
-                  <span className="font-semibold text-wallet-accent">${trade.totalIncome.toFixed(4)}</span>
+                  <span className="font-semibold text-wallet-accentAlt">${trade.totalIncome.toFixed(4)}</span>
                 </div>
                 <p className="mt-1 text-xs text-wallet-muted">Total earnings from this trade</p>
                 <div className="mt-1 flex items-center justify-between">

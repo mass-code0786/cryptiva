@@ -8,15 +8,15 @@ type IncomeCardProps = {
 };
 
 const toneClasses: Record<IncomeCardProps["tone"], string> = {
-  cyan: "from-wallet-accent/20 via-wallet-accent/10 to-wallet-panel border-wallet-accent/35 shadow-cyan-950/20",
-  violet: "from-wallet-accentAlt/20 via-wallet-accentAlt/10 to-wallet-panel border-wallet-accentAlt/35 shadow-indigo-950/20",
-  blue: "from-wallet-elevated/20 via-wallet-elevated/10 to-wallet-panel border-wallet-elevated/40 shadow-slate-950/20",
+  cyan: "from-wallet-accent/18 via-wallet-accent/10 to-wallet-panel border-wallet-accent/35 shadow-black/20",
+  violet: "from-wallet-accentAlt/18 via-wallet-accentAlt/10 to-wallet-panel border-wallet-accentAlt/35 shadow-black/20",
+  blue: "from-[#b89600]/18 via-[#ffd700]/8 to-wallet-panel border-[#b89600]/35 shadow-black/20",
 };
 
 const iconToneClasses: Record<IncomeCardProps["tone"], string> = {
   cyan: "border-wallet-accent/40 bg-wallet-accent/15 text-wallet-text shadow-wallet-accent/20",
-  violet: "border-wallet-accentAlt/40 bg-wallet-accentAlt/15 text-wallet-text shadow-wallet-accentAlt/20",
-  blue: "border-wallet-elevated/50 bg-wallet-elevated/20 text-wallet-text shadow-wallet-elevated/20",
+  violet: "border-wallet-accentAlt/40 bg-wallet-accentAlt/15 text-black shadow-wallet-accentAlt/20",
+  blue: "border-[#b89600]/40 bg-[#b89600]/15 text-wallet-accentAlt shadow-[#b89600]/20",
 };
 
 const iconPathMap: Record<IncomeCardProps["icon"], JSX.Element> = {

@@ -104,8 +104,8 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(135deg,#061A23_0%,#0B2B3A_52%,#0F3A4A_100%)] text-wallet-text">
-      <header className="sticky top-0 z-20 border-b border-wallet-border/60 bg-wallet-bg/90 px-3 py-3 backdrop-blur sm:px-4">
+    <div className="min-h-screen bg-[linear-gradient(135deg,#0B0F1A_0%,#111827_55%,#0F172A_100%)] text-wallet-text">
+      <header className="sticky top-0 z-20 border-b border-wallet-border bg-wallet-bg/95 px-3 py-3 sm:px-4">
         <div className="mx-auto flex max-w-3xl items-center justify-between">
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <CryptivaLogo variant="icon" className="h-8 w-8 shrink-0" />
@@ -115,7 +115,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <button
               type="button"
               onClick={onOpenNotifications}
-              className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-wallet-accent/30 bg-wallet-panel text-wallet-text transition hover:border-wallet-accent hover:bg-wallet-panelAlt hover:text-wallet-accent"
+              className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-wallet-border bg-wallet-panel text-wallet-text transition hover:border-wallet-accent hover:bg-wallet-panelAlt hover:text-wallet-accent"
               aria-label="Notifications"
             >
               <Bell size={16} />
@@ -132,27 +132,27 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
               rel="noreferrer"
               title="Download App"
               aria-label="Download App"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-wallet-accent/30 bg-wallet-panel text-wallet-text transition hover:border-wallet-accent hover:bg-wallet-panelAlt hover:text-wallet-accent"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-wallet-border bg-wallet-panel text-wallet-text transition hover:border-wallet-accent hover:bg-wallet-panelAlt hover:text-wallet-accent"
             >
               <Download size={16} />
             </a>
             <button
               onClick={() => setMenuOpen(true)}
-              className="rounded-xl border border-wallet-border/80 bg-wallet-panel p-2 text-wallet-text transition hover:border-wallet-accent/60 hover:bg-wallet-panelAlt hover:text-wallet-accent"
+              className="rounded-xl border border-wallet-border bg-wallet-panel p-2 text-wallet-text transition hover:border-wallet-accent/60 hover:bg-wallet-panelAlt hover:text-wallet-accent"
               aria-label="Open navigation menu"
             >
               <Menu size={18} />
             </button>
 
             {notificationOpen && (
-              <div className="absolute right-0 top-[calc(100%+0.45rem)] z-30 w-[min(24rem,90vw)] rounded-2xl border border-wallet-border/70 bg-wallet-bg/95 p-3 shadow-2xl backdrop-blur">
+              <div className="absolute right-0 top-[calc(100%+0.45rem)] z-30 w-[min(24rem,90vw)] rounded-2xl border border-wallet-border bg-wallet-bg/95 p-3 shadow-2xl">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-sm font-semibold text-wallet-accent">Notifications</p>
                   <button
                     type="button"
                     onClick={onMarkAllRead}
                     disabled={markingAllRead || notificationItems.length === 0 || notificationUnread === 0}
-                    className="inline-flex items-center gap-1 rounded-lg border border-wallet-accent/25 bg-wallet-accent/10 px-2 py-1 text-[11px] text-wallet-text hover:bg-wallet-accent/15 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-lg border border-wallet-accent/25 bg-wallet-accent/10 px-2 py-1 text-[11px] text-wallet-text transition hover:bg-wallet-accent/15 disabled:opacity-50"
                   >
                     <CheckCheck size={12} />
                     {markingAllRead ? "Marking..." : "Mark all read"}
@@ -171,9 +171,9 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                       key={item._id}
                       type="button"
                       onClick={() => onMarkNotificationRead(item)}
-                      className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                    className={`w-full rounded-xl border px-3 py-2 text-left transition ${
                         item.isRead
-                          ? "border-wallet-border/40 bg-wallet-panel/70 text-wallet-muted"
+                          ? "border-wallet-border bg-wallet-panel text-wallet-muted"
                           : "border-wallet-accent/30 bg-wallet-accent/10 text-wallet-text"
                       }`}
                     >
@@ -194,7 +194,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     type="button"
                     disabled={notificationLoading}
                     onClick={() => loadNotifications(notificationPage + 1, true)}
-                    className="mt-2 w-full rounded-lg border border-wallet-border/60 bg-wallet-panel/80 px-3 py-2 text-xs text-wallet-text hover:bg-wallet-panelAlt disabled:opacity-50"
+                    className="mt-2 w-full rounded-lg border border-wallet-border bg-wallet-panel px-3 py-2 text-xs text-wallet-text hover:bg-wallet-panelAlt disabled:opacity-50"
                   >
                     {notificationLoading ? "Loading..." : "Load more"}
                   </button>
@@ -215,7 +215,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
       />
 
       <aside
-        className={`fixed right-0 top-0 z-40 h-screen w-72 border-l border-wallet-border/70 bg-wallet-bg/95 p-4 shadow-2xl backdrop-blur transition-transform duration-300 md:hidden ${
+        className={`fixed right-0 top-0 z-40 h-screen w-72 border-l border-wallet-border bg-wallet-bg/95 p-4 shadow-2xl transition-transform duration-300 md:hidden ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

@@ -40,10 +40,6 @@ const LoginPage = () => {
   return (
     <div className="wallet-auth-shell mx-auto flex w-full max-w-md flex-col items-center justify-start px-4 pb-6 pt-14 sm:px-6 sm:pb-8 sm:pt-16 md:justify-center md:pt-0 md:pb-0">
       <div className="relative flex w-full items-center justify-center">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -z-10 h-20 w-44 rounded-full bg-gradient-to-r from-wallet-accent/25 via-wallet-accentAlt/20 to-wallet-accent/10 blur-2xl sm:h-24 sm:w-52"
-        />
         <CryptivaLogo variant="auth" className="relative mx-auto mb-4 sm:mb-5 drop-shadow-lg" />
       </div>
       <div className="wallet-auth-card w-full p-5 sm:p-6">

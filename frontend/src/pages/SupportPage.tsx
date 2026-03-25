@@ -115,7 +115,7 @@ const SupportPage = () => {
               {!loading &&
                 items.map((item) => (
                   <tr key={item._id}>
-                    <td className="px-4 py-3 text-wallet-accentAlt">{item.subject}</td>
+                    <td className="px-4 py-3 text-wallet-accent">{item.subject}</td>
                     <td className="px-4 py-3 text-wallet-muted">{item.message}</td>
                     <td className="px-4 py-3 text-wallet-muted">{item.adminReply || "-"}</td>
                     <td className="px-4 py-3">

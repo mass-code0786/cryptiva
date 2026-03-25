@@ -122,10 +122,10 @@ const RegisterPage = () => {
       </div>
 
       {createdAccount && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-wallet-bg/80 px-4 backdrop-blur-sm">
-          <div className="wallet-auth-card w-full max-w-md p-6 shadow-[0_0_32px_rgba(0,212,255,0.16)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-wallet-bg/80 px-4">
+          <div className="wallet-auth-card w-full max-w-md p-6">
             <h2 className="text-xl font-semibold text-wallet-accent">Account Created Successfully</h2>
-            <div className="mt-4 space-y-2 rounded-xl border border-wallet-border/40 bg-wallet-panel/60 p-4 text-sm text-wallet-text">
+            <div className="mt-4 space-y-2 rounded-xl border border-wallet-border bg-wallet-panel p-4 text-sm text-wallet-text">
               <p><span className="text-wallet-muted">User ID:</span> {createdAccount.userId}</p>
               <p><span className="text-wallet-muted">Username:</span> {createdAccount.username}</p>
               <p><span className="text-wallet-muted">Name:</span> {createdAccount.name}</p>
@@ -147,7 +147,7 @@ const RegisterPage = () => {
               <button
                 type="button"
                 onClick={closeModal}
-                className="rounded-xl border border-wallet-border/40 bg-wallet-bg/70 px-4 py-2 text-sm font-medium text-wallet-text hover:border-wallet-accentAlt"
+                className="wallet-button-secondary rounded-xl px-4 py-2 text-sm font-medium"
               >
                 Close
               </button>

@@ -72,24 +72,24 @@ const ReferralsPage = () => {
     <DashboardLayout>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+          <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Direct Team</p>
-            <p className="mt-2 text-2xl font-semibold text-wallet-accentAlt">{totalDirectTeam}</p>
+            <p className="mt-2 text-2xl font-semibold text-wallet-accent">{totalDirectTeam}</p>
           </div>
-          <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+          <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
             <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Level Team</p>
-            <p className="mt-2 text-2xl font-semibold text-wallet-accentAlt">{totalLevelTeam}</p>
+            <p className="mt-2 text-2xl font-semibold text-wallet-accent">{totalLevelTeam}</p>
           </div>
         </div>
-        <div className="rounded-2xl border border-wallet-success/30 bg-wallet-panel/70 p-4">
+        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
           <h2 className="text-xl font-semibold text-wallet-success">Level Unlock Status</h2>
           <p className="mt-1 text-sm text-wallet-muted">Unlock rule: 1 qualified direct = 2 levels</p>
           <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl border border-wallet-border/50 bg-wallet-panelAlt/60 p-3">
+            <div className="rounded-xl border border-wallet-border bg-wallet-panelAlt p-3">
               <p className="text-wallet-muted">Qualified Directs</p>
-              <p className="mt-1 text-lg font-semibold text-wallet-accentAlt">{qualifiedDirectCount}</p>
+              <p className="mt-1 text-lg font-semibold text-wallet-accent">{qualifiedDirectCount}</p>
             </div>
-            <div className="rounded-xl border border-wallet-border/50 bg-wallet-panelAlt/60 p-3">
+            <div className="rounded-xl border border-wallet-border bg-wallet-panelAlt p-3">
               <p className="text-wallet-muted">Unlocked Levels</p>
               <p className="mt-1 text-lg font-semibold text-wallet-success">
                 {unlockedLevels} / {maxLevels}
@@ -102,8 +102,8 @@ const ReferralsPage = () => {
                 key={row.level}
                 className={`rounded-xl border px-3 py-2 text-xs ${
                   row.status === "open"
-                    ? "border-wallet-success/40 bg-wallet-success/15 text-wallet-success"
-                    : "border-wallet-border/50 bg-wallet-panelAlt/60 text-wallet-muted"
+                    ? "border-wallet-success/40 bg-wallet-success/10 text-wallet-success"
+                    : "border-wallet-border bg-wallet-panelAlt text-wallet-muted"
                 }`}
               >
                 <p className="font-semibold">Level {row.level}</p>
@@ -112,7 +112,7 @@ const ReferralsPage = () => {
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
           <h3 className="text-base font-semibold text-wallet-accent">Level Income History (Audit Trace)</h3>
           <p className="mt-1 text-xs text-wallet-muted">
             Includes level number, source member details, receiver details, ROI/trade reference, and timestamp.
@@ -141,7 +141,7 @@ const ReferralsPage = () => {
                   {levelIncomeHistory.map((row) => (
                     <tr key={row.id} className="border-t border-wallet-border/50">
                       <td className="px-2 py-2 text-wallet-muted">{row.timestamp ? new Date(row.timestamp).toLocaleString() : "-"}</td>
-                      <td className="px-2 py-2 text-wallet-accentAlt">L{row.level || "-"}</td>
+                      <td className="px-2 py-2 text-wallet-accent">L{row.level || "-"}</td>
                       <td className="px-2 py-2 text-wallet-text">${Number(row.amount || 0).toFixed(4)}</td>
                       <td className="px-2 py-2 text-wallet-muted">{row.receiverUserId || "-"}</td>
                       <td className="px-2 py-2 text-wallet-muted">{row.sourceUserId || "-"}</td>
@@ -158,12 +158,12 @@ const ReferralsPage = () => {
         </div>
         <div className="space-y-3">
           {items.length === 0 && (
-            <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+            <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
               <p className="text-sm text-wallet-muted">No team members yet.</p>
             </div>
           )}
           {Array.from(levelMap.entries()).map(([level, members]) => (
-            <div key={level} className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+            <div key={level} className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
               <h3 className="text-sm font-semibold text-wallet-accent">Level {level}</h3>
               {members.length === 0 ? (
                 <p className="mt-2 text-xs text-wallet-muted">No members in this level.</p>
@@ -182,7 +182,7 @@ const ReferralsPage = () => {
                     <tbody>
                       {members.map((member) => (
                         <tr key={member._id} className="border-t border-wallet-border/50">
-                          <td className="px-2 py-2 text-wallet-accentAlt">{member.fromUser?.userId || "-"}</td>
+                          <td className="px-2 py-2 text-wallet-accent">{member.fromUser?.userId || "-"}</td>
                           <td className="px-2 py-2 text-wallet-text">{member.fromUser?.name || "User"}</td>
                           <td className="px-2 py-2 text-wallet-muted">
                             {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : "-"}

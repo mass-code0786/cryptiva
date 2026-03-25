@@ -28,7 +28,7 @@ const WithdrawalPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+      <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
         <h2 className="text-xl font-semibold text-wallet-text">Withdraw</h2>
         <p className="mt-1 text-sm text-wallet-muted">
           Only USDT BEP20. Minimum withdraw: $10. Funds go to your saved wallet address.
@@ -40,17 +40,17 @@ const WithdrawalPage = () => {
             step="0.01"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-xl border border-wallet-border/60 bg-wallet-bg p-3 text-wallet-text outline-none focus:border-wallet-accent"
+            className="wallet-input"
             placeholder="Amount (USDT)"
           />
           <input
             type="password"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="w-full rounded-xl border border-wallet-border/60 bg-wallet-bg p-3 text-wallet-text outline-none focus:border-wallet-accent"
+            className="wallet-input"
             placeholder="PIN"
           />
-          <button className="w-full rounded-xl bg-wallet-accent px-4 py-3 font-semibold text-wallet-bg">
+          <button className="wallet-button-primary w-full">
             Submit Withdrawal
           </button>
         </form>

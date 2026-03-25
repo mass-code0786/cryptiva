@@ -10,33 +10,26 @@
   }
 
   .wallet-topbar {
-    @apply border-b;
-    border-color: rgba(31, 92, 110, 0.45);
-    background: rgba(6, 26, 35, 0.72);
-    backdrop-filter: blur(18px);
+    @apply border-b bg-wallet-bg/95;
+    border-color: rgba(31, 41, 55, 0.95);
   }
 
   .wallet-panel {
-    @apply rounded-2xl border transition-all duration-200;
-    background: linear-gradient(180deg, rgba(15, 58, 74, 0.58) 0%, rgba(11, 43, 58, 0.52) 100%);
-    border-color: rgba(31, 92, 110, 0.42);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.22);
+    @apply rounded-2xl border bg-wallet-panel transition-all duration-200;
+    border-color: rgba(31, 41, 55, 0.95);
+    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.28);
   }
 
   .wallet-panel-muted {
-    @apply rounded-2xl border transition-all duration-200;
-    background: linear-gradient(180deg, rgba(15, 58, 74, 0.46) 0%, rgba(11, 43, 58, 0.42) 100%);
-    border-color: rgba(31, 92, 110, 0.35);
-    backdrop-filter: blur(14px);
+    @apply rounded-2xl border bg-wallet-panelAlt transition-all duration-200;
+    border-color: rgba(31, 41, 55, 0.9);
   }
 
   .wallet-panel-strong {
     @apply rounded-2xl border transition-all duration-200;
-    background: linear-gradient(145deg, rgba(15, 58, 74, 0.68) 0%, rgba(11, 43, 58, 0.72) 46%, rgba(0, 194, 255, 0.12) 100%);
-    border-color: rgba(31, 92, 110, 0.46);
-    backdrop-filter: blur(18px);
-    box-shadow: 0 18px 44px rgba(0, 194, 255, 0.08);
+    background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+    border-color: rgba(59, 130, 246, 0.22);
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.32);
   }
 
   .wallet-title {
@@ -49,34 +42,55 @@
 
   .wallet-input {
     @apply w-full rounded-xl border bg-wallet-bg p-3 text-wallet-text outline-none;
-    border-color: rgba(31, 92, 110, 0.42);
-    background: rgba(6, 26, 35, 0.76);
+    border-color: rgba(31, 41, 55, 0.95);
+    background: #0f172a;
+    transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
   }
 
   .wallet-input::placeholder {
-    color: #8fb8c6;
+    color: #9ca3af;
+  }
+
+  .wallet-input:focus {
+    border-color: rgba(59, 130, 246, 0.9);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
   }
 
   .wallet-button-primary {
     @apply rounded-xl px-4 py-3 font-semibold text-wallet-text;
-    background: linear-gradient(135deg, #00d4ff 0%, #00ffa3 100%);
-    box-shadow: 0 10px 24px rgba(0, 212, 255, 0.14);
+    background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+    box-shadow: 0 10px 22px rgba(59, 130, 246, 0.18);
+    transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
   }
 
   .wallet-button-primary:hover {
-    box-shadow: 0 12px 28px rgba(0, 212, 255, 0.18);
+    box-shadow: 0 12px 26px rgba(59, 130, 246, 0.22);
     filter: brightness(1.03);
+  }
+
+  .wallet-button-primary:active {
+    transform: translateY(1px) scale(0.995);
   }
 
   .wallet-button-secondary {
     @apply rounded-xl border px-4 py-3 font-semibold text-wallet-text;
-    border-color: rgba(31, 92, 110, 0.42);
-    background: rgba(11, 43, 58, 0.48);
+    border-color: rgba(31, 41, 55, 0.95);
+    background: #0f172a;
+    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  }
+
+  .wallet-button-secondary:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: #111827;
+  }
+
+  .wallet-button-secondary:active {
+    transform: translateY(1px) scale(0.995);
   }
 
   .wallet-chip {
     @apply rounded-full border px-2 py-1 text-xs uppercase tracking-wide;
-    border-color: rgba(31, 92, 110, 0.42);
+    border-color: rgba(31, 41, 55, 0.95);
   }
 
   .wallet-status-success {
@@ -97,34 +111,32 @@
 
   .wallet-table {
     @apply overflow-x-auto rounded-2xl border;
-    background: rgba(11, 43, 58, 0.62);
-    border-color: rgba(31, 92, 110, 0.4);
-    backdrop-filter: blur(14px);
+    background: #111827;
+    border-color: rgba(31, 41, 55, 0.95);
   }
 
   .wallet-empty-state {
     @apply rounded-xl border px-4 py-6 text-center text-sm text-wallet-muted;
-    background: rgba(11, 43, 58, 0.44);
-    border-color: rgba(31, 92, 110, 0.34);
+    background: #0f172a;
+    border-color: rgba(31, 41, 55, 0.95);
   }
 
   .wallet-auth-shell {
     @apply min-h-[100dvh];
-    background: linear-gradient(135deg, #021b2b 0%, #04344a 52%, #065a60 100%);
+    background: linear-gradient(135deg, #0b0f1a 0%, #111827 56%, #0f172a 100%);
   }
 
   .wallet-auth-card {
     @apply rounded-2xl border;
-    background: rgba(6, 58, 70, 0.6);
-    border-color: rgba(0, 200, 255, 0.15);
-    backdrop-filter: blur(16px);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+    background: #111827;
+    border-color: rgba(31, 41, 55, 0.95);
+    box-shadow: 0 20px 38px rgba(0, 0, 0, 0.32);
   }
 
   .wallet-auth-input {
     @apply w-full rounded-xl border bg-wallet-bg p-3 text-wallet-text outline-none;
-    border-color: rgba(31, 92, 110, 0.42);
-    background: rgba(2, 27, 43, 0.78);
+    border-color: rgba(31, 41, 55, 0.95);
+    background: #0f172a;
   }
 
   .wallet-auth-link {
@@ -135,14 +147,15 @@
   .wallet-panel-muted:hover,
   .wallet-panel-strong:hover {
     transform: translateY(-2px);
-    box-shadow: 0 18px 40px rgba(0, 212, 255, 0.08);
+    border-color: rgba(59, 130, 246, 0.45);
+    box-shadow: 0 20px 34px rgba(0, 0, 0, 0.34);
   }
 }
 
 body {
   @apply bg-wallet-bg text-wallet-text antialiased;
   background:
-    linear-gradient(135deg, #061a23 0%, #0b2b3a 52%, #0f3a4a 100%);
+    linear-gradient(135deg, #0b0f1a 0%, #111827 55%, #0f172a 100%);
   font-family: "Space Grotesk", sans-serif;
 }
 
@@ -153,13 +166,13 @@ body {
 @keyframes cryptivaGlowPulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.2))
-      drop-shadow(0 0 14px rgba(0, 255, 163, 0.14));
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.16))
+      drop-shadow(0 0 10px rgba(96, 165, 250, 0.12));
     opacity: 0.95;
   }
   50% {
-    filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.26))
-      drop-shadow(0 0 18px rgba(0, 255, 163, 0.18));
+    filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.2))
+      drop-shadow(0 0 12px rgba(96, 165, 250, 0.15));
     opacity: 1;
   }
 }
@@ -181,4 +194,99 @@ body {
 .cryptiva-logo__coin {
   transform-origin: center;
   animation: cryptivaCoinFloat 4.2s ease-in-out infinite;
+}
+
+@keyframes walletProfitFlash {
+  0% {
+    color: #f9fafb;
+    text-shadow: none;
+  }
+  40% {
+    color: #22c55e;
+    text-shadow: 0 0 10px rgba(34, 197, 94, 0.18);
+  }
+  100% {
+    color: #f9fafb;
+    text-shadow: none;
+  }
+}
+
+@keyframes walletLossFlash {
+  0% {
+    color: #f9fafb;
+    text-shadow: none;
+  }
+  40% {
+    color: #ef4444;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.16);
+  }
+  100% {
+    color: #f9fafb;
+    text-shadow: none;
+  }
+}
+
+@keyframes walletStatusPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12);
+  }
+}
+
+@keyframes walletStatusSuccessGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+  }
+}
+
+@keyframes walletRowEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes walletChartGlow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.22));
+  }
+}
+
+.wallet-profit-flash {
+  animation: walletProfitFlash 800ms ease;
+}
+
+.wallet-loss-flash {
+  animation: walletLossFlash 800ms ease;
+}
+
+.wallet-status-pulse {
+  animation: walletStatusPulse 1.8s ease-in-out infinite;
+}
+
+.wallet-status-success-glow {
+  animation: walletStatusSuccessGlow 1.8s ease-in-out infinite;
+}
+
+.wallet-row-enter {
+  animation: walletRowEnter 340ms ease both;
+}
+
+.wallet-chart-glow:hover {
+  animation: walletChartGlow 1.2s ease-in-out infinite;
 }

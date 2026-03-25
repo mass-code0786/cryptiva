@@ -29,17 +29,17 @@ const resolveTypeLabel = (type: string) => {
 
 const resolveStatusTextClass = (status: string) => {
   const normalized = String(status || "").toLowerCase();
-  if (["completed", "success", "finished", "paid", "active"].includes(normalized)) return "text-wallet-success";
-  if (["pending", "waiting", "review", "processing", "partial", "partially_paid"].includes(normalized)) return "text-wallet-warning";
+  if (["completed", "success", "finished", "paid", "active"].includes(normalized)) return "wallet-status-success-glow text-wallet-success";
+  if (["pending", "waiting", "review", "processing", "partial", "partially_paid"].includes(normalized)) return "wallet-status-pulse text-wallet-warning";
   if (["failed", "rejected", "cancelled", "canceled"].includes(normalized)) return "text-wallet-danger";
   return "text-wallet-accent";
 };
 
 const TransactionTable = ({ items }: { items: Transaction[] }) => {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-wallet-border/70 bg-wallet-panel/80">
+    <div className="overflow-x-auto rounded-2xl border border-wallet-border bg-wallet-panel">
       <table className="w-full text-left text-sm">
-        <thead className="bg-wallet-panelAlt/80 text-wallet-muted">
+        <thead className="bg-wallet-panelAlt text-wallet-muted">
           <tr>
             <th className="p-3">Date</th>
             <th className="p-3">Type</th>
@@ -50,7 +50,7 @@ const TransactionTable = ({ items }: { items: Transaction[] }) => {
         </thead>
         <tbody>
           {items.map((tx) => (
-            <tr key={tx._id} className="border-t border-wallet-border/50 text-wallet-text">
+            <tr key={tx._id} className="wallet-row-enter border-t border-wallet-border text-wallet-text transition-colors hover:bg-wallet-panelAlt/60">
               <td className="p-3">{new Date(tx.createdAt).toLocaleString()}</td>
               <td className="p-3">{resolveTypeLabel(tx.type)}</td>
               <td className={`p-3 font-semibold ${Number(tx.amount || 0) < 0 ? "text-wallet-danger" : "text-wallet-success"}`}>

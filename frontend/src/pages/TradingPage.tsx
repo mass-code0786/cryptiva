@@ -76,13 +76,13 @@ const TradingPage = () => {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
           <h2 className="text-xl font-semibold text-wallet-text">Place Trade</h2>
           <p className="mt-2 text-sm text-wallet-text">
-            Deposit Wallet: <span className="font-semibold text-wallet-accentAlt">${walletBalance.toFixed(2)}</span>
+            Deposit Wallet: <span className="wallet-profit-flash font-semibold text-wallet-accent">${walletBalance.toFixed(2)}</span>
           </p>
           <p className="mt-1 text-sm text-wallet-text">
-            Trading Wallet: <span className="font-semibold text-wallet-accentAlt">${tradingWallet.toFixed(2)}</span>
+            Trading Wallet: <span className="wallet-profit-flash font-semibold text-wallet-accent">${tradingWallet.toFixed(2)}</span>
           </p>
           <p className="mt-1 text-sm text-wallet-muted">Minimum trade amount is $5.</p>
           <form className="mt-4 space-y-3" onSubmit={onSubmit}>
@@ -94,12 +94,12 @@ const TradingPage = () => {
                 type="number"
                 min={5}
                 step="0.01"
-                className="w-full rounded-xl border border-wallet-border/60 bg-wallet-bg p-3 text-wallet-text outline-none focus:border-wallet-accent"
+                className="wallet-input"
               />
             </label>
             <button
               disabled={isLoading}
-              className="w-full rounded-xl bg-wallet-accent px-4 py-3 font-semibold text-wallet-bg disabled:opacity-60"
+              className="wallet-button-primary w-full disabled:opacity-60"
             >
               {isLoading ? "Placing..." : "Place Trade"}
             </button>
@@ -107,7 +107,7 @@ const TradingPage = () => {
           </form>
         </div>
 
-        <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
           <h3 className="text-sm font-semibold text-wallet-accent">Active Trade Status</h3>
           <p className="mt-1 text-xs text-wallet-muted">
             Trade cards below show per-trade progress only, not your overall income cap.
@@ -117,14 +117,14 @@ const TradingPage = () => {
               <p className="text-sm text-wallet-muted">No active trades.</p>
             )}
             {activeTrades.map((trade) => (
-              <div key={trade._id} className="rounded-xl bg-wallet-bg p-3 text-sm">
+              <div key={trade._id} className="wallet-row-enter rounded-xl border border-wallet-border bg-wallet-panelAlt p-3 text-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-wallet-accent/35">
                 <div className="flex items-center justify-between">
                   <span className="text-wallet-muted">Amount</span>
                   <span className="font-semibold text-wallet-text">${trade.amount.toFixed(2)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between">
                   <span className="text-wallet-muted">Trade Earnings</span>
-                  <span className="font-semibold text-wallet-accentAlt">${trade.totalIncome.toFixed(4)}</span>
+                  <span className="wallet-profit-flash font-semibold text-wallet-success">${trade.totalIncome.toFixed(4)}</span>
                 </div>
                 <p className="mt-1 text-xs text-wallet-muted">Total earnings from this trade</p>
                 <div className="mt-1 flex items-center justify-between">

@@ -64,9 +64,9 @@ const TransactionsPage = () => {
     <DashboardLayout>
       <h2 className="mb-3 text-xl font-semibold text-wallet-text">{tabHeadingMap[activeTab]}</h2>
 
-      <div className="mb-4 rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+      <div className="mb-4 rounded-2xl border border-wallet-border bg-wallet-panel p-4">
         <p className="text-xs uppercase tracking-[0.18em] text-wallet-muted">Total Withdrawal</p>
-        <p className="mt-2 text-2xl font-semibold text-wallet-accentAlt">${totalWithdrawal.toFixed(2)}</p>
+        <p className="wallet-profit-flash mt-2 text-2xl font-semibold text-wallet-accent">${totalWithdrawal.toFixed(2)}</p>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -80,7 +80,7 @@ const TransactionsPage = () => {
               className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "border-wallet-accent bg-wallet-accent/10 text-wallet-accent"
-                  : "border-wallet-border/60 bg-wallet-panel/50 text-wallet-muted hover:border-wallet-accentAlt hover:text-wallet-text"
+                  : "border-wallet-border bg-wallet-panel text-wallet-muted hover:border-wallet-accentAlt hover:text-wallet-text"
               }`}
             >
               {tab.label}

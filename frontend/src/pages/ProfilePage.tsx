@@ -254,7 +254,7 @@ const ProfilePage = () => {
               href={`https://wa.me/?text=Join%20Cryptiva%20using%20my%20referral%20link:%20${encodedLink}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-wallet-border/50 bg-wallet-bg/70 px-3 py-2 text-xs text-wallet-text hover:border-wallet-accent"
+              className="rounded-lg border border-wallet-border bg-wallet-panelAlt px-3 py-2 text-xs text-wallet-text transition hover:border-wallet-accent"
             >
               WhatsApp
             </a>
@@ -262,7 +262,7 @@ const ProfilePage = () => {
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodedLink}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-wallet-border/50 bg-wallet-bg/70 px-3 py-2 text-xs text-wallet-text hover:border-wallet-accent"
+              className="rounded-lg border border-wallet-border bg-wallet-panelAlt px-3 py-2 text-xs text-wallet-text transition hover:border-wallet-accent"
             >
               Facebook
             </a>
@@ -270,7 +270,7 @@ const ProfilePage = () => {
               href={`https://t.me/share/url?url=${encodedLink}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-wallet-border/50 bg-wallet-bg/70 px-3 py-2 text-xs text-wallet-text hover:border-wallet-accent"
+              className="rounded-lg border border-wallet-border bg-wallet-panelAlt px-3 py-2 text-xs text-wallet-text transition hover:border-wallet-accent"
             >
               Telegram
             </a>
@@ -278,7 +278,7 @@ const ProfilePage = () => {
               href={`https://twitter.com/intent/tweet?text=Join%20Cryptiva%20&url=${encodedLink}`}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-wallet-border/50 bg-wallet-bg/70 px-3 py-2 text-xs text-wallet-text hover:border-wallet-accent"
+              className="rounded-lg border border-wallet-border bg-wallet-panelAlt px-3 py-2 text-xs text-wallet-text transition hover:border-wallet-accent"
             >
               Twitter
             </a>

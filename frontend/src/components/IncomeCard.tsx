@@ -8,15 +8,15 @@ type IncomeCardProps = {
 };
 
 const toneClasses: Record<IncomeCardProps["tone"], string> = {
-  cyan: "from-wallet-accent/18 via-wallet-accent/10 to-wallet-panel border-wallet-accent/35 shadow-black/20",
-  violet: "from-wallet-accentAlt/18 via-wallet-accentAlt/10 to-wallet-panel border-wallet-accentAlt/35 shadow-black/20",
-  blue: "from-wallet-elevated/20 via-wallet-accentAlt/10 to-wallet-panel border-wallet-elevated/35 shadow-black/20",
+  cyan: "from-wallet-panel via-wallet-panel to-wallet-panelAlt border-wallet-accent/35 shadow-black/30",
+  violet: "from-wallet-panel via-wallet-panel to-wallet-panelAlt border-wallet-accentAlt/35 shadow-black/30",
+  blue: "from-wallet-panel via-wallet-panelAlt to-wallet-panel border-wallet-border shadow-black/30",
 };
 
 const iconToneClasses: Record<IncomeCardProps["tone"], string> = {
-  cyan: "border-wallet-accent/40 bg-wallet-accent/15 text-wallet-text shadow-wallet-accent/20",
-  violet: "border-wallet-accentAlt/40 bg-wallet-accentAlt/15 text-wallet-text shadow-wallet-accentAlt/20",
-  blue: "border-wallet-elevated/40 bg-wallet-elevated/15 text-wallet-accentAlt shadow-wallet-elevated/20",
+  cyan: "border-wallet-accent/40 bg-wallet-accent/12 text-wallet-accent shadow-black/30",
+  violet: "border-wallet-accentAlt/40 bg-wallet-accentAlt/12 text-wallet-accentAlt shadow-black/30",
+  blue: "border-wallet-border bg-wallet-panelAlt text-wallet-accent shadow-black/30",
 };
 
 const iconPathMap: Record<IncomeCardProps["icon"], JSX.Element> = {
@@ -54,13 +54,14 @@ const IncomeCard = ({ title, amount, tone, icon }: IncomeCardProps) => {
     <div
       className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-xl transition-transform duration-300 hover:-translate-y-0.5 ${toneClasses[tone]}`}
     >
-      <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-white/8 blur-2xl" />
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.16em] text-wallet-muted">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-wallet-text sm:text-3xl">${displayAmount.toFixed(2)}</p>
+          <p className={`mt-2 text-2xl font-bold sm:text-3xl ${amount >= 0 ? "wallet-profit-flash text-wallet-text" : "wallet-loss-flash text-wallet-text"}`}>
+            ${displayAmount.toFixed(2)}
+          </p>
         </div>
-        <div className={`grid h-10 w-10 place-items-center rounded-xl border shadow-lg shadow-inner animate-pulse ${iconToneClasses[tone]}`}>
+        <div className={`grid h-10 w-10 place-items-center rounded-xl border shadow-lg shadow-inner transition-transform duration-200 ${iconToneClasses[tone]}`}>
           <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
             <g stroke="currentColor" strokeWidth="1.8">
               {iconPathMap[icon]}

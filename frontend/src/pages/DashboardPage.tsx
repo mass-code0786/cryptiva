@@ -123,22 +123,22 @@ const DashboardPage = () => {
   return (
     <DashboardLayout>
       {showPopupBanner && popupBanner && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-wallet-bg/85 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-wallet-border/70 bg-wallet-bg shadow-[0_30px_70px_rgba(0,0,0,0.6)]">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-wallet-bg/85 p-4">
+          <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-wallet-border bg-wallet-bg shadow-[0_30px_70px_rgba(0,0,0,0.6)]">
             <button
               type="button"
               onClick={() => {
                 sessionStorage.setItem(popupDismissKey(popupBanner._id), "1");
                 setShowPopupBanner(false);
               }}
-              className="absolute right-2 top-2 z-10 rounded-full border border-wallet-border/80 bg-wallet-panel/90 p-1.5 text-wallet-text hover:border-wallet-accent/50 hover:text-wallet-accent"
+              className="absolute right-2 top-2 z-10 rounded-full border border-wallet-border bg-wallet-panel p-1.5 text-wallet-text hover:border-wallet-accent/50 hover:text-wallet-accent"
               aria-label="Close popup banner"
             >
               <X size={16} />
             </button>
 
             <div className="p-3 sm:p-4">
-              {popupBanner.title && <p className="mb-2 text-sm font-semibold text-wallet-accentAlt">{popupBanner.title}</p>}
+              {popupBanner.title && <p className="mb-2 text-sm font-semibold text-wallet-accent">{popupBanner.title}</p>}
               {popupBanner.targetUrl ? (
                 <a href={popupBanner.targetUrl} target="_blank" rel="noreferrer">
                   <img
@@ -167,7 +167,7 @@ const DashboardPage = () => {
                       setDownloadingBanner(false);
                     }
                   }}
-                  className="inline-flex items-center gap-2 rounded-xl border border-wallet-accent/30 bg-wallet-accent/10 px-3 py-2 text-sm font-semibold text-wallet-text hover:bg-wallet-accent/15"
+                  className="inline-flex items-center gap-2 rounded-xl border border-wallet-accent/30 bg-wallet-accent/10 px-3 py-2 text-sm font-semibold text-wallet-text transition hover:bg-wallet-accent/15"
                 >
                   <Download size={16} />
                   {downloadingBanner ? "Downloading..." : "Download"}
@@ -183,7 +183,7 @@ const DashboardPage = () => {
           withdrawalWallet={wallet?.withdrawalWallet || 0}
           tradingWallet={wallet?.tradingWallet || wallet?.tradingBalance || 0}
         />
-        <section className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/55 p-3 sm:p-4">
+        <section className="rounded-2xl border border-wallet-border bg-wallet-panel p-3 sm:p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Income Summary</h2>
             <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-muted">Crypto Earnings</span>
@@ -206,7 +206,7 @@ const DashboardPage = () => {
             </div>
           </div>
         </section>
-        <section className="rounded-2xl border border-wallet-border/60 bg-wallet-bg/60 p-4">
+        <section className="rounded-2xl border border-wallet-border bg-wallet-panelAlt p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Income Cap Status</h2>
             <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-accentAlt/85">
@@ -228,7 +228,7 @@ const DashboardPage = () => {
             </p>
           </div>
         </section>
-        <section className="rounded-2xl border border-wallet-accent/25 bg-gradient-to-br from-wallet-panel via-wallet-panel to-wallet-elevated/30 p-4 shadow-[0_0_20px_rgba(0,229,168,0.08)] sm:p-5">
+        <section className="wallet-panel-strong p-4 sm:p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-wallet-accent sm:text-base">Salary Rank Progress</h2>
             <span className="text-[11px] uppercase tracking-[0.2em] text-wallet-accentAlt/85">Team Growth</span>
@@ -267,31 +267,31 @@ const DashboardPage = () => {
           </div>
           <div className="mt-4">
             <p className="mb-2 text-xs uppercase tracking-[0.18em] text-wallet-muted">Progress</p>
-            <div className="h-3 w-full rounded-full bg-wallet-panelAlt">
+            <div className="h-3 w-full rounded-full bg-wallet-elevated">
               <div
-                className="h-3 rounded-full bg-gradient-to-r from-wallet-accent via-wallet-accentAlt to-wallet-elevated transition-all duration-700 ease-out"
+                className="wallet-chart-glow h-3 rounded-full bg-gradient-to-r from-wallet-accent to-wallet-accentAlt transition-all duration-700 ease-out"
                 style={{ width: `${salaryRankProgress.progressPercentage}%` }}
               />
             </div>
-            <p className="mt-2 text-sm font-semibold text-wallet-accentAlt">{salaryRankProgress.progressPercentage.toFixed(1)}%</p>
+            <p className="mt-2 text-sm font-semibold text-wallet-accent">{salaryRankProgress.progressPercentage.toFixed(1)}%</p>
           </div>
         </section>
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-3">
+          <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-3">
             <p className="text-xs text-wallet-muted">P2P Total</p>
-            <p className="mt-1 text-lg font-semibold text-wallet-accentAlt">${(wallet?.p2pTotal || 0).toFixed(2)}</p>
+            <p className="wallet-profit-flash mt-1 text-lg font-semibold text-wallet-accent">${(wallet?.p2pTotal || 0).toFixed(2)}</p>
           </div>
-          <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-3">
+          <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-3">
             <p className="text-xs text-wallet-muted">Recent Entries</p>
-            <p className="mt-1 text-lg font-semibold text-wallet-accentAlt">{recent.length}</p>
+            <p className="mt-1 text-lg font-semibold text-wallet-accent">{recent.length}</p>
           </div>
         </div>
-        <div className="rounded-2xl border border-wallet-border/60 bg-wallet-panel/70 p-4">
+        <div className="rounded-2xl border border-wallet-border bg-wallet-panel p-4">
           <h2 className="text-sm font-semibold text-wallet-accent">Latest Transactions</h2>
           <div className="mt-3 space-y-2 text-sm">
             {recent.length === 0 && <p className="text-wallet-muted">No transaction history available.</p>}
             {recent.map((item) => (
-              <div key={item._id} className="flex items-center justify-between rounded-xl bg-wallet-panelAlt/60 px-3 py-2">
+              <div key={item._id} className="wallet-row-enter flex items-center justify-between rounded-xl border border-wallet-border bg-wallet-panelAlt px-3 py-2 transition-colors hover:border-wallet-accent/30">
                 <span className="uppercase text-xs text-wallet-muted">{item.type}</span>
                 <span className="font-semibold text-wallet-text">${formatFixedSafe(item.amount, 2, "0.00")}</span>
               </div>

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchDemoBotFeed, type DemoBotFeedItem } from "../services/demoBotService";
 
 const DISCLAIMER_TEXT =
-  "All earnings shown are based on system-generated.";
 
 const formatAmount = (value: number) => `$${Number(value || 0).toLocaleString()}`;
 

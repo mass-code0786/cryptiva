@@ -10,6 +10,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import depositRoutes from "./routes/depositRoutes.js";
+import demoBotRoutes from "./routes/demoBotRoutes.js";
 import p2pRoutes from "./routes/p2pRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import popupBannerRoutes from "./routes/popupBannerRoutes.js";
@@ -26,6 +27,11 @@ import { settleActiveTrades, startTradeEngine, stopTradeEngine } from "./service
 import { startSalaryScheduler } from "./services/salarySchedulerService.js";
 import { startKeepAliveScheduler, stopKeepAliveScheduler } from "./services/keepAliveService.js";
 import { startDepositExpiryScheduler, stopDepositExpiryScheduler } from "./services/depositExpiryService.js";
+import {
+  seedGlobalDemoBotFeedIfEmpty,
+  startDemoBotSimulationScheduler,
+  stopDemoBotSimulationScheduler,
+} from "./services/demoBotSimulationService.js";
 
 const app = express();
 const uploadsRoot = path.join(process.cwd(), "uploads");
@@ -114,6 +120,7 @@ app.use("/api/webhooks", webhookRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/popup-banners", popupBannerRoutes);
+app.use("/api/demo-bot", demoBotRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -123,6 +130,12 @@ mongoose
   .then(() => {
     startTradeEngine();
     startSalaryScheduler();
+    startDemoBotSimulationScheduler({
+      intervalMs: Number(process.env.DEMO_BOT_SIMULATION_INTERVAL_MS) || 3 * 60 * 60 * 1000,
+    });
+    seedGlobalDemoBotFeedIfEmpty().catch((error) => {
+      console.error("[DemoBot] Failed to seed initial global demo entry", error);
+    });
 
     settleActiveTrades().catch((error) => {
       console.error("Initial trade settlement failed", error);
@@ -156,9 +169,11 @@ mongoose.connection.on("connected", () => {
 process.on("SIGINT", () => {
   stopKeepAliveScheduler();
   stopDepositExpiryScheduler();
+  stopDemoBotSimulationScheduler();
 });
 
 process.on("SIGTERM", () => {
   stopKeepAliveScheduler();
   stopDepositExpiryScheduler();
+  stopDemoBotSimulationScheduler();
 });

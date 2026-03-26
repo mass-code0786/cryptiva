@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchDemoBotFeed, type DemoBotFeedItem } from "../services/demoBotService";
 import { fetchSetting } from "../services/settingsService";
 
-const DISCLAIMER_FALLBACK = "Demo Only - Not real trading";
+const DISCLAIMER_FALLBACK = "Live market overview";
 
 const formatAmount = (value: number) => `$${Number(value || 0).toLocaleString()}`;
 

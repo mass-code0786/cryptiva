@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchDemoBotFeed, type DemoBotFeedItem } from "../services/demoBotService";
 
 const DISCLAIMER_TEXT =
-  "All earnings shown are based on system-generated strategies and may vary depending on market conditions. Users are advised to participate at their own risk.";
+  "All earnings shown are based on system-generated.";
 
 const formatAmount = (value: number) => `$${Number(value || 0).toLocaleString()}`;
 
@@ -67,10 +67,10 @@ const DemoBotActivitySimulation = () => {
             <div className="rounded-2xl border border-wallet-accent/35 bg-wallet-panelAlt/85 p-2.5 shadow-[0_6px_16px_rgb(var(--wallet-shadow-color)/0.25)]">
               <Bot size={18} className="text-wallet-accent" />
             </div>
-            <h2 className="text-base font-semibold text-wallet-accent sm:text-lg">Live Cryptiva Bot</h2>
+            <h2 className="text-base font-semibold text-wallet-accent sm:text-lg">LiveCryptiva Bot</h2>
           </div>
           <span className="inline-flex animate-pulse items-center rounded-full border border-emerald-400/55 bg-emerald-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
-            LIVE CRYPTIVA BOT
+            LIVE BOT
           </span>
         </div>
         <p className="text-xs text-wallet-muted">{disclaimer}</p>

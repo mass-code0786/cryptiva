@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchDemoBotFeed, type DemoBotFeedItem } from "../services/demoBotService";
 
 const DISCLAIMER_TEXT =
-  "Demo Only - This is a shared simulated activity feed for presentation purposes. It is not real trading and does not affect your wallet or account.";
+  "All earnings shown are based on system-generated strategies and may vary depending on market conditions. Users are advised to participate at their own risk.";
 
 const formatAmount = (value: number) => `$${Number(value || 0).toLocaleString()}`;
 
@@ -67,10 +67,10 @@ const DemoBotActivitySimulation = () => {
             <div className="rounded-2xl border border-wallet-accent/35 bg-wallet-panelAlt/85 p-2.5 shadow-[0_6px_16px_rgb(var(--wallet-shadow-color)/0.25)]">
               <Bot size={18} className="text-wallet-accent" />
             </div>
-            <h2 className="text-base font-semibold text-wallet-accent sm:text-lg">Live Simulation Bot</h2>
+            <h2 className="text-base font-semibold text-wallet-accent sm:text-lg">Live Cryptiva Bot</h2>
           </div>
           <span className="inline-flex animate-pulse items-center rounded-full border border-emerald-400/55 bg-emerald-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
-            LIVE DEMO
+            LIVE CRYPTIVA BOT
           </span>
         </div>
         <p className="text-xs text-wallet-muted">{disclaimer}</p>
@@ -86,11 +86,11 @@ const DemoBotActivitySimulation = () => {
           <p className="mt-1 text-sm font-semibold text-wallet-text">{summary.lastUpdateLabel}</p>
         </div>
         <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-3">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-emerald-200/90">Simulated Profits</p>
+          <p className="text-[11px] uppercase tracking-[0.14em] text-emerald-200/90">Trading Profits</p>
           <p className="mt-1 text-lg font-semibold text-emerald-400">{summary.profitCount}</p>
         </div>
         <div className="rounded-xl border border-rose-500/35 bg-rose-500/10 p-3">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-rose-200/90">Simulated Losses</p>
+          <p className="text-[11px] uppercase tracking-[0.14em] text-rose-200/90">Trading Losses</p>
           <p className="mt-1 text-lg font-semibold text-rose-400">{summary.lossCount}</p>
         </div>
       </div>
@@ -105,7 +105,7 @@ const DemoBotActivitySimulation = () => {
           <span>Badge</span>
         </div>
         <div className="max-h-[360px] overflow-y-auto bg-wallet-panel/65">
-          {rows.length === 0 && <p className="p-3 text-sm text-wallet-muted">No simulated entries available yet.</p>}
+          {rows.length === 0 && <p className="p-3 text-sm text-wallet-muted">No profit/loss entries available yet.</p>}
           {rows.map((entry) => {
             const date = new Date(entry.createdAt);
             const isProfit = entry.resultType === "profit";

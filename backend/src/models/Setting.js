@@ -12,6 +12,10 @@ const settingSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    value: {
+      type: String,
+      default: "",
+    },
     valueString: {
       type: String,
       default: "",

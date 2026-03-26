@@ -2,15 +2,15 @@ import { Bot } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { fetchDemoBotFeed, type DemoBotFeedItem } from "../services/demoBotService";
+import { fetchSetting } from "../services/settingsService";
 
-const DISCLAIMER_TEXT =
-"Live performance according to makat behavior.";
+const DISCLAIMER_FALLBACK = "Demo Only - Not real trading";
 
 const formatAmount = (value: number) => `$${Number(value || 0).toLocaleString()}`;
 
 const DemoBotActivitySimulation = () => {
   const [rows, setRows] = useState<DemoBotFeedItem[]>([]);
-  const [disclaimer, setDisclaimer] = useState(DISCLAIMER_TEXT);
+  const [disclaimer, setDisclaimer] = useState(DISCLAIMER_FALLBACK);
 
   useEffect(() => {
     let active = true;
@@ -20,15 +20,26 @@ const DemoBotActivitySimulation = () => {
         const response = await fetchDemoBotFeed(60);
         if (!active) return;
         setRows(response.data.items || []);
-        setDisclaimer(response.data.disclaimer || DISCLAIMER_TEXT);
       } catch {
         if (!active) return;
         setRows([]);
-        setDisclaimer(DISCLAIMER_TEXT);
+      }
+    };
+
+    const loadDisclaimer = async () => {
+      try {
+        const response = await fetchSetting("demo_bot_disclaimer");
+        if (!active) return;
+        const value = String(response.data.value || "").trim();
+        setDisclaimer(value || DISCLAIMER_FALLBACK);
+      } catch {
+        if (!active) return;
+        setDisclaimer(DISCLAIMER_FALLBACK);
       }
     };
 
     loadFeed().catch(() => {});
+    loadDisclaimer().catch(() => {});
     const timer = window.setInterval(() => {
       loadFeed().catch(() => {});
     }, 60 * 1000);

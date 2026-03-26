@@ -16,6 +16,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import popupBannerRoutes from "./routes/popupBannerRoutes.js";
 import referralRoutes from "./routes/referralRoutes.js";
 import salaryRoutes from "./routes/salaryRoutes.js";
+import settingsRoutes from "./routes/settingsRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
 import tradeRoutes from "./routes/tradeRoutes.js";
 import transactionRoutes from "./routes/transactionRoutes.js";
@@ -121,6 +122,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/popup-banners", popupBannerRoutes);
 app.use("/api/demo-bot", demoBotRoutes);
+app.use("/api/settings", settingsRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -20,6 +20,7 @@ import {
   type AdminDashboardAnalytics,
   type AdminDashboardOverview,
 } from "../../services/adminService";
+import { fetchSetting, updateSetting } from "../../services/settingsService";
 
 const initialOverview: AdminDashboardOverview = {
   users: {
@@ -93,6 +94,9 @@ const AdminDashboardPage = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [demoBotDisclaimer, setDemoBotDisclaimer] = useState("");
+  const [disclaimerMessage, setDisclaimerMessage] = useState("");
+  const [disclaimerBusy, setDisclaimerBusy] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -102,6 +106,8 @@ const AdminDashboardPage = () => {
         const [overviewRes, analyticsRes] = await Promise.all([fetchAdminDashboardOverview(), fetchAdminDashboardAnalytics()]);
         setOverview(overviewRes.data);
         setAnalytics(analyticsRes.data);
+        const settingRes = await fetchSetting("demo_bot_disclaimer").catch(() => null);
+        setDemoBotDisclaimer(String(settingRes?.data?.value || ""));
       } catch (e: any) {
         setError(e?.response?.data?.message || "Failed to load admin analytics");
       } finally {
@@ -176,6 +182,21 @@ const AdminDashboardPage = () => {
       setPasswordMessage(e?.response?.data?.message || "Failed to update password");
     } finally {
       setPasswordBusy(false);
+    }
+  };
+
+  const onSaveDemoBotDisclaimer = async (event: FormEvent) => {
+    event.preventDefault();
+    setDisclaimerMessage("");
+    setDisclaimerBusy(true);
+    try {
+      const { data } = await updateSetting("demo_bot_disclaimer", demoBotDisclaimer);
+      setDemoBotDisclaimer(String(data.value || ""));
+      setDisclaimerMessage("Demo bot disclaimer updated");
+    } catch (e: any) {
+      setDisclaimerMessage(e?.response?.data?.message || "Failed to update disclaimer");
+    } finally {
+      setDisclaimerBusy(false);
     }
   };
 
@@ -329,6 +350,28 @@ const AdminDashboardPage = () => {
           </button>
         </form>
         {passwordMessage && <p className="mt-3 text-sm text-cyan-200">{passwordMessage}</p>}
+      </article>
+
+      <article className="rounded-2xl border border-cyan-500/20 bg-[linear-gradient(145deg,rgba(15,23,42,0.82),rgba(2,6,23,0.66))] p-4 backdrop-blur">
+        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">Demo Bot Disclaimer</h3>
+        <p className="mt-1 text-xs text-slate-400">Update the dashboard demo bot disclaimer text.</p>
+        <form className="mt-4 space-y-3" onSubmit={onSaveDemoBotDisclaimer}>
+          <textarea
+            value={demoBotDisclaimer}
+            onChange={(event) => setDemoBotDisclaimer(event.target.value)}
+            rows={4}
+            className="w-full rounded-xl border border-cyan-800/40 bg-slate-950 p-3 text-sm outline-none focus:border-cyan-500"
+            placeholder="Enter demo bot disclaimer..."
+          />
+          <button
+            type="submit"
+            disabled={disclaimerBusy}
+            className="rounded-xl bg-cyan-500 px-4 py-2 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {disclaimerBusy ? "Saving..." : "Save Disclaimer"}
+          </button>
+        </form>
+        {disclaimerMessage && <p className="mt-3 text-sm text-cyan-200">{disclaimerMessage}</p>}
       </article>
     </section>
   );

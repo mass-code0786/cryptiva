@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, X } from "lucide-react";
+import DemoBotActivitySimulation from "../components/DemoBotActivitySimulation";
 import IncomeCard from "../components/IncomeCard";
 import WalletCard from "../components/WalletCard";
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -298,6 +299,7 @@ const DashboardPage = () => {
             ))}
           </div>
         </div>
+        <DemoBotActivitySimulation />
       </div>
     </DashboardLayout>
   );

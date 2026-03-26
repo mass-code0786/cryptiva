@@ -35,6 +35,7 @@ import {
 } from "./services/demoBotSimulationService.js";
 
 const app = express();
+const BACKGROUND_STARTUP_DELAY_MS = Number(process.env.BACKGROUND_STARTUP_DELAY_MS) || 7000;
 const uploadsRoot = path.join(process.cwd(), "uploads");
 fs.mkdirSync(uploadsRoot, { recursive: true });
 
@@ -79,21 +80,9 @@ app.use(
 app.use(morgan("dev"));
 app.use("/uploads", express.static(uploadsRoot));
 
-/* -------- ROOT ROUTE ADD KIYA HAI -------- */
 app.get("/", (_req, res) => {
-  res.json({
-    status: "ok",
-    message: "Cryptiva Backend API Running",
-    endpoints: {
-      health: "/health",
-      apiHealth: "/api/health",
-      auth: "/api/auth",
-      users: "/api/users",
-      wallet: "/api/wallet",
-    },
-  });
+  res.status(200).json({ ok: true, service: "cryptiva-api" });
 });
-/* ---------------------------------------- */
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "cryptiva-api" });
@@ -130,28 +119,30 @@ app.use(errorHandler);
 mongoose
   .connect(MONGO_URI)
   .then(() => {
-    startTradeEngine();
-    startSalaryScheduler();
-    startDemoBotSimulationScheduler({
-      intervalMs: Number(process.env.DEMO_BOT_SIMULATION_INTERVAL_MS) || 3 * 60 * 60 * 1000,
-    });
-    seedGlobalDemoBotFeedIfEmpty().catch((error) => {
-      console.error("[DemoBot] Failed to seed initial global demo entry", error);
-    });
-
-    settleActiveTrades().catch((error) => {
-      console.error("Initial trade settlement failed", error);
-    });
-
     app.listen(PORT, () => {
       console.log(`Cryptiva backend running on port ${PORT}`);
-      startKeepAliveScheduler({
-        port: PORT,
-        intervalMs: Number(process.env.KEEP_ALIVE_INTERVAL_MS) || 300000,
-      });
-      startDepositExpiryScheduler({
-        intervalMs: Number(process.env.DEPOSIT_EXPIRY_INTERVAL_MS) || 300000,
-      });
+
+      setTimeout(() => {
+        startTradeEngine();
+        startSalaryScheduler();
+        startDemoBotSimulationScheduler({
+          intervalMs: Number(process.env.DEMO_BOT_SIMULATION_INTERVAL_MS) || 3 * 60 * 60 * 1000,
+        });
+        startKeepAliveScheduler({
+          port: PORT,
+          intervalMs: Number(process.env.KEEP_ALIVE_INTERVAL_MS) || 300000,
+        });
+        startDepositExpiryScheduler({
+          intervalMs: Number(process.env.DEPOSIT_EXPIRY_INTERVAL_MS) || 300000,
+        });
+
+        seedGlobalDemoBotFeedIfEmpty().catch((error) => {
+          console.error("[DemoBot] Failed to seed initial global demo entry", error);
+        });
+        settleActiveTrades().catch((error) => {
+          console.error("Initial trade settlement failed", error);
+        });
+      }, BACKGROUND_STARTUP_DELAY_MS);
     });
   })
   .catch((error) => {

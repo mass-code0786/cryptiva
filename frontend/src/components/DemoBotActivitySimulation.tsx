@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { fetchDemoBotFeed, type DemoBotFeedItem } from "../services/demoBotService";
 
 const DISCLAIMER_TEXT =
+"Live performance according to makat behavior",
 
 const formatAmount = (value: number) => `$${Number(value || 0).toLocaleString()}`;
 

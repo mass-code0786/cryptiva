@@ -143,7 +143,7 @@ const DemoBotActivitySimulation = () => {
                 <p>
                   <span className="text-xs uppercase tracking-[0.12em] text-wallet-muted sm:hidden">Badge: </span>
                   <span className="inline-flex rounded-full border border-wallet-accent/35 bg-wallet-accent/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-wallet-accent">
-                    Demo
+                    LIVE
                   </span>
                 </p>
               </div>

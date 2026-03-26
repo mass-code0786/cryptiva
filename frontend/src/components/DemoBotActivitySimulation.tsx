@@ -132,23 +132,23 @@ const DemoBotActivitySimulation = () => {
 
   return (
     <section className="wallet-panel-strong border border-wallet-accent/25 bg-gradient-to-b from-wallet-panelAlt/70 to-wallet-panel/95 p-4 shadow-[0_12px_34px_rgb(var(--wallet-shadow-color)/0.24)] sm:p-5">
-      <div className="rounded-xl border border-wallet-accent/20 bg-wallet-bg/55 p-3 sm:p-4">
+      <div className="rounded-xl border border-wallet-border/70 bg-wallet-bg/45 p-3 sm:p-4">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-base font-semibold text-wallet-accent sm:text-lg">Bot Activity Simulation</h2>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-wallet-accent/45 bg-wallet-accent/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-wallet-accent">
+          <div className="flex flex-wrap gap-1.5">
+            <span className="rounded-full border border-wallet-border bg-wallet-panelAlt/65 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-wallet-muted">
               Demo Only
             </span>
-            <span className="rounded-full border border-wallet-accentAlt/45 bg-wallet-accentAlt/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-wallet-accentAlt">
+            <span className="rounded-full border border-wallet-border bg-wallet-panelAlt/65 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-wallet-muted">
               Simulated Data
             </span>
-            <span className="rounded-full border border-wallet-border bg-wallet-panelAlt/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-wallet-muted">
+            <span className="rounded-full border border-wallet-border bg-wallet-panelAlt/65 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-wallet-muted">
               Not Connected to Real Trading
             </span>
           </div>
         </div>
-        <p className="text-sm text-wallet-text">
-          This panel displays simulated market activity for presentation purposes only. It does not represent real trades, real profit, or actual wallet movements.
+        <p className="text-xs text-wallet-muted">
+          Simulated interface data only.
         </p>
       </div>
 

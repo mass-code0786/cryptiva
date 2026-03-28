@@ -20,7 +20,7 @@ const resolveInitialTheme = (): ThemeMode => {
   if (typeof window === "undefined") return "dark";
   const stored = window.localStorage.getItem(themeStorageKey);
   if (stored === "dark" || stored === "light") return stored;
-  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  return "dark";
 };
 
 const DashboardLayout = ({ children }: { children: ReactNode }) => {

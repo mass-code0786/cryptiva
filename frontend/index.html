@@ -29,10 +29,7 @@
       (function () {
         try {
           var stored = window.localStorage.getItem("cryptiva-theme");
-          var prefersLight =
-            window.matchMedia &&
-            window.matchMedia("(prefers-color-scheme: light)").matches;
-          var theme = stored === "light" || stored === "dark" ? stored : prefersLight ? "light" : "dark";
+          var theme = stored === "light" || stored === "dark" ? stored : "dark";
           document.documentElement.dataset.theme = theme;
           document.documentElement.style.colorScheme = theme;
         } catch (error) {
